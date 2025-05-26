@@ -40,28 +40,8 @@
       box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.25); /* Lighter sky-400 glow */
     }
     
-    /* Page Transition Animation */
-    @keyframes pageFadeSlideIn { 
-      from { opacity: 0; transform: translateY(15px); } 
-      to { opacity: 1; transform: translateY(0); } 
-    }
-    .page-transition-active { animation: pageFadeSlideIn 0.35s cubic-bezier(0.4, 0.0, 0.2, 1) forwards; }
-
     /* Modal content scrollable utility */
     .modal-content-scrollable { max-height: 75vh; overflow-y: auto; }
-
-    /* General element appearance animations */
-    @keyframes subtlePopIn { 
-      from { opacity: 0; transform: scale(0.96) translateY(8px); } 
-      to { opacity: 1; transform: scale(1) translateY(0); } 
-    }
-    .animate-subtle-pop-in { animation: subtlePopIn 0.3s cubic-bezier(0.4, 0.0, 0.2, 1) forwards; }
-    
-    @keyframes gentleFadeIn { 
-      from { opacity: 0; } 
-      to { opacity: 1; } 
-    }
-    .animate-gentle-fade-in { animation: gentleFadeIn 0.3s ease-out forwards; }
     
     /* Glassmorphism Effect Utility - Dark Mode Only */
     .glass-effect {
@@ -81,13 +61,6 @@
       background-color: #ffffff; /* White dot when checked in dark mode */ 
     }
 
-    /* Question transition */
-    @keyframes questionSlideInOut { 
-      0% { opacity: 0; transform: translateX(15px); } 
-      50% { opacity: 1; transform: translateX(0); } 
-    }
-    .question-transition-active { animation: questionSlideInOut 0.35s cubic-bezier(0.4, 0.0, 0.2, 1) forwards; }
-
     /* Sticky header */
     .sticky-review-actions { position: sticky; top: 0px; z-index: 40; }
 
@@ -105,7 +78,6 @@
     }
     .card-float-hover:hover {
       transform: translateY(-4px);
-      /* Removed animated box-shadow for performance. Base shadow from Card component applies. */
     }
 
     /* Mobile Navigation Bar Style */
@@ -154,7 +126,7 @@
   }
 }
 </script>
-  <script type="module" crossorigin src="/quizai/assets/index-fbUi3GDH.js"></script>
+  <script type="module" crossorigin src="/quizai/assets/index-BFw2RKN9.js"></script>
 </head>
 <body>
   <div id="root"></div>
