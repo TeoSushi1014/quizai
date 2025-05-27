@@ -72,8 +72,21 @@
       background-color: #ffffff; /* White dot when checked in dark mode */ 
     }
 
-    /* Sticky header */
-    .sticky-review-actions { position: sticky; top: 0px; z-index: 40; }
+    /* Sticky review actions bar */
+    .sticky-review-actions {
+      position: sticky;
+      /* Default top for mobile (h-16 -> 4rem) */
+      top: 4rem; 
+      z-index: 40; /* Ensure it's below main header (z-50) but above other content */
+    }
+
+    /* Adjust top for medium screens and up (md:h-[72px] -> 4.5rem) */
+    @media (min-width: 768px) { /* Tailwind's md breakpoint */
+      .sticky-review-actions {
+        top: 4.5rem;
+      }
+    }
+
 
     /* Enhanced modal backdrop - Dark Mode Only */
     .modal-backdrop-enhanced { 
@@ -133,13 +146,14 @@
     "mammoth": "https://esm.sh/mammoth@1.8.0",
     "@react-oauth/google": "https://esm.sh/@react-oauth/google@^0.12.1",
     "react-dom": "https://esm.sh/react-dom@^19.1.0",
-    "katex": "https://esm.sh/katex@^0.16.22"
+    "katex": "https://esm.sh/katex@^0.16.22",
+    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@^2.49.8"
   }
 }
 </script>
-  <script type="module" crossorigin src="/quizai/assets/index-CTvnSe6r.js"></script>
+  <script type="module" crossorigin src="/quizapp/assets/index-BQSSHhnW.js"></script>
 </head>
 <body>
   <div id="root"></div>
 </body>
-</html>
+</html><link rel="stylesheet" href="index.css">
