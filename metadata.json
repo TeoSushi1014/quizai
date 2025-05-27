@@ -1,0 +1,6 @@
+{
+  "name": "QuizAI",
+  "description": "QuizAI transforms your content into engaging quizzes using Google Gemini.",
+  "requestFramePermissions": [],
+  "prompt": ""
+}

@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en" class="dark"> <!-- Forced dark theme -->
+<head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-PPLMXLJNZT"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-PPLMXLJNZT');
+  </script>
+  <!-- reCAPTCHA Enterprise -->
+  <script src="https://www.google.com/recaptcha/enterprise.js?render=6LfjXkorAAAAAOk4X5LwVd-8RgwMGS0IWxZLtFGQ"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QuizAI</title>
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Base HTML and Body styles - Dark Mode Only */
+    html {
+      scroll-behavior: smooth;
+      font-family: 'Inter', sans-serif;
+    }
+    body {
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      background-color: #0f172a; /* slate-900 */
+      color: #cbd5e1; /* slate-300 */
+      cursor: default; /* Added default cursor */
+    }
+
+    /* Custom scrollbar - Dark Mode Only */
+    ::-webkit-scrollbar { width: 7px; height: 7px; cursor: default !important; }
+    ::-webkit-scrollbar-track { background: transparent; cursor: default !important; }
+    ::-webkit-scrollbar-thumb { background-color: #475569; /* slate-600 */ border-radius: 10px; border: 2px solid transparent; cursor: default !important; }
+    ::-webkit-scrollbar-thumb:hover { background-color: #64748b; /* slate-500 */ }
+    ::-webkit-scrollbar-track-piece { cursor: default !important; }
+    ::-webkit-scrollbar-button { cursor: default !important; }
+    ::-webkit-scrollbar-corner { cursor: default !important; }
+
+
+    /* Global Focus Ring Style - Dark Mode Only */
+    *:focus-visible {
+      outline: 2px solid #38bdf8; /* sky-400 */
+      outline-offset: 2px;
+      box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.25); /* Lighter sky-400 glow */
+    }
+    
+    /* Modal content scrollable utility */
+    .modal-content-scrollable { max-height: 75vh; overflow-y: auto; }
+    
+    /* Glassmorphism Effect Utility - Dark Mode Only */
+    .glass-effect {
+      background-color: rgba(30, 41, 59, 0.65); /* slate-800/65 */
+      backdrop-filter: blur(10px); 
+      -webkit-backdrop-filter: blur(10px); 
+      border: 1px solid rgba(51, 65, 85, 0.5); /* slate-700/50 */
+      box-shadow: 0 0 0 1px rgba(128, 128, 128, 0.08); 
+    }
+
+    /* Toggle switch animation - Dark Mode Only */
+    .dot { 
+      transition: transform .25s cubic-bezier(0.34, 1.56, 0.64, 1), background-color .25s ease-out; 
+      background-color: #e2e8f0; /* slate-200 for better contrast on dark track */
+    }
+    input:checked + div + .dot, button[aria-checked="true"] .dot { 
+      background-color: #ffffff; /* White dot when checked in dark mode */ 
+    }
+
+    /* Sticky review actions bar */
+    .sticky-review-actions {
+      position: sticky;
+      /* Default top for mobile (h-16 -> 4rem) */
+      top: 4rem; 
+      z-index: 40; /* Ensure it's below main header (z-50) but above other content */
+    }
+
+    /* Adjust top for medium screens and up (md:h-[72px] -> 4.5rem) */
+    @media (min-width: 768px) { /* Tailwind's md breakpoint */
+      .sticky-review-actions {
+        top: 4.5rem;
+      }
+    }
+
+
+    /* Enhanced modal backdrop - Dark Mode Only */
+    .modal-backdrop-enhanced { 
+      backdrop-filter: blur(8px);  
+      -webkit-backdrop-filter: blur(8px); 
+      background-color: rgba(15, 23, 42, 0.8); /* slate-900/80 */
+    }
+    
+    /* Card hover effect - Dark Mode Only */
+    .card-float-hover { 
+      transition: transform 0.2s ease-out; 
+      will-change: transform; 
+    }
+    .card-float-hover:hover {
+      transform: translateY(-4px);
+    }
+
+    /* Mobile Navigation Bar Style */
+    .mobile-nav-style {
+      background-color: rgba(22, 32, 53, 0.85); 
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border-top: 1px solid rgba(51, 65, 85, 0.6); 
+      box-shadow: 0 -4px 12px rgba(0,0,0,0.2); 
+    }
+
+    /* For specifically targeted horizontal thin scrollbars */
+    .thin-scrollbar-horizontal::-webkit-scrollbar {
+      height: 4px; /* Thinner horizontal scrollbar */
+      cursor: default !important;
+    }
+    .thin-scrollbar-horizontal::-webkit-scrollbar-track {
+      background: transparent; /* Keep track transparent like global style */
+      border-radius: 4px;
+      cursor: default !important;
+    }
+    .thin-scrollbar-horizontal::-webkit-scrollbar-thumb {
+      background-color: #475569; /* slate-600 */
+      border-radius: 4px;
+      cursor: default !important;
+    }
+    .thin-scrollbar-horizontal::-webkit-scrollbar-thumb:hover {
+      background-color: #64748b; /* slate-500 */
+    }
+
+  </style>
+<script type="importmap">
+{
+  "imports": {
+    "react/": "https://esm.sh/react@^19.1.0/",
+    "react": "https://esm.sh/react@^19.1.0",
+    "react-dom/": "https://esm.sh/react-dom@^19.1.0/",
+    "@google/genai": "https://esm.sh/@google/genai@^1.0.1",
+    "pdfjs-dist/": "https://esm.sh/pdfjs-dist@4.4.168/",
+    "react-router-dom": "https://esm.sh/react-router-dom@^7.6.0",
+    "mammoth": "https://esm.sh/mammoth@1.8.0",
+    "@react-oauth/google": "https://esm.sh/@react-oauth/google@^0.12.1",
+    "react-dom": "https://esm.sh/react-dom@^19.1.0",
+    "katex": "https://esm.sh/katex@^0.16.22",
+    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@^2.49.8"
+  }
+}
+</script>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="module" src="index.tsx"></script>
+</body>
+</html><link rel="stylesheet" href="index.css">
+<script src="index.tsx" type="module"></script>
