@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "predeploy": "npm run build",
-    "deploy": "gh-pages -d dist"
+    "deploy": "gh-pages -d dist",
+    "deploy:github": "echo 'Use GitHub Actions for deployment. Push to main branch to trigger deployment.'"
   },
   "dependencies": {
     "@google/genai": "^1.0.1",

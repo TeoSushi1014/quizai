@@ -11,9 +11,9 @@ const initializeGeminiAI = (): GoogleGenAI => {
     // API_KEY must be obtained from process.env.GEMINI_API_KEY as per guidelines
     const apiKey = (typeof process !== 'undefined' && process.env) ? process.env.GEMINI_API_KEY : undefined;
     if (typeof apiKey !== 'string' || !apiKey) {
-      console.error("CRITICAL ERROR: process.env.GEMINI_API_KEY is not defined. GoogleGenAI client cannot be initialized.");
+      console.warn("Google Gemini API Key (process.env.GEMINI_API_KEY) environment variable(s) not set. Quiz generation may fail.");
       // This error will be caught by the calling function and can be displayed to the user.
-      throw new Error("Gemini API Key (GEMINI_API_KEY) is not configured. Please ensure the process.env.GEMINI_API_KEY environment variable is correctly set and accessible.");
+      throw new Error("Gemini API Key (process.env.GEMINI_API_KEY) environment variable(s) not set. Quiz generation may fail.");
     }
     geminiAI = new GoogleGenAI({ apiKey });
   }
