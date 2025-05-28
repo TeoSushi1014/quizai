@@ -1,15 +1,14 @@
 
 
-
-
 import React, { useState, useRef, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Button, Card, Textarea, Tooltip } from '../../components/ui';
 import { useAppContext, useTranslation } from '../../App';
 import { Quiz } from '../../types';
-import { PlusIcon, UserCircleIcon, ChevronRightIcon } from '../../constants'; 
-import QuizCard from './components/QuizCard'; 
+import { PlusIcon, UserCircleIcon, ChevronRightIcon, UploadIcon, EditIcon, ShareIcon, LightbulbIcon, ChartBarIcon } from '../../constants';
+import QuizCard from './components/QuizCard';
+import FeatureItemCard from './components/FeatureItemCard'; // Import the new component
 import useIntersectionObserver from '../../hooks/useIntersectionObserver';
 import { translations } from '../../i18n';
 import MathText from '../../components/MathText';
@@ -19,16 +18,16 @@ const MAX_RECENT_QUIZZES_HOME = 3;
 
 // Framer Motion Variants
 const easeIOS = [0.25, 0.1, 0.25, 1];
-const durationNormal = 0.35; // Corresponds to --duration-normal (350ms)
-const durationSlow = 0.4; // Corresponds to --duration-slow (400ms)
+const durationNormal = 0.35;
+const durationSlow = 0.4;
 
 const heroContainerVariants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.15, // Stagger delay between title, subtitle, button
-      duration: durationNormal, // Duration for parent opacity, if applicable
+      staggerChildren: 0.15,
+      duration: durationNormal,
       ease: easeIOS,
     },
   },
@@ -40,7 +39,7 @@ const heroItemVariants = {
     opacity: 1,
     y: 0,
     transition: {
-      duration: durationSlow, 
+      duration: durationSlow,
       ease: easeIOS,
     },
   },
@@ -48,10 +47,10 @@ const heroItemVariants = {
 
 
 const FeedbackSection: React.FC = () => {
-  const { currentUser, setCurrentView } = useAppContext(); 
+  const { currentUser, setCurrentView } = useAppContext();
   const { t } = useTranslation();
   const [feedbackText, setFeedbackText] = useState('');
-  
+
   const handleSendFeedback = () => {
     if (!currentUser || !feedbackText.trim()) return;
 
@@ -66,44 +65,44 @@ const FeedbackSection: React.FC = () => {
   };
 
   return (
-    <motion.section 
+    <motion.section
       className="py-12 md:py-16"
       initial={{ opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
-      transition={{ duration: durationNormal, ease: easeIOS }}
+      transition={{ duration: durationSlow, ease: easeIOS, delay: 0.2 }} // Added slight delay
     >
-      <Card 
-        className={`max-w-2xl mx-auto shadow-2xl !rounded-2xl glass-effect !border-slate-700/40`} 
+      <Card
+        className={`max-w-2xl mx-auto shadow-2xl !rounded-2xl glass-effect !border-slate-700/40`}
         useGlassEffect
-      > 
+      >
         <div className="text-center mb-6 sm:mb-8">
-          <motion.h2 
+          <motion.h2
             className={`text-2xl sm:text-3xl font-bold text-slate-50 mb-2.5 sm:mb-3`}
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: durationNormal, ease: easeIOS, delay: 0.1 }}
-          > 
+          >
             {t('feedbackSectionTitle')}
           </motion.h2>
-          <motion.p 
+          <motion.p
             className={`text-slate-300/80 text-sm sm:text-base max-w-xl mx-auto`}
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: durationNormal, ease: easeIOS, delay: 0.2 }}
-          > 
+          >
             {t('feedbackSectionSubtitle')}
           </motion.p>
         </div>
 
-        <motion.div 
+        <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: durationNormal, ease: easeIOS, delay: 0.3 }}
-        > 
+        >
             {currentUser ? (
             <div className="space-y-5">
                 <Textarea
@@ -148,54 +147,66 @@ const FeedbackSection: React.FC = () => {
 FeedbackSection.displayName = "FeedbackSection";
 
 const HomePage: React.FC = () => {
-  const { quizzes, currentUser, setCurrentView, deleteQuiz } = useAppContext(); 
+  const { quizzes, currentUser, setCurrentView, deleteQuiz } = useAppContext();
   const { t } = useTranslation();
   const navigate = useNavigate();
 
   const heroRef = useRef<HTMLElement>(null);
   const isHeroVisible = useIntersectionObserver(heroRef, { threshold: 0.1, freezeOnceVisible: true });
-  
+
   const dashboardInfoCardRef = useRef<HTMLDivElement>(null);
   const isDashboardInfoCardVisible = useIntersectionObserver(dashboardInfoCardRef, { threshold: 0.2, freezeOnceVisible: true });
 
   const recentQuizzesSectionRef = useRef<HTMLElement>(null);
   const isRecentQuizzesSectionVisible = useIntersectionObserver(recentQuizzesSectionRef, { threshold: 0.05, freezeOnceVisible: true });
-  
+
   const heroButtonTextKey = quizzes.length > 0 ? 'heroCTACreateAnother' : 'heroCTA';
   const heroButtonText = t(heroButtonTextKey);
 
   const handleDeleteQuiz = (quizId: string) => { deleteQuiz(quizId); };
   const handleEditQuiz = (quiz: Quiz) => { navigate(`/review/${quiz.id}`, { state: { existingQuiz: quiz } }); };
 
+  const howItWorksItems = [
+    { icon: <UploadIcon />, titleKey: 'howItWorksUploadTitle', descriptionKey: 'howItWorksUploadDesc' },
+    { icon: <EditIcon />, titleKey: 'howItWorksCustomizeTitle', descriptionKey: 'howItWorksCustomizeDesc' },
+    { icon: <ShareIcon />, titleKey: 'howItWorksShareTitle', descriptionKey: 'howItWorksShareDesc' },
+  ];
+
+  const featuresItems = [
+    { icon: <LightbulbIcon />, titleKey: 'featureIntelligentTitle', descriptionKey: 'featureIntelligentDesc' },
+    { icon: <EditIcon />, titleKey: 'featureCustomizeTitle', descriptionKey: 'featureCustomizeDesc' },
+    { icon: <ChartBarIcon />, titleKey: 'featureAnalyticsTitle', descriptionKey: 'featureAnalyticsDesc' },
+  ];
+
 
   if (quizzes.length === 0) {
     return (
       <div className="space-y-12 md:space-y-16">
-        <section 
+        <section
           ref={heroRef}
           className={`relative text-center py-20 md:py-28 rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl
           bg-gradient-to-br from-sky-600/20 via-slate-800/50 to-purple-600/20
           border border-slate-700/40`}
         >
-          <motion.div 
+          <motion.div
             className="relative z-10 container mx-auto px-4"
             initial="hidden"
             animate={isHeroVisible ? "visible" : "hidden"}
             variants={heroContainerVariants}
           >
-            <motion.h1 
+            <motion.h1
               variants={heroItemVariants}
               className={`text-3xl sm:text-4xl md:text-5xl xl:text-6xl font-extrabold text-slate-50 leading-tight mb-6 sm:mb-8`}
             >
               {t('heroTitle').split(': ')[0]}: <br className="sm:hidden" /> <span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-400 via-indigo-400 to-purple-400">{t('heroTitle').split(': ')[1]}</span>
             </motion.h1>
-            <motion.p 
+            <motion.p
               variants={heroItemVariants}
               className={`text-sm sm:text-base md:text-lg text-slate-300/80 max-w-xl md:max-w-2xl xl:max-w-3xl mx-auto mb-10 sm:mb-12`}
             >
               {t('heroSubtitle')}
             </motion.p>
-            <motion.div 
+            <motion.div
               variants={heroItemVariants}
             >
               <Button
@@ -210,6 +221,71 @@ const HomePage: React.FC = () => {
             </motion.div>
           </motion.div>
         </section>
+
+        {/* How It Works Section */}
+        <motion.section
+          className="py-16 md:py-20"
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: durationSlow, ease: easeIOS }}
+        >
+          <div className="text-center mb-12 md:mb-16">
+            <motion.h2
+              className="text-3xl sm:text-4xl font-bold text-slate-50 mb-4"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: durationNormal, ease: easeIOS, delay: 0.1 }}
+            >
+              {t('howItWorksTitle')}
+            </motion.h2>
+          </div>
+          <div className="grid md:grid-cols-3 gap-8 xl:gap-10">
+            {howItWorksItems.map((item, index) => (
+              <FeatureItemCard
+                key={item.titleKey}
+                icon={item.icon}
+                title={t(item.titleKey as keyof typeof translations.en)}
+                description={t(item.descriptionKey as keyof typeof translations.en)}
+                animationDelay={index * 0.15}
+              />
+            ))}
+          </div>
+        </motion.section>
+
+        {/* Features Section */}
+        <motion.section
+          className="py-16 md:py-20"
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: durationSlow, ease: easeIOS, delay: 0.2 }} // Delay after How It Works
+        >
+          <div className="text-center mb-12 md:mb-16">
+            <motion.h2
+              className="text-3xl sm:text-4xl font-bold text-slate-50 mb-4"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: durationNormal, ease: easeIOS, delay: 0.1 }}
+            >
+              {t('featuresTitle')}
+            </motion.h2>
+          </div>
+          <div className="grid md:grid-cols-3 gap-8 xl:gap-10">
+            {featuresItems.map((item, index) => (
+              <FeatureItemCard
+                key={item.titleKey}
+                icon={item.icon}
+                title={t(item.titleKey as keyof typeof translations.en)}
+                description={t(item.descriptionKey as keyof typeof translations.en)}
+                animationDelay={index * 0.15}
+              />
+            ))}
+          </div>
+        </motion.section>
+
         <FeedbackSection />
       </div>
     );
@@ -220,12 +296,12 @@ const HomePage: React.FC = () => {
   return (
     <div className="space-y-12 md:space-y-16">
       <section ref={dashboardInfoCardRef} className={`${isDashboardInfoCardVisible ? 'animate-fadeInUp' : 'opacity-0'}`}>
-        <Card 
-            useGlassEffect 
+        <Card
+            useGlassEffect
             className={`!p-6 sm:!p-8 text-center sm:text-left !rounded-2xl shadow-2xl !border-slate-700/40`}
         >
           <div className="flex flex-col sm:flex-row justify-between items-center gap-6">
-            <div> 
+            <div>
               <h1 className="text-2xl sm:text-3xl font-bold text-slate-50 mb-2">
                 {currentUser ? t('homeDashboardUserTitle', { name: currentUser.name || t('user') }) : t('homeDashboardTitle')}
               </h1>
@@ -250,16 +326,16 @@ const HomePage: React.FC = () => {
 
       {recentQuizzesToShow.length > 0 && (
         <section ref={recentQuizzesSectionRef} className={`${isRecentQuizzesSectionVisible ? 'animate-fadeInUp' : 'opacity-0'}`}>
-          <div 
+          <div
             className={`flex flex-wrap justify-between items-center mb-6 sm:mb-8 gap-4`}
           >
             <h2 className="text-2xl sm:text-3xl font-semibold text-slate-100">
               {t('homeRecentQuizzesTitle')}
             </h2>
             {quizzes.length > MAX_RECENT_QUIZZES_HOME && (
-              <Button 
-                variant="link" 
-                onClick={() => navigate('/dashboard')} 
+              <Button
+                variant="link"
+                onClick={() => navigate('/dashboard')}
                 className="text-sm text-sky-300 hover:text-sky-200"
                 rightIcon={<ChevronRightIcon className="w-4 h-4" />}
               >
@@ -274,18 +350,18 @@ const HomePage: React.FC = () => {
                 quiz={quiz}
                 onDelete={handleDeleteQuiz}
                 onEditQuiz={handleEditQuiz}
-                animationDelay={`${index * 100}ms`} 
+                animationDelay={index * 0.1} // Pass as number in seconds (100ms = 0.1s)
               />
             ))}
           </div>
            {quizzes.length > 0 && quizzes.length <= MAX_RECENT_QUIZZES_HOME && (
-              <div 
+              <div
                 className={`mt-8 sm:mt-10 text-center`}
               >
-                  <Button 
-                    variant="secondary" 
-                    onClick={() => navigate('/dashboard')} 
-                    size="md" 
+                  <Button
+                    variant="secondary"
+                    onClick={() => navigate('/dashboard')}
+                    size="md"
                     className="py-2.5 px-6 rounded-lg shadow-lg hover:shadow-slate-900/50"
                     rightIcon={<ChevronRightIcon className="w-4 h-4" />}
                   >

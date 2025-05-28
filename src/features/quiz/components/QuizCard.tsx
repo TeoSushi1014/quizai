@@ -1,27 +1,19 @@
 
-
-
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { Quiz } from '../../../types';
 import { Button, Card, Tooltip, Modal, Toggle, Input } from '../../../components/ui';
 import MathText from '../../../components/MathText';
 import { EditIcon, DeleteIcon, ShareIcon, XCircleIcon } from '../../../constants';
 import { useTranslation, useAppContext } from '../../../App';
-import { translations } from '../../../i18n'; 
-import useIntersectionObserver from '../../../hooks/useIntersectionObserver';
-
-interface QuizCardProps {
-  quiz: Quiz;
-  onDelete: (id: string) => void;
-  onEditQuiz: (quiz: Quiz) => void;
-  animationDelay?: string;
-}
+import { translations } from '../../../i18n';
+// Removed useIntersectionObserver import as it's no longer needed
 
 export interface AttemptSettings {
   shuffleQuestions: boolean;
   shuffleAnswers: boolean;
-  timeLimit: number; 
+  timeLimit: number;
 }
 
 const DEFAULT_ATTEMPT_SETTINGS: AttemptSettings = {
@@ -30,17 +22,27 @@ const DEFAULT_ATTEMPT_SETTINGS: AttemptSettings = {
   timeLimit: 0,
 };
 
-const QuizCard: React.FC<QuizCardProps> = ({ quiz, onDelete, onEditQuiz, animationDelay }) => {
+// Animation constants (can be moved to a shared file if used elsewhere)
+const easeIOS = [0.25, 0.1, 0.25, 1];
+const durationNormal = 0.35; // Corresponds to --duration-normal (350ms)
+
+interface QuizCardProps {
+  quiz: Quiz;
+  onDelete: (id: string) => void;
+  onEditQuiz: (quiz: Quiz) => void;
+  animationDelay?: number; // Changed to number (seconds)
+}
+
+const QuizCard: React.FC<QuizCardProps> = ({ quiz, onDelete, onEditQuiz, animationDelay = 0 }) => {
   const { t, language } = useTranslation();
   const [isConfirmDeleteModalOpen, setIsConfirmDeleteModalOpen] = useState(false);
   const [isAttemptSettingsModalOpen, setIsAttemptSettingsModalOpen] = useState(false);
   const [currentAttemptSettings, setCurrentAttemptSettings] = useState<AttemptSettings>(DEFAULT_ATTEMPT_SETTINGS);
-  
+
   const { setActiveQuiz, setQuizResult } = useAppContext();
   const navigate = useNavigate();
 
-  const cardRef = useRef<HTMLDivElement>(null);
-  const isVisible = useIntersectionObserver(cardRef, { threshold: 0.1 });
+  // cardRef and isVisible are no longer needed due to framer-motion's whileInView
 
   const difficulty = quiz.config?.difficulty;
   let difficultyTextKey: keyof typeof translations.en;
@@ -50,7 +52,7 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onDelete, onEditQuiz, animati
   } else if (difficulty === 'AI-Determined') {
     difficultyTextKey = 'dashboardQuizCardDifficulty';
   } else {
-    difficultyTextKey = 'dashboardQuizCardDifficulty'; 
+    difficultyTextKey = 'dashboardQuizCardDifficulty';
   }
   const difficultyText = t(difficultyTextKey);
   const dateFormatted = new Date(quiz.createdAt).toLocaleDateString(language, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
@@ -85,7 +87,7 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onDelete, onEditQuiz, animati
     setCurrentAttemptSettings(getStoredAttemptSettings(quiz.id));
     setIsAttemptSettingsModalOpen(true);
   };
-  
+
   const handleCloseAttemptSettingsModal = useCallback(() => {
     setIsAttemptSettingsModalOpen(false);
   }, []);
@@ -94,14 +96,14 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onDelete, onEditQuiz, animati
   const handleAttemptSettingsChange = (setting: keyof AttemptSettings, value: boolean | number) => {
     setCurrentAttemptSettings(prev => ({ ...prev, [setting]: value }));
   };
-  
+
   const handleSaveAttemptSettings = () => {
     try {
       localStorage.setItem(`attemptSettings_${quiz.id}`, JSON.stringify(currentAttemptSettings));
     } catch (e) {
       console.error("Failed to save attempt settings to localStorage:", e);
     }
-    setIsAttemptSettingsModalOpen(false); 
+    setIsAttemptSettingsModalOpen(false);
   };
 
   const handleStartQuiz = (type: 'take' | 'practice') => {
@@ -110,26 +112,32 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onDelete, onEditQuiz, animati
     if (type === 'take') {
       setQuizResult(null);
       navigate(`/quiz/${quiz.id}`, { state: { attemptSettings: settingsToUse } });
-    } else { 
+    } else {
       navigate(`/practice/${quiz.id}`, { state: { attemptSettings: settingsToUse } });
     }
   };
-  
+
   const settingsIconUrl = "https://img.icons8.com/?size=256&id=s5NUIabJrb4C&format=png";
 
   return (
     <>
-      <div 
-        ref={cardRef} 
-        className={`h-full ${isVisible ? 'animate-fadeInUp' : 'opacity-0'}`}
-        style={{ animationDelay: isVisible ? animationDelay : undefined }}
+      <motion.div
+        className="h-full" // Ensures motion.div takes full height for flexbox alignment in grid
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, amount: 0.1 }} // Trigger when 10% of the element is visible
+        transition={{
+          duration: durationNormal,
+          ease: easeIOS,
+          delay: animationDelay, // animationDelay is now in seconds
+        }}
       >
-        <Card 
+        <Card
             className={`flex flex-col justify-between group relative overflow-hidden !p-0 !rounded-2xl h-full card-float-hover`}
             useGlassEffect={true}
         >
           <div className="p-5 sm:p-6 flex-grow pb-4">
-            <h3 
+            <h3
                 className="text-lg sm:text-xl font-semibold text-slate-50 mb-3 group-hover:text-sky-300 line-clamp-2 transition-colors var(--duration-fast) var(--ease-ios)"
                 title={quiz.title}
             >
@@ -141,7 +149,7 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onDelete, onEditQuiz, animati
                     <span className="text-slate-600 text-lg">•</span>
                     <span className={`px-2.5 py-1 rounded-full text-xs font-semibold shadow-sm bg-sky-400/20 text-sky-300`}>{difficultyText}</span>
                      {quiz.config?.language && <>
-                        <span className="text-slate-600 text-lg">•</span> 
+                        <span className="text-slate-600 text-lg">•</span>
                         <span className={`uppercase text-[0.7rem] font-bold tracking-wider px-2.5 py-1 rounded-full shadow-sm bg-indigo-400/20 text-indigo-300`}>{quiz.config.language.substring(0,2)}</span>
                      </>}
                 </div>
@@ -153,30 +161,30 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onDelete, onEditQuiz, animati
                 <p className="text-xs text-slate-500 pt-1.5">{t('dashboardQuizCardCreated', { date: dateFormatted })}</p>
             </div>
           </div>
-          
+
           <div className="flex flex-col sm:flex-row gap-3 items-center justify-between mt-auto border-t border-slate-700/50 p-4 sm:p-5 bg-slate-800/30 rounded-b-2xl">
             <div className="flex flex-wrap gap-x-3 gap-y-2 w-full sm:w-auto justify-center sm:justify-start">
-              <Button 
-                  size="sm" 
-                  variant="primary" 
-                  onClick={() => handleStartQuiz('take')} 
+              <Button
+                  size="sm"
+                  variant="primary"
+                  onClick={() => handleStartQuiz('take')}
                   className="flex-grow xs:flex-grow-0 shadow-lg hover:shadow-sky-400/40 py-2 px-4 rounded-lg"
               >
                 {t('dashboardQuizCardTakeQuiz')}
               </Button>
-              <Button 
-                  size="sm" 
-                  variant="secondary" 
-                  onClick={() => handleStartQuiz('practice')} 
+              <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => handleStartQuiz('practice')}
                   className="flex-grow xs:flex-grow-0 py-2 px-4 rounded-lg bg-purple-500/80 hover:bg-purple-500/100 text-white hover:shadow-purple-400/40"
               >
                 {t('practiceModeCardButton')}
               </Button>
                <Tooltip content={t('edit')} wrapperClassName="inline-flex flex-grow xs:flex-grow-0">
-                <Button 
-                    size="sm" 
-                    variant="outline" 
-                    onClick={() => onEditQuiz(quiz)} 
+                <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => onEditQuiz(quiz)}
                     className="w-full py-2 px-4 rounded-lg border-slate-500/70 hover:border-sky-400"
                     aria-label={t('edit')}
                 >
@@ -196,7 +204,7 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onDelete, onEditQuiz, animati
               </Tooltip>
             </div>
 
-            <div className="flex items-center gap-1.5 w-full sm:w-auto justify-center sm:justify-end"> 
+            <div className="flex items-center gap-1.5 w-full sm:w-auto justify-center sm:justify-end">
                 <Tooltip content={t('share')} wrapperClassName="inline-flex">
                 <Button size="sm" variant="ghost" onClick={() => alert(t('dashboardShareAlert', {quizId: quiz.id}))} className="text-slate-400 hover:text-green-400 !p-2.5 rounded-lg">
                     <ShareIcon className="w-4 h-4"/>
@@ -210,7 +218,7 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onDelete, onEditQuiz, animati
             </div>
           </div>
         </Card>
-      </div>
+      </motion.div>
 
       {isConfirmDeleteModalOpen && (
         <Modal
