@@ -13,7 +13,11 @@ export default defineConfig(({ mode }) => {
     // 1. dotenv loaded vars from .env
     // 2. env vars from loadEnv (which handles .env.[mode] files)
     // 3. process.env directly (for CI/CD)
-    const geminiApiKey = process.env.GEMINI_API_KEY || env.GEMINI_API_KEY;
+    const geminiApiKey = 
+        process.env.GEMINI_API_KEY || 
+        env.GEMINI_API_KEY || 
+        env.VITE_GEMINI_API_KEY || 
+        process.env.VITE_GEMINI_API_KEY;
     
     console.log("Building with Gemini API Key:", geminiApiKey ? "Found" : "Not found");
     
@@ -21,7 +25,8 @@ export default defineConfig(({ mode }) => {
       base: "/quizai/",
       define: {
         'process.env.API_KEY': JSON.stringify(geminiApiKey),
-        'process.env.GEMINI_API_KEY': JSON.stringify(geminiApiKey)
+        'process.env.GEMINI_API_KEY': JSON.stringify(geminiApiKey),
+        'import.meta.env.VITE_GEMINI_API_KEY': JSON.stringify(geminiApiKey)
       },
       resolve: {
         alias: {

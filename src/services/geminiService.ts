@@ -1,5 +1,3 @@
-
-
 import { GoogleGenAI, GenerateContentResponse, Part, Content } from "@google/genai";
 import { Question, QuizConfig, Quiz, AIModelType } from "../types";
 import { GEMINI_TEXT_MODEL, GEMINI_MODEL_ID } from "../constants";
@@ -14,18 +12,35 @@ const initializeGeminiAI = (): GoogleGenAI => {
     // First try import.meta.env (Vite's way to access env vars at build time)
     try {
       // @ts-ignore - TypeScript might not recognize import.meta.env in all contexts
-      apiKey = import.meta?.env?.VITE_GEMINI_API_KEY || import.meta?.env?.GEMINI_API_KEY;
+      apiKey = import.meta?.env?.VITE_GEMINI_API_KEY;
+      if (!apiKey) {
+        // @ts-ignore
+        apiKey = import.meta?.env?.GEMINI_API_KEY;
+      }
     } catch (e) {
       console.log("Unable to access import.meta.env");
     }
     
+    // Then try window.__ENV__ if you're using runtime injection
+    if (!apiKey && typeof window !== 'undefined') {
+      try {
+        // @ts-ignore
+        if (window.__ENV__) {
+          // @ts-ignore
+          apiKey = window.__ENV__.GEMINI_API_KEY || window.__ENV__.VITE_GEMINI_API_KEY;
+        }
+      } catch (e) {
+        console.log("Unable to access window.__ENV__");
+      }
+    }
+    
     // Then try process.env (Node.js environment variables)
     if (!apiKey && typeof process !== 'undefined' && process.env) {
-      apiKey = process.env.GEMINI_API_KEY;
+      apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
     }
     
     if (typeof apiKey !== 'string' || !apiKey) {
-      const errorMessage = "Google Gemini API Key (process.env.GEMINI_API_KEY) environment variable(s) not set. Quiz generation will fail.";
+      const errorMessage = "Google Gemini API Key environment variable not set. Quiz generation may fail.";
       console.warn(errorMessage);
       
       if (typeof window !== 'undefined') {
