@@ -19,6 +19,8 @@ AI-powered quiz generation application built with React and Vite.
    ```
    GEMINI_API_KEY=your_actual_api_key_here
    ```
+   
+   > **Security Note:** The `.env` file is listed in `.gitignore` and will not be committed to your repository, keeping your API keys secure.
 
 ## Development
 
