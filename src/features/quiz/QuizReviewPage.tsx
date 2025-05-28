@@ -1,9 +1,9 @@
 
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { motion } from 'framer-motion'; // Import motion
 import { useAppContext, useTranslation } from '../../App';
-import { Quiz, Question, QuizConfig } from '../../types'; 
+import { Quiz, Question, QuizConfig } from '../../types';
 import { Button, Card, Input, Textarea, Select, Modal, LoadingSpinner, Tooltip } from '../../components/ui';
 import MathText from '../../components/MathText';
 import { PlusIcon, DeleteIcon, SaveIcon, ArrowUturnLeftIcon, HomeIcon, PlusCircleIcon, EditIcon, ExportIcon, CopyIcon, DownloadIcon } from '../../constants';
@@ -13,8 +13,8 @@ import useIntersectionObserver from '../../hooks/useIntersectionObserver';
 
 interface EditableQuizData {
   title: string;
-  questions: Question[]; 
-  config: QuizConfig; 
+  questions: Question[];
+  config: QuizConfig;
   sourceContentSnippet?: string;
 }
 
@@ -137,7 +137,7 @@ const QuizReviewPage: React.FC = () => {
       const inputId = `option-input-${focusOptionInput.questionId}-${focusOptionInput.optionIndex}`;
       const element = document.getElementById(inputId);
       element?.focus();
-      setFocusOptionInput(null); 
+      setFocusOptionInput(null);
     }
   }, [focusOptionInput]);
 
@@ -154,7 +154,7 @@ const QuizReviewPage: React.FC = () => {
         ...prev,
         questions: prev.questions.map(q => {
           if (q.id === questionId) {
-            newOptionIndex = q.options.length; 
+            newOptionIndex = q.options.length;
             return { ...q, options: [...q.options, t('reviewNewOptionDefault', { index: newOptionIndex + 1 })] };
           }
           return q;
@@ -170,14 +170,14 @@ const QuizReviewPage: React.FC = () => {
     setEditableQuiz(prev => prev ? { ...prev, questions: prev.questions.map(q => { if (q.id === questionId) { if (q.options.length <= 2) { alert(t('reviewErrorNotEnoughOptions', {id: ""}).replace(" for question ID: {id}", "")); return q; } const oldOpt = q.options[optionIndex]; const newOpts = q.options.filter((_,i) => i !== optionIndex); let newCorrect = q.correctAnswer; if (oldOpt === q.correctAnswer && !newOpts.includes(oldOpt)) newCorrect = newOpts.length > 0 ? newOpts[0] : ""; return { ...q, options: newOpts, correctAnswer: newCorrect }; } return q; }) } : null);
   };
   const handleDeleteQuestion = (questionId: string) => { setEditableQuiz(prev => { if (!prev) return null; if (prev.questions.length === 1) { setError(t('reviewCannotSaveNoQuestions')); return prev; } return { ...prev, questions: prev.questions.filter(q => q.id !== questionId) }; }); };
-  const handleAddNewQuestion = () => { setEditableQuiz(prev => prev ? { ...prev, questions: [...prev.questions, { id: `manual-q-${Date.now()}`, questionText: t('reviewNewQuestionDefaultText'), options: [t('reviewNewOptionDefault',{index:1}), t('reviewNewOptionDefault',{index:2})], correctAnswer: t('reviewNewOptionDefault',{index:1}), explanation: t('reviewNewExplanationDefaultText') }] } : null); }; 
+  const handleAddNewQuestion = () => { setEditableQuiz(prev => prev ? { ...prev, questions: [...prev.questions, { id: `manual-q-${Date.now()}`, questionText: t('reviewNewQuestionDefaultText'), options: [t('reviewNewOptionDefault',{index:1}), t('reviewNewOptionDefault',{index:2})], correctAnswer: t('reviewNewOptionDefault',{index:1}), explanation: t('reviewNewExplanationDefaultText') }] } : null); };
 
   const handleSaveQuiz = () => {
     if (!editableQuiz || editableQuiz.questions.length === 0) { setError(t('reviewCannotSaveNoQuestions')); return; }
     for (const q of editableQuiz.questions) {
         if (!q.questionText.trim()) { setError(t('reviewErrorEmptyQuestionText', {id: q.id.substring(0,8)})); return; }
-        if (q.options.length < 2) { setError(t('reviewErrorNotEnoughOptions', {id: q.id.substring(0,8)})); return; } 
-        if (!q.correctAnswer || !q.options.includes(q.correctAnswer)) { setError(t('reviewErrorInvalidCorrectAnswer', {id: q.id.substring(0,8)})); return; } 
+        if (q.options.length < 2) { setError(t('reviewErrorNotEnoughOptions', {id: q.id.substring(0,8)})); return; }
+        if (!q.correctAnswer || !q.options.includes(q.correctAnswer)) { setError(t('reviewErrorInvalidCorrectAnswer', {id: q.id.substring(0,8)})); return; }
         if (!q.explanation.trim()) { setError(t('reviewErrorEmptyExplanation', {id: q.id.substring(0,8)})); return; }
     }
     setError(null); setIsSaving(true);
@@ -198,9 +198,9 @@ const QuizReviewPage: React.FC = () => {
   const currentQuizForExport: Quiz | null = editableQuiz ? { id: existingQuizIdFromParams || 'temp-id', createdAt: new Date().toISOString(), ...editableQuiz } : null;
 
   return (
-    <div className="space-y-8 sm:space-y-10 pb-16">
-      <div 
-        className={`sticky-review-actions bg-slate-800 shadow-xl py-4 -mx-4 sm:-mx-6 lg:-mx-8 mb-8 sm:mb-10 rounded-b-2xl border-b border-slate-700`}
+    <div className="pb-16">
+      <div
+        className={`sticky-review-actions bg-slate-800 shadow-xl py-4 -mx-4 sm:-mx-6 lg:-mx-8 rounded-b-2xl border-b border-slate-700 animate-fadeInUp`}
       >
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
@@ -219,33 +219,37 @@ const QuizReviewPage: React.FC = () => {
         </div>
       </div>
 
-      <div ref={titleCardRef} className={`${isTitleCardVisible ? 'animate-fadeInUp' : 'opacity-0'}`}>
-        <Card useGlassEffect className="shadow-2xl !rounded-2xl">
-          <p className="text-sm text-slate-300/90 mb-6">{isEditingExisting ? t('reviewEditQuizDesc') : t('reviewFinalizeQuizDesc')}</p>
-          <Input label={<span className="text-base font-semibold text-slate-100">{t('reviewQuizTitleLabel')}</span>} value={editableQuiz.title} onChange={(e) => setEditableQuiz(prev => prev ? { ...prev, title: e.target.value } : null)} className="text-xl mb-3" placeholder={t('step2QuizTitlePlaceholder')} inputClassName="!text-xl !font-semibold !py-3.5 !rounded-xl" />
-        </Card>
+      <div className="mt-2 sm:mt-4"> {/* Reduced top margin */}
+        <div ref={titleCardRef} className={`${isTitleCardVisible ? 'animate-fadeInUp' : 'opacity-0'} mb-6 sm:mb-8`}>
+          <Card useGlassEffect className="shadow-2xl !rounded-2xl">
+            <p className="text-sm text-slate-300/90 mb-6">{isEditingExisting ? t('reviewEditQuizDesc') : t('reviewFinalizeQuizDesc')}</p>
+            <Input label={<span className="text-base font-semibold text-slate-100">{t('reviewQuizTitleLabel')}</span>} value={editableQuiz.title} onChange={(e) => setEditableQuiz(prev => prev ? { ...prev, title: e.target.value } : null)} className="text-xl mb-3" placeholder={t('step2QuizTitlePlaceholder')} inputClassName="!text-xl !font-semibold !py-3.5 !rounded-xl" />
+          </Card>
+        </div>
+        
+        <div className="space-y-6 sm:space-y-8">
+          {editableQuiz.questions.map((q, index) => {
+            return <QuestionItem
+                      key={q.id}
+                      question={q}
+                      index={index}
+                      editableQuiz={editableQuiz}
+                      setEditableQuiz={setEditableQuiz}
+                      handleAddOption={handleAddOption}
+                      handleRemoveOption={handleRemoveOption}
+                      handleDeleteQuestion={handleDeleteQuestion}
+                      handleFieldChange={handleFieldChange}
+                      handleOptionChange={handleOptionChange}
+                      animationDelayFactor={index}
+                    />;
+          })}
+        </div>
       </div>
-      
 
-      {editableQuiz.questions.map((q, index) => {
-        return <QuestionItem 
-                  key={q.id} 
-                  question={q} 
-                  index={index} 
-                  editableQuiz={editableQuiz} 
-                  setEditableQuiz={setEditableQuiz} 
-                  handleAddOption={handleAddOption} 
-                  handleRemoveOption={handleRemoveOption} 
-                  handleDeleteQuestion={handleDeleteQuestion} 
-                  handleFieldChange={handleFieldChange} 
-                  handleOptionChange={handleOptionChange}
-                  animationDelayFactor={index}
-                />;
-      })}
-
-      <div className="mt-12 text-center">
+      <div className="mt-10 sm:mt-12 text-center">
         <Button variant="subtle" onClick={handleAddNewQuestion} leftIcon={<PlusCircleIcon className="w-5 h-5" />} className={`border-2 border-dashed hover:border-solid border-slate-600 hover:border-sky-400 text-slate-300 hover:text-sky-200 py-3.5 px-8 shadow-lg hover:shadow-xl rounded-xl animate-fadeInUp`} style={{animationDelay: `${editableQuiz.questions.length * 0.05 + 0.2}s`}}> {t('reviewAddNewQuestion')} </Button>
       </div>
+      
        {currentQuizForExport && (<AzotaExportModal isOpen={isAzotaExportModalOpen} onClose={handleCloseAzotaExportModal} quiz={currentQuizForExport} />)}
     </div>
   );
@@ -267,39 +271,46 @@ interface QuestionItemProps {
 
 const QuestionItem: React.FC<QuestionItemProps> = ({ question: q, index, editableQuiz, setEditableQuiz, handleAddOption, handleRemoveOption, handleDeleteQuestion, handleFieldChange, handleOptionChange, animationDelayFactor }) => {
   const { t } = useTranslation();
-  const questionCardRef = useRef<HTMLDivElement>(null);
-  const isVisible = useIntersectionObserver(questionCardRef, { threshold: 0.05 });
+  // Removed useIntersectionObserver and related variables (questionCardRef, isVisible)
+
+  const easeIOS = [0.25, 0.1, 0.25, 1];
+  const durationNormal = 0.35;
 
   return (
-    <div 
-      ref={questionCardRef} 
-      className={`${isVisible ? 'animate-fadeInUp' : 'opacity-0'}`}
-      style={{ animationDelay: isVisible ? `${animationDelayFactor * 100}ms` : undefined}}
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      transition={{
+        delay: animationDelayFactor * 0.1, // Stagger delay
+        duration: durationNormal,
+        ease: easeIOS,
+      }}
     >
       <Card className="relative shadow-2xl !rounded-2xl !p-5 sm:!p-6 card-float-hover" useGlassEffect>
         <div className="flex justify-between items-start mb-5">
           <h3 className="text-lg sm:text-xl font-semibold text-slate-50 pt-1"> {t('reviewQuestionLabel', {index: index + 1})} </h3>
           <Tooltip content={t('reviewDeleteQuestionLabel')} placement="left" wrapperClassName="inline-flex">
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={() => handleDeleteQuestion(q.id)} 
-              className="!p-2.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10" 
-              aria-label={t('reviewDeleteQuestionLabel')} 
-              disabled={editableQuiz.questions.length <=1} 
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleDeleteQuestion(q.id)}
+              className="!p-2.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10"
+              aria-label={t('reviewDeleteQuestionLabel')}
+              disabled={editableQuiz.questions.length <=1}
               tooltip={editableQuiz.questions.length <=1 ? t('reviewCannotSaveNoQuestions') : undefined}
-            > 
-              <DeleteIcon className="w-5 h-5"/> 
+            >
+              <DeleteIcon className="w-5 h-5"/>
             </Button>
           </Tooltip>
         </div>
         <div className="space-y-5">
-          <Textarea 
+          <Textarea
             label={<span className="text-sm font-medium text-slate-200">{t('reviewQuestionTextLabel')}</span>}
-            value={q.questionText} 
-            onChange={(e) => handleFieldChange(q.id, 'questionText', e.target.value)} 
-            rows={3} 
-            className="min-h-[90px] font-mono text-sm" placeholder={t('reviewQuestionTextPlaceholder')} 
+            value={q.questionText}
+            onChange={(e) => handleFieldChange(q.id, 'questionText', e.target.value)}
+            rows={3}
+            className="min-h-[90px] font-mono text-sm" placeholder={t('reviewQuestionTextPlaceholder')}
           />
           
           <div className={`space-y-3.5 pl-4 sm:pl-5 border-l-2 border-slate-600/70 py-3`}>
@@ -318,13 +329,13 @@ const QuestionItem: React.FC<QuestionItemProps> = ({ question: q, index, editabl
                     containerClassName="flex-grow min-w-0"
                   />
                   <Tooltip content={t('reviewRemoveOptionLabel')} placement="left" wrapperClassName="inline-flex">
-                    <Button 
-                      variant="ghost" 
-                      onClick={() => handleRemoveOption(q.id, optIndex)} 
-                      aria-label={t('reviewRemoveOptionLabel')} 
-                      className="!p-3 rounded-lg" 
-                      disabled={q.options.length <=2}> 
-                        <DeleteIcon className="w-5 h-5" /> 
+                    <Button
+                      variant="ghost"
+                      onClick={() => handleRemoveOption(q.id, optIndex)}
+                      aria-label={t('reviewRemoveOptionLabel')}
+                      className="!p-3 rounded-lg"
+                      disabled={q.options.length <=2}>
+                        <DeleteIcon className="w-5 h-5" />
                     </Button>
                   </Tooltip>
                 </div>
@@ -332,25 +343,25 @@ const QuestionItem: React.FC<QuestionItemProps> = ({ question: q, index, editabl
             ))}
               {q.options.length < 5 && (<Button variant="outline" onClick={() => handleAddOption(q.id)} leftIcon={<PlusIcon className="w-4 h-4"/>} className="mt-2 py-2 px-4 rounded-lg text-xs"> {t('reviewAddOption')} </Button>)}
             {q.options.length > 0 && (
-              <Select 
-                label={<span className="text-sm font-medium text-slate-200">{t('reviewCorrectAnswerLabel')}</span>} 
-                value={q.correctAnswer} 
-                onChange={(e) => handleFieldChange(q.id, 'correctAnswer', e.target.value)} 
-                options={q.options.map(opt => ({ value: opt, label: opt.length > 70 ? opt.substring(0,67) + '...' : opt  }))} 
+              <Select
+                label={<span className="text-sm font-medium text-slate-200">{t('reviewCorrectAnswerLabel')}</span>}
+                value={q.correctAnswer}
+                onChange={(e) => handleFieldChange(q.id, 'correctAnswer', e.target.value)}
+                options={q.options.map(opt => ({ value: opt, label: opt.length > 70 ? opt.substring(0,67) + '...' : opt  }))}
                 containerClassName="mt-3.5"
                 className="overflow-x-auto overflow-y-hidden whitespace-nowrap cursor-default thin-scrollbar-horizontal"
               />)}
           </div>
-          <Textarea 
+          <Textarea
             label={<span className="text-sm font-medium text-slate-200">{t('reviewExplanationLabel')}</span>}
-            value={q.explanation} 
-            onChange={(e) => handleFieldChange(q.id, 'explanation', e.target.value)} 
-            rows={3} 
-            className="min-h-[110px] font-mono text-sm" placeholder={t('reviewExplanationPlaceholder')} 
+            value={q.explanation}
+            onChange={(e) => handleFieldChange(q.id, 'explanation', e.target.value)}
+            rows={3}
+            className="min-h-[110px] font-mono text-sm" placeholder={t('reviewExplanationPlaceholder')}
           />
         </div>
       </Card>
-    </div>
+    </motion.div>
   );
 };
 
