@@ -20,46 +20,53 @@ const initializeGeminiAI = (): GoogleGenAI => {
   return geminiAI;
 };
 
-
+/**
+ * Parses a JSON string that might be wrapped in markdown code fences or contain common AI-induced malformations.
+ * This function attempts various cleaning steps and fallback parsing strategies.
+ * @param text The raw text response from the AI, expected to contain JSON.
+ * @returns Parsed JSON object of type T, or null if parsing fails.
+ */
 const parseJsonFromMarkdown = <T,>(text: string): T | null => {
   let jsonStr = text.trim();
-  // Attempt to remove markdown code fences (e.g., ```json ... ``` or ``` ... ```)
+
+  // Step 1: Remove markdown code fences (e.g., ```json ... ``` or ``` ... ```)
+  // This is a common wrapping for JSON provided by AI models.
   const fenceRegex = /^```(?:json)?\s*\n?(.*?)\n?\s*```$/s;
   const match = fenceRegex.exec(jsonStr);
   if (match && match[1]) {
     jsonStr = match[1].trim();
   }
 
-  // Remove specific problematic Unicode characters observed in some AI outputs that can break JSON parsing.
-  // These are targeted fixes for observed issues.
-  jsonStr = jsonStr.replace(/侬/g, ''); 
-  jsonStr = jsonStr.replace(/ܘ/g, ''); 
-  jsonStr = jsonStr.replace(/对着/g, ''); 
-  
-  // Clean up potential markdown fences inside strings or malformed JSON from AI,
-  // e.g., "key": "value```," -> "key": "value,"
+  // Step 2: Remove specific problematic Unicode characters.
+  // These characters have been observed in some AI outputs and can break JSON parsing.
+  // This is a targeted fix for specific, observed issues and might need adjustment
+  // if other problematic characters appear from different model versions or prompts.
+  jsonStr = jsonStr.replace(/侬/g, ''); // Example: Remove character '侬'
+  jsonStr = jsonStr.replace(/ܘ/g, ''); // Example: Remove character 'ܘ'
+  jsonStr = jsonStr.replace(/对着/g, ''); // Example: Remove character sequence '对着'
+
+  // Step 3: Clean up potential markdown fences *inside* strings or malformed JSON from AI.
+  // Example: "key": "value```," -> "key": "value,"
+  // This targets cases where markdown fences might be incorrectly placed within the JSON content itself.
   jsonStr = jsonStr.replace(/"\s*```\s*([\]\},])/g, '"$1');
   jsonStr = jsonStr.replace(/"\s*```\s*(,"[^"]+")/g, '"$1');
 
-  // Attempt to fix strings broken across newlines with missing internal quotes
-  // e.g., "text part 1"\n unquoted text part 2"  => "text part 1 unquoted text part 2"
-  // This targets errors like the one observed: "Air and water pollution"\n effluents"
-  // Regex explanation:
-  //   (\"[^\"\\]*(?:\\.[^\"\\]*)*\") : Group 1: Captures a complete quoted string, handling escaped quotes.
-  //   \\s*\\n\\s*                   : Matches a newline character surrounded by optional whitespace.
-  //   ([a-zA-Z_][a-zA-Z0-9_]*(?:\\s+[a-zA-Z_][a-zA-Z0-9_]*)*\\s*) : Group 2: Captures unquoted text (words, possibly with spaces) that follows the newline.
-  //   \"                            : Matches the closing quote of the (malformed) second part of the string.
+  // Step 4: Attempt to fix strings broken across newlines with missing internal quotes.
+  // Example malformation: "text part 1"\n unquoted text part 2"
+  // This regex aims to merge such broken strings into a single, valid quoted string.
+  // It's a complex heuristic for a specific type of AI output error.
   try {
-    // Define the pattern for a string broken across newlines, where the second part is unquoted
-    // Example: "Part 1 of string"\n Part 2 of string"  -> This regex aims to merge them.
+    // Regex explanation:
+    //   (\"[^\"\\]*(?:\\.[^\"\\]*)*\") : Group 1 (g1CompleteQuotedString): Captures a complete quoted string, handling escaped quotes.
+    //   \\s*\\n\\s*                   : Matches a newline character surrounded by optional whitespace.
+    //   ([a-zA-Z_][a-zA-Z0-9_]*(?:\\s+[a-zA-Z_][a-zA-Z0-9_]*)*\\s*) : Group 2 (g2UnquotedTextPart): Captures unquoted text (words, possibly with spaces) that follows the newline.
+    //   \"                            : Matches the closing quote of the (malformed) second part of the string.
     const patternString = "(\"[^\"\\\\]*(?:\\\\.[^\"\\\\]*)*\")\\s*\\n\\s*([a-zA-Z_][a-zA-Z0-9_]*(?:\\s+[a-zA-Z_][a-zA-Z0-9_]*)*\\s*)\"";
     const brokenStringRegex = new RegExp(patternString, "g");
     
     jsonStr = jsonStr.replace(
       brokenStringRegex,
       (_match, g1CompleteQuotedString, g2UnquotedTextPart) => { 
-        // g1 is the first part, like "String part 1"
-        // g2 is the second part, like Unquoted String Part 2
         const string1WithoutClosingQuote = g1CompleteQuotedString.slice(0, -1); // Remove trailing quote from g1
         // Concatenate, adding a space, and re-add the closing quote that was matched after g2
         return `${string1WithoutClosingQuote} ${g2UnquotedTextPart.trim()}"`; 
@@ -69,12 +76,13 @@ const parseJsonFromMarkdown = <T,>(text: string): T | null => {
     console.warn("Error during string newline fixing regex replacement. Skipping this step.", e);
   }
 
-
-  // Remove trailing commas from objects and arrays, e.g., [1, 2,]} -> [1, 2]} or {"a":1,"b":2,} -> {"a":1,"b":2}
+  // Step 5: Remove trailing commas from objects and arrays.
+  // Example: [1, 2,]} -> [1, 2]} or {"a":1,"b":2,} -> {"a":1,"b":2}
+  // Standard JSON does not allow trailing commas, though some parsers are more lenient.
   jsonStr = jsonStr.replace(/,\s*([\}\]])/g, '$1');
 
   try {
-    // Primary attempt to parse the cleaned JSON string
+    // Step 6: Primary attempt to parse the cleaned JSON string.
     return JSON.parse(jsonStr) as T;
   } catch (e: any) {
     console.error(
@@ -83,8 +91,9 @@ const parseJsonFromMarkdown = <T,>(text: string): T | null => {
       `Original raw text (up to 1000 chars) received from AI:`, text.substring(0, 1000)
     );
 
-    // Fallback parsing: Try to find the outermost JSON structure (object or array)
-    // This is a heuristic approach for cases where the AI might return JSON embedded in other text or truncated.
+    // Step 7: Fallback parsing strategy.
+    // This attempts to find the outermost JSON structure (object or array) if the primary parse fails.
+    // This is useful if the JSON is embedded in other text or is truncated.
     const jsonStartBracket = jsonStr.indexOf('[');
     const jsonStartBrace = jsonStr.indexOf('{');
     let actualJsonStart = -1;
@@ -97,31 +106,29 @@ const parseJsonFromMarkdown = <T,>(text: string): T | null => {
     }
 
     if (actualJsonStart !== -1) {
-        // If a potential start is found, try to find the matching end bracket/brace
+        // If a potential start is found, try to find the matching end bracket/brace.
+        // This requires careful balancing of brackets/braces, respecting those inside strings.
         let openBrackets = 0;
         let openBraces = 0;
         let actualJsonEnd = -1;
-        let inString = false; // To correctly ignore brackets/braces inside strings
+        let inString = false; // To correctly ignore brackets/braces inside JSON strings.
         
         const startingCharType = jsonStr[actualJsonStart];
 
         for (let i = actualJsonStart; i < jsonStr.length; i++) {
             const char = jsonStr[i];
-            // Basic string detection: toggle inString state on non-escaped quotes
-            if (char === '"' && (i === 0 || jsonStr[i-1] !== '\\' || (jsonStr[i-1] === '\\' && i > 1 && jsonStr[i-2] === '\\') )) {
-                // Handle cases:
-                // 1. jsonStr[i-1] === '\\' && i > 1 && jsonStr[i-2] === '\\': This means an escaped backslash before quote (e.g., "\\\""), not an escaped quote.
-                // 2. jsonStr[i-1] !== '\\': This means a non-escaped quote.
-                if (jsonStr[i-1] === '\\' && i > 1 && jsonStr[i-2] === '\\') {
-                    // It's an escaped backslash then a quote, e.g. "\\"", so the quote is not escaped by the single backslash.
-                    // This part of the condition might need refinement if complex escapes are common.
-                    // For basic JSON, a quote is escaped by a single preceding backslash.
-                } else if (jsonStr[i-1] !== '\\') {
+            
+            // Basic string detection: toggle inString state on non-escaped quotes.
+            // Handles simple cases like "string with \"escaped quote\""
+            if (char === '"') {
+                if (i === 0 || jsonStr[i-1] !== '\\') { // If not an escaped quote
                     inString = !inString;
+                } else if (jsonStr[i-1] === '\\' && i > 1 && jsonStr[i-2] === '\\') { // Handles "\\\"" (escaped backslash then quote)
+                    inString = !inString; 
                 }
             }
             
-            if (inString) continue; // Skip char counting if inside a string
+            if (inString) continue; // Skip counting brackets/braces if currently inside a string.
 
             // Count opening/closing brackets and braces
             if (char === '{') openBraces++;
@@ -143,7 +150,7 @@ const parseJsonFromMarkdown = <T,>(text: string): T | null => {
         if (actualJsonEnd !== -1) {
             try {
                 let potentialJson = jsonStr.substring(actualJsonStart, actualJsonEnd + 1);
-                // Clean trailing commas again on the extracted substring
+                // Clean trailing commas again on the extracted substring, just in case.
                 potentialJson = potentialJson.replace(/,\s*([\}\]])/g, '$1');
                 console.log("Fallback parsing attempting with substring:", potentialJson.substring(0,500) + (potentialJson.length > 500 ? "..." : ""));
                 return JSON.parse(potentialJson) as T;
@@ -159,7 +166,8 @@ const parseJsonFromMarkdown = <T,>(text: string): T | null => {
     } else {
         console.warn("Fallback parsing: No JSON start characters ([ or {) found in the response (Gemini).");
     }
-    return null; // Ensure null is returned if all parsing attempts fail
+    // If all parsing attempts fail, return null.
+    return null;
   }
 };
 

@@ -188,7 +188,7 @@ export const DownloadIcon: React.FC<IconProps> = ({ className = "w-5 h-5", strok
 DownloadIcon.displayName = "DownloadIcon";
 
 export const ExportIcon: React.FC<IconProps> = ({ className = "w-5 h-5" }) => (
-  <img src="https://239114911.e.cdneverest.net/cdnazota/azt-assets/core-mod-assets/images/og_image.png" alt="Export" className={className} />
+  <img src="https://img.icons8.com/?size=256&id=80348&format=png" alt="Export" className={className} />
 );
 ExportIcon.displayName = "ExportIcon";
 
