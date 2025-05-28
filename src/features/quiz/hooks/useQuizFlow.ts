@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Quiz, Question } from '../../../types';
@@ -21,11 +22,7 @@ const DEFAULT_ATTEMPT_SETTINGS: AttemptSettings = {
   timeLimit: 0,
 };
 
-interface UseQuizFlowOptions {
-  onTimeUp?: () => void;
-}
-
-export const useQuizFlow = (quizIdParam?: string, options?: UseQuizFlowOptions) => {
+export const useQuizFlow = (quizIdParam?: string, onTimeUp?: () => void) => {
   const { quizzes, activeQuiz: globalActiveQuiz, setActiveQuiz: setGlobalActiveQuiz } = useAppContext();
   const navigate = useNavigate();
   const location = useLocation();
@@ -33,12 +30,18 @@ export const useQuizFlow = (quizIdParam?: string, options?: UseQuizFlowOptions) 
   const quizId = quizIdParam || routeQuizId;
 
   const [localActiveQuiz, setLocalActiveQuiz] = useState<Quiz | null>(null);
-  const [attemptSettings, setAttemptSettings] = useState<AttemptSettings>(DEFAULT_ATTEMPT_SETTINGS);
+  const [attemptSettingsState, setAttemptSettingsState] = useState<AttemptSettings>(DEFAULT_ATTEMPT_SETTINGS); // Renamed to avoid conflict
   const [shuffledQuestions, setShuffledQuestions] = useState<Question[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
-  const timerRef = useRef<number | null>(null); // Changed NodeJS.Timeout to number
+  const timerRef = useRef<number | null>(null);
+
+  // Memoize attemptSettings derived from location.state
+  const routeAttemptSettingsFromState = (location.state as { attemptSettings?: AttemptSettings } | null)?.attemptSettings;
+  const stableRouteAttemptSettings = useMemo(() => {
+    return routeAttemptSettingsFromState;
+  }, [JSON.stringify(routeAttemptSettingsFromState)]); // Stable if content is same
 
   useEffect(() => {
     let mounted = true;
@@ -48,11 +51,16 @@ export const useQuizFlow = (quizIdParam?: string, options?: UseQuizFlowOptions) 
         return;
       }
 
-      const routeState = location.state as { attemptSettings?: AttemptSettings } | null;
-      const currentAttemptSettings = routeState?.attemptSettings || 
-                                     (localActiveQuiz?.id === quizId ? attemptSettings : DEFAULT_ATTEMPT_SETTINGS);
-      
-      if (mounted) setAttemptSettings(currentAttemptSettings);
+      // Use the memoized route settings or fall back to current state or defaults
+      const newAttemptSettings = stableRouteAttemptSettings ||
+                               (localActiveQuiz?.id === quizId ? attemptSettingsState : DEFAULT_ATTEMPT_SETTINGS);
+
+      if (mounted) {
+        // Only update if settings actually differ to prevent unnecessary re-renders/effects
+        if (JSON.stringify(newAttemptSettings) !== JSON.stringify(attemptSettingsState)) {
+          setAttemptSettingsState(newAttemptSettings);
+        }
+      }
 
       let quizToLoad = globalActiveQuiz && globalActiveQuiz.id === quizId ? globalActiveQuiz : quizzes.find(q => q.id === quizId);
 
@@ -62,16 +70,16 @@ export const useQuizFlow = (quizIdParam?: string, options?: UseQuizFlowOptions) 
           if (!globalActiveQuiz || globalActiveQuiz.id !== quizToLoad.id) {
             setGlobalActiveQuiz(quizToLoad);
           }
-          
+
           let questionsToUse = quizToLoad.questions;
-          if (currentAttemptSettings.shuffleQuestions) {
+          if (newAttemptSettings.shuffleQuestions) {
             questionsToUse = shuffleArray([...quizToLoad.questions]);
           }
           setShuffledQuestions(questionsToUse);
-          setCurrentQuestionIndex(0); 
+          setCurrentQuestionIndex(0);
 
-          if (currentAttemptSettings.timeLimit > 0) {
-            setTimeLeft(currentAttemptSettings.timeLimit * 60);
+          if (newAttemptSettings.timeLimit > 0) {
+            setTimeLeft(newAttemptSettings.timeLimit * 60);
           } else {
             setTimeLeft(null);
           }
@@ -83,11 +91,11 @@ export const useQuizFlow = (quizIdParam?: string, options?: UseQuizFlowOptions) 
     };
 
     loadQuizData();
-    return () => { 
+    return () => {
       mounted = false;
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [quizId, quizzes, globalActiveQuiz, navigate, setGlobalActiveQuiz, location.state]);
+  }, [quizId, quizzes, globalActiveQuiz, navigate, setGlobalActiveQuiz, stableRouteAttemptSettings, localActiveQuiz?.id, attemptSettingsState]); // Added localActiveQuiz.id and attemptSettingsState for correct fallback logic
 
 
   useEffect(() => {
@@ -97,34 +105,34 @@ export const useQuizFlow = (quizIdParam?: string, options?: UseQuizFlowOptions) 
     }
     if (timeLeft <= 0) {
       if (timerRef.current) clearInterval(timerRef.current);
-      if (localActiveQuiz && options?.onTimeUp) {
-        options.onTimeUp();
+      if (localActiveQuiz && onTimeUp) {
+        onTimeUp();
       }
       return;
     }
-    timerRef.current = window.setInterval(() => { // Use window.setInterval
+    timerRef.current = window.setInterval(() => {
       setTimeLeft(prevTime => (prevTime ? prevTime - 1 : 0));
     }, 1000);
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [timeLeft, localActiveQuiz, options]);
+  }, [timeLeft, localActiveQuiz, onTimeUp]);
 
   const currentQuestion = useMemo(() => {
     if (!shuffledQuestions || shuffledQuestions.length === 0 || currentQuestionIndex >= shuffledQuestions.length) return undefined;
     const question = shuffledQuestions[currentQuestionIndex];
-    if (question && attemptSettings.shuffleAnswers) {
+    if (question && attemptSettingsState.shuffleAnswers) { // Use attemptSettingsState
       return { ...question, options: shuffleArray([...question.options]) };
     }
     return question;
-  }, [shuffledQuestions, currentQuestionIndex, attemptSettings.shuffleAnswers]);
+  }, [shuffledQuestions, currentQuestionIndex, attemptSettingsState.shuffleAnswers]); // Use attemptSettingsState
 
   const goToNextQuestion = useCallback(() => {
     if (currentQuestionIndex < shuffledQuestions.length - 1) {
       setCurrentQuestionIndex(prev => prev + 1);
-      return true; 
+      return true;
     }
-    return false; 
+    return false;
   }, [currentQuestionIndex, shuffledQuestions.length]);
 
   const goToPreviousQuestion = useCallback(() => {
@@ -148,12 +156,12 @@ export const useQuizFlow = (quizIdParam?: string, options?: UseQuizFlowOptions) 
     currentQuestionIndex,
     loading,
     timeLeft,
-    attemptSettings,
+    attemptSettings: attemptSettingsState, // Expose the state version
     goToNextQuestion,
     goToPreviousQuestion,
     formatTime,
     totalQuestions: shuffledQuestions.length,
-    setShuffledQuestions, // Expose if manual re-shuffling or question set modification is needed externally
-    setCurrentQuestionIndex // Expose if direct jumping to questions is needed
+    setShuffledQuestions,
+    setCurrentQuestionIndex
   };
 };

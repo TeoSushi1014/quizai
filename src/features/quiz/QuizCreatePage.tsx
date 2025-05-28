@@ -1,7 +1,9 @@
 
 
+
 import React, { useState, useCallback, ReactNode, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion'; // Added AnimatePresence
 import { useAppContext, useTranslation } from '../../App';
 import { QuizConfig, AIModelType, Quiz } from '../../types'; 
 import { Button, Card, Input, Textarea, Select, LoadingSpinner, ProgressBar, Toggle, Dropzone, Modal, Tooltip } from '../../components/ui';
@@ -17,8 +19,10 @@ const MAX_UNAUTH_QUIZZES_PER_DAY = 5;
 const UNAUTH_TIMESTAMPS_KEY = 'quizAICreationTimestamps_unauth';
 const MAX_GENERATION_RETRIES = 2;
 
+const easeIOS = [0.25, 0.1, 0.25, 1]; // Defined for Framer Motion transitions
+
 const QuizCreatePage: React.FC = () => {
-  const { addQuiz, language, isGeminiKeyAvailable, currentUser } = useAppContext(); // Added currentUser
+  const { addQuiz, language, isGeminiKeyAvailable, currentUser } = useAppContext(); 
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [step, setStep] = useState<CreationStep>(1);
@@ -49,7 +53,7 @@ const QuizCreatePage: React.FC = () => {
   const [isGeneratingQuiz, setIsGeneratingQuiz] = useState(false);
   const [processingError, setProcessingError] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
-  const [generationStatusText, setGenerationStatusText] = useState<string>(''); // For button text and progress label
+  const [generationStatusText, setGenerationStatusText] = useState<string>(''); 
   const [isFullTextModalOpen, setIsFullTextModalOpen] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
 
@@ -234,7 +238,7 @@ const QuizCreatePage: React.FC = () => {
       try {
         if (attempt > 0) {
           setGenerationStatusText(t('step3AIIsRetrying', { currentAttempt: attempt, maxAttempts: MAX_GENERATION_RETRIES }));
-          await new Promise(resolve => setTimeout(resolve, 1500 * attempt)); // Simple exponential backoff
+          await new Promise(resolve => setTimeout(resolve, 1500 * attempt)); 
         }
         
         const finalConfig: QuizConfig = { 
@@ -243,13 +247,12 @@ const QuizCreatePage: React.FC = () => {
           selectedModel: GEMINI_MODEL_ID 
         };
         
-        setProgress(10 + (attempt * 5)); // Show some progress increment with retries
+        setProgress(10 + (attempt * 5)); 
         const generatingQuizPromise = generateQuizWithSelectedModel(contentForAI, finalConfig, quizTitleSuggestion);
         
-        // Simulate progress more dynamically if possible, or use a refined progress simulation
         let progressInterval = setInterval(() => { 
           setProgress(oldProgress => { 
-            if (oldProgress >= 85 - (attempt * 5)) { // Adjust max based on attempt
+            if (oldProgress >= 85 - (attempt * 5)) { 
               clearInterval(progressInterval); return oldProgress; 
             } 
             return Math.min(oldProgress + 5, 85 - (attempt * 5)); 
@@ -285,23 +288,21 @@ const QuizCreatePage: React.FC = () => {
         navigate('/review', { state: { generatedQuizData, quizTitleSuggestion: quizTitleSuggestion || generatedQuizData.title, finalConfig } });
         setProgress(100);
         setIsGeneratingQuiz(false);
-        setGenerationStatusText(''); // Clear status text on success
-        return; // Exit loop on success
+        setGenerationStatusText(''); 
+        return; 
 
       } catch (err: any) {
         console.error(`Error generating quiz (Attempt ${attempt + 1}/${MAX_GENERATION_RETRIES + 1}):`, err);
         if (err.message && err.message.includes("Gemini AI failed to generate quiz") && attempt < MAX_GENERATION_RETRIES) {
-          // Continue to next retry iteration
-          if (attempt === MAX_GENERATION_RETRIES -1) { // Last retry before final failure
-             setProgress(70); // Show some more progress before final attempt
+          if (attempt === MAX_GENERATION_RETRIES -1) { 
+             setProgress(70); 
           }
         } else {
-          // Final failure or different error
           setProcessingError(err instanceof Error ? err.message : t('step3ErrorGenerate')); 
           setProgress(0);
           setIsGeneratingQuiz(false);
-          setGenerationStatusText(''); // Clear status text on final failure
-          return; // Exit loop on final failure
+          setGenerationStatusText(''); 
+          return; 
         }
       }
     }
@@ -321,33 +322,35 @@ const QuizCreatePage: React.FC = () => {
     }
   };
   
+  const handleCloseFullTextModal = useCallback(() => {
+    setIsFullTextModalOpen(false);
+  }, []);
+
   const generateIconUrl = "https://img.icons8.com/?size=256&id=eoxMN35Z6JKg&format=png";
 
   const getStepIndicator = (currentStep: number, targetStep: CreationStep, titleKey: keyof typeof translations.en, defaultIcon: ReactNode, _isLastStep: boolean = false) => {
     const isActive = currentStep === targetStep;
     const isCompleted = currentStep > targetStep;
-    const inactiveIconColor = 'text-slate-400';
     const inactiveTextColor = 'text-slate-400';
 
     let displayIconNode: ReactNode;
     const newCompletedIconUrl = "https://img.icons8.com/?size=256&id=VFaz7MkjAiu0&format=png";
-    const iconClassName = "w-5 h-5 sm:w-6 sm:h-6"; 
+    const iconClassName = "w-5 h-5 sm:w-6 sm:h-6 transition-transform var(--duration-fast) var(--ease-ios)";
 
     if (isCompleted) {
         displayIconNode = <img src={newCompletedIconUrl} alt={t('stepCompleted')} className={iconClassName} />;
     } else if (isActive) {
-        if (targetStep === 1) {
-            displayIconNode = <img src="https://img.icons8.com/?size=256&id=hwKgsZN5Is2H&format=png" alt={t('step1Title')} className={iconClassName} />;
-        } else if (targetStep === 2) {
-            displayIconNode = <img src="https://img.icons8.com/?size=256&id=WwHcZxa9PFUq&format=png" alt={t('step2Title')} className={iconClassName} />;
-        } else if (targetStep === 3) { 
-            displayIconNode = <img src={generateIconUrl} alt={t('step3Title')} className={iconClassName} />;
-        } else { 
-            if (React.isValidElement(defaultIcon)) {
-                displayIconNode = React.cloneElement(defaultIcon as React.ReactElement<{ className?: string }>, { className: iconClassName });
-            } else {
-                displayIconNode = defaultIcon;
-            }
+        let activeIconSrc = "";
+        if (targetStep === 1) activeIconSrc = "https://img.icons8.com/?size=256&id=hwKgsZN5Is2H&format=png";
+        else if (targetStep === 2) activeIconSrc = "https://img.icons8.com/?size=256&id=WwHcZxa9PFUq&format=png";
+        else if (targetStep === 3) activeIconSrc = generateIconUrl;
+        
+        if (activeIconSrc) {
+          displayIconNode = <img src={activeIconSrc} alt={t(titleKey)} className={`${iconClassName} scale-110`} />;
+        } else if (React.isValidElement(defaultIcon)) {
+          displayIconNode = React.cloneElement(defaultIcon as React.ReactElement<{ className?: string }>, { className: `${iconClassName} scale-110` });
+        } else {
+          displayIconNode = defaultIcon;
         }
     } else { 
         if (React.isValidElement(defaultIcon)) {
@@ -359,15 +362,16 @@ const QuizCreatePage: React.FC = () => {
 
 
     return (
-      <div className={`flex flex-col items-center transition-all duration-300 ${isActive ? 'text-sky-300' : isCompleted ? 'text-green-400' : inactiveTextColor}`}>
-        <div className={`flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 transition-all duration-300 mb-2.5
-         ${isActive ? 'border-sky-400 bg-sky-400/20 text-sky-300 shadow-xl scale-110' : 
+      <div className={`flex flex-col items-center transition-colors var(--duration-fast) var(--ease-ios) ${isActive ? 'text-sky-300' : isCompleted ? 'text-green-400' : inactiveTextColor}`}>
+        <div className={`flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 mb-2.5
+         transition-all var(--duration-fast) var(--ease-ios) will-change-transform, border, background-color, box-shadow
+         ${isActive ? 'border-sky-400 bg-sky-400/20 text-sky-300 shadow-xl scale-105' :
            isCompleted ? 'border-green-400 bg-green-400/20 text-green-400 shadow-lg' : 
-           `border-slate-600 bg-slate-700/60 ${inactiveIconColor}`}
+           `border-slate-600 bg-slate-700/60 text-slate-400`}
          font-semibold text-base sm:text-lg`}>
           {displayIconNode}
         </div>
-        <span className={`text-xs sm:text-sm font-semibold text-center ${isActive ? 'text-slate-50' : isCompleted ? 'text-slate-200' : inactiveTextColor}`}>{t(titleKey)}</span>
+        <span className={`text-xs sm:text-sm font-semibold text-center transition-colors var(--duration-fast) var(--ease-ios) ${isActive ? 'text-slate-50' : isCompleted ? 'text-slate-200' : inactiveTextColor}`}>{t(titleKey)}</span>
       </div>
     );
   };
@@ -386,33 +390,31 @@ const QuizCreatePage: React.FC = () => {
     switch (step) {
       case 1:
         return (
-          <div>
-            <Card className="max-w-xl mx-auto shadow-2xl !rounded-2xl" useGlassEffect>
-              <div className="space-y-8">
-                <Dropzone 
-                  onFileUpload={handleFileUpload} acceptedFileTypes=".pdf,.txt,.docx,.jpg,.png,.jpeg" maxFileSizeMB={10}
-                  label={<p className="text-base font-semibold text-slate-100 mb-2">{t('step1UploadOrDrag')}</p>}
-                  icon={<img src="https://img.icons8.com/?size=256&id=hwKgsZN5Is2H&format=png" alt={t('upload')} className="w-12 h-12 sm:w-14 sm:h-14 mb-3.5 text-slate-500 group-hover:text-sky-400 transition-colors" />}
-                  isLoading={isProcessingFile} currentFile={uploadedFile}
-                />
-                {isProcessingFile && progress > 0 && <ProgressBar progress={progress} label={t('step1ProcessingFile')} className="mt-4" />}
-                <div className="relative flex py-1 items-center">
-                  <div className="flex-grow border-t border-slate-600/70"></div>
-                  <span className="flex-shrink mx-4 text-slate-400 text-xs font-medium uppercase tracking-wider">{t('step1Or')}</span>
-                  <div className="flex-grow border-t border-slate-600/70"></div>
-                </div>
-                <Textarea
-                  label={<p className="text-base font-semibold text-slate-100">{t('step1PasteTextLabel')}</p>}
-                  value={pastedText} onChange={(e) => setPastedText(e.target.value)} placeholder={t('step1PasteTextPlaceholder')}
-                  rows={6} className="min-h-[150px] text-sm"
-                />
-                <Button onClick={handlePasteText} disabled={!pastedText.trim() || isProcessingFile} fullWidth size="lg" variant="secondary" className="py-3 shadow-lg">
-                  {t('step1UsePastedText')}
-                </Button>
-                {processingError && !isProcessingFile && (<div role="alert" className="p-3.5 bg-red-500/20 border border-red-500/50 rounded-lg text-sm text-red-300 text-center shadow-md">{processingError}</div>)}
+          <Card className="max-w-xl mx-auto shadow-2xl !rounded-2xl" useGlassEffect>
+            <div className="space-y-8">
+              <Dropzone 
+                onFileUpload={handleFileUpload} acceptedFileTypes=".pdf,.txt,.docx,.jpg,.png,.jpeg" maxFileSizeMB={10}
+                label={<p className="text-base font-semibold text-slate-100 mb-2">{t('step1UploadOrDrag')}</p>}
+                icon={<img src="https://img.icons8.com/?size=256&id=hwKgsZN5Is2H&format=png" alt={t('upload')} className="w-12 h-12 sm:w-14 sm:h-14 mb-3.5 text-slate-500 group-hover:text-sky-400 transition-all var(--duration-fast) var(--ease-ios) group-hover:scale-105" />}
+                isLoading={isProcessingFile} currentFile={uploadedFile}
+              />
+              {isProcessingFile && progress > 0 && <ProgressBar progress={progress} label={t('step1ProcessingFile')} className="mt-4 animate-fadeIn" />}
+              <div className="relative flex py-1 items-center">
+                <div className="flex-grow border-t border-slate-600/70"></div>
+                <span className="flex-shrink mx-4 text-slate-400 text-xs font-medium uppercase tracking-wider">{t('step1Or')}</span>
+                <div className="flex-grow border-t border-slate-600/70"></div>
               </div>
-            </Card>
-          </div>
+              <Textarea
+                label={<p className="text-base font-semibold text-slate-100">{t('step1PasteTextLabel')}</p>}
+                value={pastedText} onChange={(e) => setPastedText(e.target.value)} placeholder={t('step1PasteTextPlaceholder')}
+                rows={6} className="min-h-[150px] text-sm"
+              />
+              <Button onClick={handlePasteText} disabled={!pastedText.trim() || isProcessingFile} fullWidth size="lg" variant="secondary" className="py-3 shadow-lg">
+                {t('step1UsePastedText')}
+              </Button>
+              {processingError && !isProcessingFile && (<div role="alert" className={`p-3.5 bg-red-500/20 border border-red-500/50 rounded-lg text-sm text-red-300 text-center shadow-md animate-fadeIn`}>{processingError}</div>)}
+            </div>
+          </Card>
         );
       case 2:
         const modelDisplayLabel = (
@@ -421,7 +423,7 @@ const QuizCreatePage: React.FC = () => {
                 {t('step2AIModelLabel')}
                 {isApiKeyMissingForGemini() && (
                     <Tooltip content={t('apiKeyMissingTooltip')} placement="top">
-                        <KeyIcon className="w-4 h-4 text-yellow-400 ml-2.5 cursor-help" />
+                        <KeyIcon className="w-4 h-4 text-yellow-400 ml-2.5 cursor-help"/>
                     </Tooltip>
                 )}
             </div>
@@ -440,214 +442,240 @@ const QuizCreatePage: React.FC = () => {
         const numQuestionsLabelText = useAIMode ? t('step2NumQuestionsLabelAIMode') : t('step2NumQuestionsLabel');
 
         return (
-          <div>
-            <Card className="max-w-2xl mx-auto shadow-2xl !rounded-2xl" useGlassEffect>
-              <div className="space-y-6 sm:space-y-8">
-                <Card className={`!bg-slate-700/70 !border-slate-600/70 p-4 sm:p-5 !rounded-xl shadow-lg`} useGlassEffect={false}>
-                    <h3 className="text-sm font-semibold text-slate-200 mb-2.5">{t('step2SourceContent')}</h3>
-                    <div className="flex items-center text-sm text-slate-300 overflow-x-auto overflow-y-hidden whitespace-nowrap cursor-default thin-scrollbar-horizontal py-0.5">
-                        <DocumentTextIcon className="w-5 h-5 mr-3 text-sky-400 flex-shrink-0" strokeWidth={1.5}/>
-                        <span className="pr-1">
-                             {uploadedFile 
-                                ? (imageBase64 
-                                    ? t('step2Image', {fileName: uploadedFile.name}) 
-                                    : t('step2File', {fileName: uploadedFile.name}))
-                                : pastedText 
-                                    ? t('step2PastedText') 
-                                    : "N/A"}
-                        </span>
-                    </div>
-                    {processedContentText && (
-                         <Button 
-                           variant="secondary" 
-                           onClick={() => setIsFullTextModalOpen(true)} 
-                           className="text-xs !font-semibold mt-3.5 py-2 px-4 rounded-lg shadow-md hover:shadow-slate-900/50"
-                           leftIcon={<DocumentTextIcon className="w-4 h-4" strokeWidth={2}/>}
-                         >
-                             {t('step2ViewFullText')}
-                         </Button>
-                    )}
-                </Card>
+          <Card className="max-w-2xl mx-auto shadow-2xl !rounded-2xl" useGlassEffect>
+            <div className="space-y-6 sm:space-y-8">
+              <Card className={`!bg-slate-700/70 !border-slate-600/70 p-4 sm:p-5 !rounded-xl shadow-lg`} useGlassEffect={false}>
+                  <h3 className="text-sm font-semibold text-slate-200 mb-2.5">{t('step2SourceContent')}</h3>
+                  <div className="flex items-center text-sm text-slate-300 overflow-x-auto overflow-y-hidden whitespace-nowrap cursor-default thin-scrollbar-horizontal py-0.5">
+                      <DocumentTextIcon className="w-5 h-5 mr-3 text-sky-400 flex-shrink-0" strokeWidth={1.5}/>
+                      <span className="pr-1">
+                           {uploadedFile 
+                              ? (imageBase64 
+                                  ? t('step2Image', {fileName: uploadedFile.name}) 
+                                  : t('step2File', {fileName: uploadedFile.name}))
+                              : pastedText 
+                                  ? t('step2PastedText') 
+                                  : "N/A"}
+                      </span>
+                  </div>
+                  {processedContentText && (
+                       <Button 
+                         variant="secondary" 
+                         onClick={() => setIsFullTextModalOpen(true)} 
+                         className="text-xs !font-semibold mt-3.5 py-2 px-4 rounded-lg shadow-md hover:shadow-slate-900/50"
+                         leftIcon={<DocumentTextIcon className="w-4 h-4" strokeWidth={2}/>}
+                       >
+                           {t('step2ViewFullText')}
+                       </Button>
+                  )}
+              </Card>
 
-                <Input label={<p className="text-base font-semibold text-slate-100">{t('step2QuizTitleLabel')}</p>} name="quizTitle" value={quizTitleSuggestion} onChange={(e) => setQuizTitleSuggestion(e.target.value)} placeholder={t('step2QuizTitlePlaceholder')} inputClassName="text-lg py-3" />
+              <Input label={<p className="text-base font-semibold text-slate-100">{t('step2QuizTitleLabel')}</p>} name="quizTitle" value={quizTitleSuggestion} onChange={(e) => setQuizTitleSuggestion(e.target.value)} placeholder={t('step2QuizTitlePlaceholder')} inputClassName="text-lg py-3" />
+              
+              <Card className={`!bg-slate-700/70 !border-slate-600/70 p-4 sm:p-5 !rounded-xl shadow-lg`} useGlassEffect={false}>
+                {modelDisplayLabel}
+                <p className="text-sm text-slate-300 mt-1.5">Google Gemini <span className="font-medium">{isApiKeyMissingForGemini() ? <span className="text-yellow-400">({t('apiKeyMissingShort')})</span> : <span className="text-green-400">({t('default')})</span>}</span></p>
+              </Card>
+
+              <Card className={`p-4 sm:p-5 !border-slate-600/70 !rounded-xl !bg-slate-800/70 shadow-lg space-y-5`} useGlassEffect={false}>
+                <Toggle 
+                  label={<p className="text-base font-semibold text-slate-100">{t('step2AIModeLabel')}</p>} 
+                  checked={useAIMode} 
+                  onChange={handleAIModeToggle} 
+                  description={t('step2AIModeDesc')}
+                />
                 
-                <Card className={`!bg-slate-700/70 !border-slate-600/70 p-4 sm:p-5 !rounded-xl shadow-lg`} useGlassEffect={false}>
-                  {modelDisplayLabel}
-                  <p className="text-sm text-slate-300 mt-1.5">Google Gemini <span className="font-medium">{isApiKeyMissingForGemini() ? <span className="text-yellow-400">({t('apiKeyMissingShort')})</span> : <span className="text-green-400">({t('default')})</span>}</span></p>
-                </Card>
-
-                <Card className={`p-4 sm:p-5 !border-slate-600/70 !rounded-xl !bg-slate-800/70 shadow-lg space-y-5`} useGlassEffect={false}>
-                  <Toggle 
-                    label={<p className="text-base font-semibold text-slate-100">{t('step2AIModeLabel')}</p>} 
-                    checked={useAIMode} 
-                    onChange={handleAIModeToggle} 
-                    description={t('step2AIModeDesc')}
-                  />
-                  
-                  <Input 
-                    label={numQuestionsLabelText} 
-                    type="number" 
-                    name="numQuestions" 
-                    value={quizConfig.numQuestions} 
-                    onChange={handleConfigChange} 
-                    min={useAIMode ? "0" : "1"} 
-                    max="50" 
-                    containerClassName={useAIMode ? 'mt-4' : ''}
-                    placeholder={useAIMode && quizConfig.numQuestions === 0 ? t('step2NumQuestionsAIPlaceholder') : undefined}
-                  />
-                  
-                  <Select 
-                    label={t('step2DifficultyLabel')} 
-                    name="difficulty" 
-                    value={quizConfig.difficulty} 
-                    onChange={handleConfigChange} 
-                    options={useAIMode ? allDifficultyOptions : manualDifficultyOptions} 
-                    disabled={useAIMode}
-                  />
-
-                  <Select 
-                    label={t('step2LanguageLabel')} 
-                    name="language" 
-                    value={quizConfig.language} 
-                    onChange={handleConfigChange} 
-                    options={[{ value: 'English', label: t('step2LanguageEnglish') }, { value: 'Vietnamese', label: t('step2LanguageVietnamese') }]} 
-                  />
-                </Card>
+                <Input 
+                  label={numQuestionsLabelText} 
+                  type="number" 
+                  name="numQuestions" 
+                  value={quizConfig.numQuestions} 
+                  onChange={handleConfigChange} 
+                  min={useAIMode ? "0" : "1"} 
+                  max="50" 
+                  containerClassName={useAIMode ? 'mt-4' : ''}
+                  placeholder={useAIMode && quizConfig.numQuestions === 0 ? t('step2NumQuestionsAIPlaceholder') : undefined}
+                />
                 
-                <Textarea label={customPromptLabel} name="customUserPrompt" value={customUserPrompt} onChange={(e) => setCustomUserPrompt(e.target.value)} placeholder={t('step2CustomPromptPlaceholder').substring(0,60) + "..."} rows={4} className="min-h-[90px] text-sm" />
-                
-                {processingError && (<div role="alert" className="p-3.5 bg-red-500/20 border border-red-500/50 rounded-lg text-sm text-red-300 text-center shadow-md">{processingError}</div>)}
+                <Select 
+                  label={t('step2DifficultyLabel')} 
+                  name="difficulty" 
+                  value={quizConfig.difficulty} 
+                  onChange={handleConfigChange} 
+                  options={useAIMode ? allDifficultyOptions : manualDifficultyOptions} 
+                  disabled={useAIMode}
+                />
 
-                <div className="flex flex-col sm:flex-row justify-between items-center pt-5 gap-4">
-                    <Button variant="outline" onClick={() => { setStep(1); setProcessedContentText(null); setImageBase64(null); setUploadedFile(null); setPastedText(''); setProcessingError(null); setInitialImageExtractedText(null); }} leftIcon={<ChevronLeftIcon className="w-4 h-4"/>} size="lg" className="w-full sm:w-auto py-3"> {t('back')} </Button>
-                    <Button onClick={() => { setStep(3); setProcessingError(null); }} disabled={(isApiKeyMissingForGemini() && quizConfig.selectedModel === GEMINI_MODEL_ID)} rightIcon={<ChevronRightIcon className="w-4 h-4"/>} variant="primary" size="lg" tooltip={(isApiKeyMissingForGemini() && quizConfig.selectedModel === GEMINI_MODEL_ID) ? t('apiKeyMissingTooltip') : undefined} className="w-full sm:w-auto py-3"> {t('step2NextButton')} </Button>
-                </div>
+                <Select 
+                  label={t('step2LanguageLabel')} 
+                  name="language" 
+                  value={quizConfig.language} 
+                  onChange={handleConfigChange} 
+                  options={[{ value: 'English', label: t('step2LanguageEnglish') }, { value: 'Vietnamese', label: t('step2LanguageVietnamese') }]} 
+                />
+              </Card>
+              
+              <Textarea label={customPromptLabel} name="customUserPrompt" value={customUserPrompt} onChange={(e) => setCustomUserPrompt(e.target.value)} placeholder={t('step2CustomPromptPlaceholder').substring(0,60) + "..."} rows={4} className="min-h-[90px] text-sm" />
+              
+              {processingError && (<div role="alert" className={`p-3.5 bg-red-500/20 border border-red-500/50 rounded-lg text-sm text-red-300 text-center shadow-md animate-fadeIn`}>{processingError}</div>)}
+
+              <div className="flex flex-col sm:flex-row justify-between items-center pt-5 gap-4">
+                  <Button variant="outline" onClick={() => { setStep(1); setProcessedContentText(null); setImageBase64(null); setUploadedFile(null); setPastedText(''); setProcessingError(null); setInitialImageExtractedText(null); }} leftIcon={<ChevronLeftIcon className="w-4 h-4"/>} size="lg" className="w-full sm:w-auto py-3"> {t('back')} </Button>
+                  <Button onClick={() => { setStep(3); setProcessingError(null); }} disabled={(isApiKeyMissingForGemini() && quizConfig.selectedModel === GEMINI_MODEL_ID)} rightIcon={<ChevronRightIcon className="w-4 h-4"/>} variant="primary" size="lg" tooltip={(isApiKeyMissingForGemini() && quizConfig.selectedModel === GEMINI_MODEL_ID) ? t('apiKeyMissingTooltip') : undefined} className="w-full sm:w-auto py-3"> {t('step2NextButton')} </Button>
               </div>
-            </Card>
+            </div>
             {isFullTextModalOpen && (
-              <Modal 
-                isOpen={isFullTextModalOpen} 
-                onClose={() => setIsFullTextModalOpen(false)} 
-                title={t('fullTextModalTitle')} 
-                size="3xl"
-                footerContent={
-                  <div className="flex flex-col sm:flex-row sm:justify-between items-center w-full gap-3 sm:gap-0">
-                    <Button 
-                      variant="outline" 
-                      onClick={handleCopyToClipboard}
-                      leftIcon={<img src="https://img.icons8.com/?size=256&id=rByZVfKrdkJo&format=png" alt="Copy" className="w-4 h-4" />}
+            <Modal 
+              isOpen={isFullTextModalOpen} 
+              onClose={handleCloseFullTextModal} 
+              title={t('fullTextModalTitle')} 
+              size="3xl"
+              footerContent={
+                <div className="flex flex-col sm:flex-row sm:justify-between items-center w-full gap-3 sm:gap-0">
+                  <Button 
+                    variant="outline" 
+                    onClick={handleCopyToClipboard}
+                    leftIcon={<CopyIcon className="w-4 h-4"/>}
+                    size="md"
+                    className="w-full sm:w-auto"
+                  >
+                    {copySuccess ? t('azotaExportCopied') : t('azotaExportCopy')}
+                  </Button>
+                  <Button 
+                      onClick={handleCloseFullTextModal} 
+                      variant="secondary" 
                       size="md"
                       className="w-full sm:w-auto"
-                    >
-                      {copySuccess ? t('azotaExportCopied') : t('azotaExportCopy')}
-                    </Button>
-                    <Button 
-                        onClick={() => setIsFullTextModalOpen(false)} 
-                        variant="secondary" 
-                        size="md"
-                        className="w-full sm:w-auto"
-                    >
-                      {t('close')}
-                    </Button>
-                  </div>
-                }
-              >
-                <Textarea
-                  value={processedContentText || ''}
-                  readOnly
-                  className="!bg-slate-700/70 !border-slate-600/50 text-slate-100 whitespace-pre-wrap text-sm min-h-[60vh] max-h-[65vh] shadow-inner focus:!border-sky-400/70 focus:!ring-sky-400/40"
-                  rows={20}
-                  aria-label={t('fullTextModalTitle')}
-                />
-              </Modal>
-            )}
-          </div>
+                  >
+                    {t('close')}
+                  </Button>
+                </div>
+              }
+            >
+              <Textarea
+                value={processedContentText || ''}
+                readOnly
+                className="!bg-slate-700/70 !border-slate-600/50 text-slate-100 whitespace-pre-wrap text-sm min-h-[60vh] max-h-[65vh] shadow-inner focus:!border-sky-400/70 focus:!ring-sky-400/40"
+                rows={20}
+                aria-label={t('fullTextModalTitle')}
+              />
+            </Modal>
+          )}
+          </Card>
         );
       case 3:
         const iconSize = "w-5 h-5"; 
         let currentButtonText = t('step3GenerateButton');
         if (isGeneratingQuiz) {
-            // Check if generationStatusText already includes retry info
-            if (generationStatusText.includes(t('step3AIIsRetrying', {currentAttempt:0, maxAttempts:0}).substring(0,10))) { // Check for "AI is retrying" part
-                 currentButtonText = generationStatusText.replace(t('step3AIIsRetrying', {currentAttempt:0, maxAttempts:0}).substring(0,10), t('step3GeneratingRetryButton', {currentAttempt:0, maxAttempts:0}).substring(0,10));
+            const attemptMatch = generationStatusText.match(/Attempt (\d+)\/(\d+)/) || // English
+                                 generationStatusText.match(/Lần (\d+)\/(\d+)/);       // Vietnamese
+
+            if (attemptMatch && attemptMatch.length === 3) {
+                const currentAttempt = parseInt(attemptMatch[1], 10);
+                const maxAttempts = parseInt(attemptMatch[2], 10);
+                currentButtonText = t('step3GeneratingRetryButton', { currentAttempt, maxAttempts });
             } else {
-                 currentButtonText = t('step3GeneratingButton');
+                currentButtonText = t('step3GeneratingButton');
             }
         }
         
         return (
-          <div>
-            <Card className="max-w-xl mx-auto shadow-2xl !rounded-2xl" useGlassEffect>
-              <div 
-                className={`!bg-slate-700/70 p-6 sm:p-8 !rounded-xl mb-8 border border-slate-600/70 shadow-xl`}
-              >
-                <h3 className="text-2xl sm:text-3xl font-semibold text-slate-50 mb-6 text-center">{t('step3SummaryTitle')}</h3>
-                <div className="space-y-1 divide-y divide-slate-600/50">
-                  <SummaryItem icon={<img src="https://www.pngall.com/wp-content/uploads/16/Google-Gemini-Logo-Transparent.png" alt={t('step2AIModelLabel')} className={iconSize} />} label={t('step3AIModelSelected', {modelName: ""})} value="Google Gemini" />
+          <Card className="max-w-xl mx-auto shadow-2xl !rounded-2xl" useGlassEffect>
+            <div 
+              className={`!bg-slate-700/70 p-6 sm:p-8 !rounded-xl mb-8 border border-slate-600/70 shadow-xl`}
+            >
+              <h3 className="text-2xl sm:text-3xl font-semibold text-slate-50 mb-6 text-center">{t('step3SummaryTitle')}</h3>
+              <div className="space-y-1 divide-y divide-slate-600/50">
+                <SummaryItem icon={<img src="https://www.pngall.com/wp-content/uploads/16/Google-Gemini-Logo-Transparent.png" alt={t('step2AIModelLabel')} className={iconSize} />} label={t('step3AIModelSelected', {modelName: ""})} value="Google Gemini" />
+                <SummaryItem 
+                  icon={<DocumentTextIcon className={iconSize} />} 
+                  label={t('step3TitleSuggestion', {title: ""})} 
+                  value={<MathText text={quizTitleSuggestion || t('step3TitleAISuggested')} />} 
+                />
+                <SummaryItem icon={<img src="https://img.icons8.com/?size=256&id=hwKgsZN5Is2H&format=png" alt={t('upload')} className={iconSize} />} label={t('step3ContentSource', {source: ""})} value={uploadedFile ? (imageBase64 ? t('step2Image', {fileName: uploadedFile.name}) : t('step2File', {fileName: uploadedFile.name})) : pastedText ? t('step2PastedText') : "N/A"} />
+                
+                <SummaryItem icon={<img src="https://img.icons8.com/?size=256&id=WwHcZxa9PFUq&format=png" alt={t('settings')} className={iconSize} />} label={t('step3Mode', {mode: ""})} value={useAIMode ? t('step3ModeAIOptimized') : "Manual"} />
+                <SummaryItem icon={<img src="https://img.icons8.com/?size=256&id=PPnPJOpQpJ2J&format=png" alt={t('step3NumQuestions', {count:""})} className={iconSize} />} label={t('step3NumQuestions', {count:""})} value={useAIMode && quizConfig.numQuestions === 0 ? t('step2NumQuestionsAIPlaceholder') : quizConfig.numQuestions} />
+                <SummaryItem icon={<ChartBarIcon className={iconSize} />} label={t('step3Difficulty', {level:""})} value={quizConfig.difficulty === 'AI-Determined' ? t('step2DifficultyAIDetermined') : t(`step2Difficulty${quizConfig.difficulty}` as keyof typeof translations.en)} />
+                <SummaryItem icon={<img src="https://img.icons8.com/?size=48&id=fs8AdHsHlO36&format=png" alt="Language" className={iconSize} />} label={t('step3Language', {lang:""})} value={quizConfig.language === "English" ? t('step2LanguageEnglish') : t('step2LanguageVietnamese')} />
+                
+                <div className="pt-2.5"> 
                   <SummaryItem 
-                    icon={<DocumentTextIcon className={iconSize} />} 
-                    label={t('step3TitleSuggestion', {title: ""})} 
-                    value={<MathText text={quizTitleSuggestion || t('step3TitleAISuggested')} />} 
+                    icon={<InformationCircleIcon className={iconSize} />} 
+                    label={customUserPrompt.trim() ? t('step3CustomPromptProvidedLabel') : t('step3CustomPromptNone')}
+                    value={customUserPrompt.trim() ? <blockquote className="text-xs text-slate-300/90 italic whitespace-pre-wrap max-h-24 overflow-y-auto bg-slate-700/40 p-2 rounded-md mt-1 border-l-2 border-slate-500/70"><MathText text={customUserPrompt.trim()} /></blockquote> : ""}
                   />
-                  <SummaryItem icon={<img src="https://img.icons8.com/?size=256&id=hwKgsZN5Is2H&format=png" alt={t('upload')} className={iconSize} />} label={t('step3ContentSource', {source: ""})} value={uploadedFile ? (imageBase64 ? t('step2Image', {fileName: uploadedFile.name}) : t('step2File', {fileName: uploadedFile.name})) : pastedText ? t('step2PastedText') : "N/A"} />
-                  
-                  <SummaryItem icon={<img src="https://img.icons8.com/?size=256&id=WwHcZxa9PFUq&format=png" alt={t('settings')} className={iconSize} />} label={t('step3Mode', {mode: ""})} value={useAIMode ? t('step3ModeAIOptimized') : "Manual"} />
-                  <SummaryItem icon={<img src="https://img.icons8.com/?size=256&id=PPnPJOpQpJ2J&format=png" alt={t('step3NumQuestions', {count:""})} className={iconSize} />} label={t('step3NumQuestions', {count:""})} value={useAIMode && quizConfig.numQuestions === 0 ? t('step2NumQuestionsAIPlaceholder') : quizConfig.numQuestions} />
-                  <SummaryItem icon={<ChartBarIcon className={iconSize} />} label={t('step3Difficulty', {level:""})} value={quizConfig.difficulty === 'AI-Determined' ? t('step2DifficultyAIDetermined') : t(`step2Difficulty${quizConfig.difficulty}` as keyof typeof translations.en)} />
-                  <SummaryItem icon={<img src="https://img.icons8.com/?size=48&id=fs8AdHsHlO36&format=png" alt="Language" className={iconSize} />} label={t('step3Language', {lang:""})} value={quizConfig.language === "English" ? t('step2LanguageEnglish') : t('step2LanguageVietnamese')} />
-                  
-                  <div className="pt-2.5"> 
-                    <SummaryItem 
-                      icon={<InformationCircleIcon className={iconSize} />} 
-                      label={customUserPrompt.trim() ? t('step3CustomPromptProvidedLabel') : t('step3CustomPromptNone')}
-                      value={customUserPrompt.trim() ? <blockquote className="text-xs text-slate-300/90 italic whitespace-pre-wrap max-h-24 overflow-y-auto bg-slate-700/40 p-2 rounded-md mt-1 border-l-2 border-slate-500/70"><MathText text={customUserPrompt.trim()} /></blockquote> : ""}
-                    />
-                  </div>
                 </div>
               </div>
-              {(isApiKeyMissingForGemini() && quizConfig.selectedModel === GEMINI_MODEL_ID) && (<div role="alert" className="my-5 p-3.5 bg-red-500/20 border border-red-500/50 rounded-lg text-sm text-red-300 text-center shadow-md"><strong className="font-semibold">{t('error')}!</strong> {t('step3ErrorAPIKeyMissingForModel', {modelName: "Google Gemini"})}</div>)}
-              <Button 
-                onClick={handleGenerateQuiz} 
-                isLoading={isGeneratingQuiz} 
-                disabled={isGeneratingQuiz || (isApiKeyMissingForGemini() && quizConfig.selectedModel === GEMINI_MODEL_ID)} 
-                fullWidth 
-                size="lg" 
-                variant="primary" 
-                leftIcon={<img src={generateIconUrl} alt={t('step3GenerateButton')} className="w-5 h-5" />}
-                className="bg-gradient-to-r from-green-500 via-teal-500 to-sky-500 hover:from-green-600 hover:via-teal-600 hover:to-sky-600 text-white dark:text-white shadow-xl hover:shadow-green-500/40 py-3.5 rounded-xl"
-              > 
-                {currentButtonText}
-              </Button>
-              {isGeneratingQuiz && <ProgressBar progress={progress} label={generationStatusText || t('step3AIIsThinking')} className="mt-6" />}
-              {processingError && !isGeneratingQuiz && (<div role="alert" className="mt-5 p-3.5 bg-red-500/20 border border-red-500/50 rounded-lg text-sm text-red-300 text-center shadow-md">{processingError}</div>)}
-              <div className="mt-8 text-center"> <Button variant="outline" onClick={() => {setStep(2); setProcessingError(null); setGenerationStatusText('');}} leftIcon={<ChevronLeftIcon className="w-4 h-4"/>} size="lg" className="w-full sm:w-auto py-3"> {t('step3BackButtonCfg')} </Button> </div>
-            </Card>
-          </div>
+            </div>
+            {(isApiKeyMissingForGemini() && quizConfig.selectedModel === GEMINI_MODEL_ID) && (<div role="alert" className={`my-5 p-3.5 bg-red-500/20 border border-red-500/50 rounded-lg text-sm text-red-300 text-center shadow-md animate-fadeIn`}>{t('error')}! {t('step3ErrorAPIKeyMissingForModel', {modelName: "Google Gemini"})}</div>)}
+            <Button 
+              onClick={handleGenerateQuiz} 
+              isLoading={isGeneratingQuiz} 
+              disabled={isGeneratingQuiz || (isApiKeyMissingForGemini() && quizConfig.selectedModel === GEMINI_MODEL_ID)} 
+              fullWidth 
+              size="lg" 
+              variant="primary" 
+              leftIcon={<img src={generateIconUrl} alt={t('step3GenerateButton')} className="w-5 h-5" />}
+              className="bg-gradient-to-r from-green-500 via-teal-500 to-sky-500 hover:from-green-600 hover:via-teal-600 hover:to-sky-600 text-white dark:text-white shadow-xl hover:shadow-green-500/40 py-3.5 rounded-xl"
+            > 
+              {currentButtonText}
+            </Button>
+            {isGeneratingQuiz && <ProgressBar progress={progress} label={generationStatusText || t('step3AIIsThinking')} className="mt-6 animate-fadeIn" />}
+            {processingError && !isGeneratingQuiz && (<div role="alert" className={`mt-5 p-3.5 bg-red-500/20 border border-red-500/50 rounded-lg text-sm text-red-300 text-center shadow-md animate-fadeIn`}>{processingError}</div>)}
+            <div className="mt-8 text-center"> <Button variant="outline" onClick={() => {setStep(2); setProcessingError(null); setGenerationStatusText('');}} leftIcon={<ChevronLeftIcon className="w-4 h-4"/>} size="lg" className="w-full sm:w-auto py-3"> {t('step3BackButtonCfg')} </Button> </div>
+          </Card>
         );
     }
   };
-
+  
   return (
     <div className="py-6 sm:py-8">
-      <div className="relative mb-10 sm:mb-12">
+      <motion.div 
+        className="relative mb-10 sm:mb-12"
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, ease: easeIOS }}
+      >
         <div className="absolute inset-0 flex items-center" aria-hidden="true"> <div className={`w-full border-t-2 border-slate-700/60 border-dashed`} /> </div>
         <div className="relative flex justify-center"> <span className={`px-5 sm:px-6 bg-slate-900 text-2xl sm:text-3xl font-bold text-slate-50 tracking-tight`}> {t('createQuiz')} </span> </div>
-      </div>
+      </motion.div>
 
-      <div className="mb-8 sm:mb-10 text-center px-4">
+      <motion.div 
+        className={`mb-8 sm:mb-10 text-center px-4`} 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.35, ease: easeIOS, delay: 0.1 }}
+      >
         <p className="text-xs text-slate-400">
             {t('rateLimitInfoUnauthenticated', { limit: MAX_UNAUTH_QUIZZES_PER_DAY })} {t('rateLimitInfoAuthenticated')}
         </p>
-      </div>
+      </motion.div>
       
-      <div className={`max-w-lg mx-auto mb-12 sm:mb-16 flex justify-around items-start p-4 sm:p-5 bg-slate-800/70 rounded-2xl shadow-xl border border-slate-700/70 glass-effect`}>
+      <motion.div 
+        className={`max-w-lg mx-auto mb-12 sm:mb-16 flex justify-around items-start p-4 sm:p-5 bg-slate-800/70 rounded-2xl shadow-xl border border-slate-700/70 glass-effect`}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: easeIOS, delay: 0.2 }}
+      >
         {getStepIndicator(step, 1, 'step1Title', <img src="https://img.icons8.com/?size=256&id=hwKgsZN5Is2H&format=png" alt={t('step1Title')} />)}
-        <div className={`flex-grow h-1.5 bg-slate-600 rounded-full mx-3 sm:mx-5 mt-5 sm:mt-[1.375rem]`}> <div className="h-1.5 bg-sky-400 rounded-full transition-all duration-500 ease-out" style={{width: step === 1 ? '0%' : step === 2 ? '50%' : '100%'}}></div> </div>
+        <div className={`flex-grow h-1.5 bg-slate-600 rounded-full mx-3 sm:mx-5 mt-5 sm:mt-[1.375rem]`}><div className="h-1.5 bg-sky-400 rounded-full transition-width var(--duration-normal) var(--ease-ios)" style={{width: step === 1 ? '0%' : step === 2 ? '50%' : '100%'}}></div> </div>
         {getStepIndicator(step, 2, 'step2Title', <img src="https://img.icons8.com/?size=256&id=WwHcZxa9PFUq&format=png" alt={t('step2Title')} />)}
-         <div className={`flex-grow h-1.5 bg-slate-600 rounded-full mx-3 sm:mx-5 mt-5 sm:mt-[1.375rem]`}> <div className="h-1.5 bg-sky-400 rounded-full transition-all duration-500 ease-out" style={{width: step <= 2 ? '0%' : '100%'}}></div> </div>
+         <div className={`flex-grow h-1.5 bg-slate-600 rounded-full mx-3 sm:mx-5 mt-5 sm:mt-[1.375rem]`}><div className="h-1.5 bg-sky-400 rounded-full transition-width var(--duration-normal) var(--ease-ios)" style={{width: step <= 2 ? '0%' : '100%'}}></div> </div>
         {getStepIndicator(step, 3, 'step3Title', <img src={generateIconUrl} alt={t('step3Title')} className="w-5 h-5 sm:w-6 sm:h-6" />, true)}
-      </div>
-      {renderStepContent()}
+      </motion.div>
+      
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={step}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -20 }}
+          transition={{ duration: 0.4, ease: easeIOS }}
+        >
+          {renderStepContent()}
+        </motion.div>
+      </AnimatePresence>
     </div>
   );
 };

@@ -6,7 +6,7 @@ import { Quiz, Question, UserAnswer, QuizResult } from '../../types';
 import { Button, Card, LoadingSpinner, ProgressBar, Modal, Tooltip } from '../../components/ui';
 import MathText from '../../components/MathText';
 import { CircleIcon, ChevronLeftIcon, ChevronRightIcon, LightbulbIcon } from '../../constants';
-import { useQuizFlow } from './hooks/useQuizFlow'; // Import the custom hook
+import { useQuizFlow } from './hooks/useQuizFlow'; 
 
 export const QuizTakingPage: React.FC = () => {
   const { setQuizResult } = useAppContext();
@@ -14,10 +14,10 @@ export const QuizTakingPage: React.FC = () => {
   const { quizId } = useParams<{ quizId: string }>();
   const navigate = useNavigate();
 
-  const [userAnswers, setUserAnswers] = useState<Record<string, string>>({}); // questionId: selectedOptionText
+  const [userAnswers, setUserAnswers] = useState<Record<string, string>>({}); 
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);
-  const [showTimesUpModalState, setShowTimesUpModalState] = useState(false); // Renamed to avoid conflict
+  const [showTimesUpModalState, setShowTimesUpModalState] = useState(false); 
 
   const handleTimeUp = useCallback(() => {
     setShowTimesUpModalState(true);
@@ -34,15 +34,14 @@ export const QuizTakingPage: React.FC = () => {
     formatTime,
     totalQuestions,
     attemptSettings,
-  } = useQuizFlow(quizId, { onTimeUp: handleTimeUp });
+  } = useQuizFlow(quizId, handleTimeUp);
 
 
   useEffect(() => {
-    // When currentQuestion changes (due to navigation), load any existing answer for it
     if (currentQuestion && userAnswers[currentQuestion.id]) {
       setSelectedOption(userAnswers[currentQuestion.id]);
     } else {
-      setSelectedOption(null); // Reset selection for new question
+      setSelectedOption(null); 
     }
   }, [currentQuestion, userAnswers]);
 
@@ -60,13 +59,13 @@ export const QuizTakingPage: React.FC = () => {
   const handleFinalSubmit = useCallback(() => {
     if (!localActiveQuiz) return;
     
-    storeCurrentAnswer(); // Ensure the very last selection is stored
+    storeCurrentAnswer(); 
 
     let correctCount = 0;
     const finalUserAnswersArray: UserAnswer[] = [];
 
     localActiveQuiz.questions.forEach(q => {
-      const userAnswerText = userAnswers[q.id]; // Use the state that has accumulated all answers
+      const userAnswerText = userAnswers[q.id]; 
       if (userAnswerText) {
         finalUserAnswersArray.push({ questionId: q.id, answer: userAnswerText });
         if (userAnswerText === q.correctAnswer) {
@@ -86,6 +85,8 @@ export const QuizTakingPage: React.FC = () => {
       totalCorrect: correctCount,
       totalQuestions: totalQuestions,
       timeTaken: attemptSettings.timeLimit > 0 ? (attemptSettings.timeLimit * 60) - (timeLeft || 0) : undefined,
+      sourceMode: 'take',
+      createdAt: new Date().toISOString(),
     };
     setQuizResult(result);
     setShowConfirmationModal(false);
@@ -98,7 +99,7 @@ export const QuizTakingPage: React.FC = () => {
     if (!localActiveQuiz) return;
     storeCurrentAnswer();
     
-    if (!goToNextQuestion()) { // If goToNextQuestion returns false, it's the last question
+    if (!goToNextQuestion()) { 
       setShowConfirmationModal(true);
     }
   };
@@ -108,6 +109,12 @@ export const QuizTakingPage: React.FC = () => {
     goToPreviousQuestion();
   };
   
+  const handleCloseConfirmationModal = useCallback(() => setShowConfirmationModal(false), []);
+  const handleCloseTimesUpModalAndSubmit = useCallback(() => {
+    setShowTimesUpModalState(false);
+    handleFinalSubmit();
+  }, [handleFinalSubmit]);
+
 
   if (loading || !localActiveQuiz) {
     return <LoadingSpinner text={t('quizTakingLoading')} className="mt-24" size="xl"/>;
@@ -115,7 +122,7 @@ export const QuizTakingPage: React.FC = () => {
   
   if (!currentQuestion) {
      return (
-        <Card className="max-w-3xl mx-auto shadow-2xl !rounded-2xl" useGlassEffect>
+        <Card className="max-w-3xl mx-auto shadow-2xl !rounded-2xl animate-fadeInUp" useGlassEffect>
             <LoadingSpinner text={t('quizTakingLoading')} />
             <p className="text-center text-slate-300 mt-4">{t('quizTakingErrorQuestionNotFound')}</p>
         </Card>
@@ -127,7 +134,7 @@ export const QuizTakingPage: React.FC = () => {
   const isLastQuestion = currentQuestionIndex === totalQuestions - 1;
 
   return (
-    <Card className="max-w-3xl mx-auto shadow-2xl !border-slate-700/40 !rounded-2xl" useGlassEffect>
+    <Card className="max-w-3xl mx-auto shadow-2xl !border-slate-700/40 !rounded-2xl animate-page-slide-fade-in" useGlassEffect>
       <div className="mb-8 sm:mb-10">
         <h1 className="text-2xl sm:text-3xl font-bold text-slate-50 mb-3 sm:mb-4 leading-tight tracking-tight line-clamp-2" title={localActiveQuiz.title}>
           <MathText text={localActiveQuiz.title} />
@@ -146,35 +153,39 @@ export const QuizTakingPage: React.FC = () => {
 
     <div>
       <div className={`mb-8 sm:mb-10 p-5 sm:p-8 bg-slate-700/60 rounded-xl shadow-inner border border-slate-600/70 min-h-[280px] flex flex-col`}>
-        <h2 className="text-lg sm:text-xl font-semibold text-slate-100 mb-6 sm:mb-8 leading-relaxed">
-          <MathText text={currentQuestion.questionText} />
-        </h2>
-        
-        <div className="flex-grow">
-            <div className="space-y-3.5 sm:space-y-4">
-            {currentQuestion.options.map((option, index) => {
-                const isSelectedForDisplay = selectedOption === option;
-                let optionStyle = `bg-slate-600 hover:bg-slate-500/80 border-slate-500 hover:border-sky-500 text-slate-100 hover:scale-[1.02]`;
-                let icon = <CircleIcon className="w-6 h-6 text-slate-400 group-hover:text-sky-400" strokeWidth={2.5}/>;
+        <div key={currentQuestion.id} className="animate-fadeInUp">
+          <h2 className="text-lg sm:text-xl font-semibold text-slate-100 mb-6 sm:mb-8 leading-relaxed">
+            <MathText text={currentQuestion.questionText} />
+          </h2>
+          
+          <div className="flex-grow">
+              <div className="space-y-3.5 sm:space-y-4">
+              {currentQuestion.options.map((option, index) => {
+                  const isSelectedForDisplay = selectedOption === option;
+                  let optionStyle = `bg-slate-600 hover:bg-slate-500/80 border-slate-500 hover:border-sky-500 text-slate-100`;
+                  let icon = <CircleIcon className="w-6 h-6 text-slate-400 group-hover:text-sky-400 transition-colors var(--duration-fast) var(--ease-ios)" strokeWidth={2.5}/>;
 
-                if (isSelectedForDisplay) {
-                   optionStyle = 'bg-sky-500/50 border-sky-400 text-sky-50 font-semibold hover:bg-sky-500/60 scale-105';
-                   icon = <CircleIcon className="w-6 h-6 text-sky-50" isFilled={true} strokeWidth={1}/>;
-                }
+                  if (isSelectedForDisplay) {
+                     optionStyle = 'bg-sky-500/50 border-sky-400 text-sky-50 font-semibold hover:bg-sky-500/60 scale-[1.01]';
+                     icon = <CircleIcon className="w-6 h-6 text-sky-50" isFilled={true} strokeWidth={1}/>;
+                  }
 
-                return (
-                <button
-                    key={index}
-                    onClick={() => handleSelectOption(option)}
-                    className={`w-full flex items-center text-left p-3.5 sm:p-4 rounded-xl border-2 transition-all duration-200 ease-out transform focus:outline-none focus-visible:ring-4 focus-visible:ring-sky-400/50 focus-visible:ring-offset-2 ${isSelectedForDisplay ? 'focus-visible:ring-offset-white' : 'focus-visible:ring-offset-slate-700'} shadow-lg ${optionStyle}`}
-                    aria-pressed={isSelectedForDisplay}
-                >
-                    <span className="mr-3.5 flex-shrink-0">{icon}</span>
-                    <span className="text-sm sm:text-base flex-grow"> <MathText text={option} /> </span>
-                </button>
-                );
-            })}
-            </div>
+                  return (
+                  <button
+                      key={index}
+                      onClick={() => handleSelectOption(option)}
+                      className={`w-full flex items-center text-left p-3.5 sm:p-4 rounded-xl border-2 focus:outline-none focus-visible:ring-4 focus-visible:ring-sky-400/50 focus-visible:ring-offset-2 ${isSelectedForDisplay ? 'focus-visible:ring-offset-white' : 'focus-visible:ring-offset-slate-700'} shadow-lg 
+                                 transition-all var(--duration-fast) var(--ease-ios) will-change-transform, border, background-color
+                                 ${optionStyle}`}
+                      aria-pressed={isSelectedForDisplay}
+                  >
+                      <span className="mr-3.5 flex-shrink-0">{icon}</span>
+                      <span className="text-sm sm:text-base flex-grow"> <MathText text={option} /> </span>
+                  </button>
+                  );
+              })}
+              </div>
+          </div>
         </div>
       </div>
     </div>
@@ -204,12 +215,12 @@ export const QuizTakingPage: React.FC = () => {
       {showConfirmationModal && (
         <Modal
           isOpen={showConfirmationModal}
-          onClose={() => setShowConfirmationModal(false)}
+          onClose={handleCloseConfirmationModal}
           title={t('quizTakingSubmitQuiz')}
           size="md"
           footerContent={
             <div className="flex justify-end gap-3.5">
-              <Button variant="secondary" onClick={() => setShowConfirmationModal(false)} size="md">
+              <Button variant="secondary" onClick={handleCloseConfirmationModal} size="md">
                 {t('cancel')}
               </Button>
               <Button variant="primary" onClick={handleFinalSubmit} size="md">
@@ -227,13 +238,13 @@ export const QuizTakingPage: React.FC = () => {
       {showTimesUpModalState && (
         <Modal
           isOpen={showTimesUpModalState}
-          onClose={() => { setShowTimesUpModalState(false); handleFinalSubmit();}} 
+          onClose={handleCloseTimesUpModalAndSubmit} 
           title={t('timesUp')}
           size="md"
           hideCloseButton={true}
           footerContent={
             <div className="flex justify-center">
-              <Button variant="primary" onClick={() => { setShowTimesUpModalState(false); handleFinalSubmit(); }} size="md">
+              <Button variant="primary" onClick={handleCloseTimesUpModalAndSubmit} size="md">
                 {t('timesUpSubmit')}
               </Button>
             </div>

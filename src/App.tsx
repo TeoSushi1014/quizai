@@ -1,4 +1,5 @@
 
+
 import React, { useState, useCallback, useEffect, createContext, useContext, ReactNode, useMemo, useRef } from 'react';
 import { HashRouter, Routes, Route, useNavigate, useLocation, NavLink as RouterNavLink } from 'react-router-dom';
 import { GoogleOAuthProvider, googleLogout } from '@react-oauth/google';
@@ -13,8 +14,9 @@ import ResultsPage from './features/quiz/ResultsPage';
 import QuizReviewPage from './features/quiz/QuizReviewPage';
 import SignInPage from './features/auth/SignInPage';
 import QuizPracticePage from './features/quiz/QuizPracticePage';
-import PracticeSummaryPage from './features/quiz/PracticeSummaryPage';
+// import PracticeSummaryPage from './features/quiz/PracticeSummaryPage'; // Removed
 import { getTranslator, translations } from './i18n';
+import useIntersectionObserver from './hooks/useIntersectionObserver'; // Import useIntersectionObserver
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
@@ -50,7 +52,7 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     const savedUser = localStorage.getItem('currentUser');
     return savedUser ? JSON.parse(savedUser) : null;
   });
-  const [isLoading, setIsLoading] = useState(false); // Kept for potential non-Supabase async ops
+  const [isLoading, setIsLoading] = useState(false); 
   const [isGeminiKeyAvailable, setIsGeminiKeyAvailable] = useState(false);
 
   useEffect(() => {
@@ -69,11 +71,11 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     }
   }, [currentUser]);
 
-  const setLanguage = (lang: Language) => {
+  const setLanguage = useCallback((lang: Language) => {
     setLanguageState(lang);
     localStorage.setItem('appLanguage', lang);
     document.documentElement.lang = lang; 
-  };
+  }, []);
   
   useEffect(() => {
     document.documentElement.lang = language;
@@ -86,65 +88,57 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     navigate(viewPath);
   }, [navigate]);
 
-  const addQuiz = (quiz: Quiz) => {
+  const addQuiz = useCallback((quiz: Quiz) => {
     const quizWithOwner = currentUser ? { ...quiz, userId: currentUser.id } : quiz;
     setAllQuizzes(prev => [quizWithOwner, ...prev]);
-  };
+  }, [currentUser]);
 
-  const deleteQuiz = (quizId: string) => {
+  const deleteQuiz = useCallback((quizId: string) => {
     setAllQuizzes(prev => prev.filter(q => q.id !== quizId));
-  };
+  }, []);
 
-  const updateQuiz = (updatedQuiz: Quiz) => {
+  const updateQuiz = useCallback((updatedQuiz: Quiz) => {
     setAllQuizzes(prev => prev.map(q => q.id === updatedQuiz.id ? updatedQuiz : q));
-  };
+  }, []);
 
-  const setQuizResultWithPersistence = (result: QuizResult | null) => {
+  const setQuizResultWithPersistence = useCallback((result: QuizResult | null) => {
     setQuizResult(result);
-    // If needed, persist quiz result to localStorage or other client-side storage
-    // For now, it's just in component state.
-  };
+  }, []);
 
-  const login = (user: UserProfile) => {
+  const login = useCallback((user: UserProfile) => {
     setCurrentUser(user);
     setIsLoading(true);
-    // Simulate loading or perform other non-Supabase async tasks if any
     setTimeout(() => {
-      // Merge local anonymous quizzes with the logged-in user
-      const localQuizzes = [...allQuizzes];
-      const updatedQuizzes = localQuizzes.map(q => {
-        if (!q.userId) { // If quiz is anonymous
-          return { ...q, userId: user.id }; // Associate with logged-in user
-        }
-        return q;
+      setAllQuizzes(prevAllQuizzes => {
+        const updatedQuizzes = prevAllQuizzes.map(q => {
+          if (!q.userId) { 
+            return { ...q, userId: user.id }; 
+          }
+          return q;
+        });
+        localStorage.setItem('quizzes', JSON.stringify(updatedQuizzes));
+        return updatedQuizzes;
       });
-      setAllQuizzes(updatedQuizzes);
-      localStorage.setItem('quizzes', JSON.stringify(updatedQuizzes));
       setIsLoading(false);
-    }, 500); // Simulate some delay
-  };
+    }, 500); 
+  }, []);
 
-  const handleLogout = () => { 
+  const handleLogout = useCallback(() => { 
     googleLogout();
     setCurrentUser(null);
     setActiveQuiz(null); 
     setQuizResult(null); 
-    // Clear user-specific quizzes from allQuizzes or re-filter for anonymous
-    // For simplicity, we'll just clear active quiz and result.
-    // Quizzes will be filtered by quizzesForContext.
     navigate('/'); 
-  };
+  }, [navigate]);
 
   const quizzesForContext = useMemo(() => {
     if (currentUser) {
-      // Show quizzes belonging to the current user OR quizzes that became theirs upon login
       return allQuizzes.filter(q => q.userId === currentUser.id);
     }
-    // If not logged in, show only quizzes that are truly anonymous (no userId)
     return allQuizzes.filter(q => !q.userId);
   }, [allQuizzes, currentUser]);
   
-  const contextValue: AppContextType = {
+  const contextValue: AppContextType = useMemo(() => ({
     currentView: (location.pathname.substring(1) || 'home') as any, 
     setCurrentView, 
     language,
@@ -162,7 +156,11 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     logout: handleLogout, 
     isGeminiKeyAvailable,
     isLoading
-  };
+  }), [
+    location.pathname, setCurrentView, language, setLanguage, quizzesForContext, 
+    addQuiz, deleteQuiz, updateQuiz, activeQuiz, setActiveQuiz, quizResult, 
+    setQuizResultWithPersistence, currentUser, login, handleLogout, isGeminiKeyAvailable, isLoading
+  ]);
 
   return (
     <AppContext.Provider value={contextValue}>
@@ -174,13 +172,13 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
 const NavLink: React.FC<{ to: string; children: ReactNode; end?: boolean; className?: string; activeClassName?: string; inactiveClassName?: string; isMobile?: boolean; }> = 
 ({ to, children, end = false, className = '', activeClassName = '', inactiveClassName = '', isMobile = false }) => {
 
-  const baseDesktopStyle = "px-3.5 py-2 rounded-lg text-sm font-medium transition-colors duration-150 ease-out hover:bg-sky-400/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900";
+  const baseDesktopStyle = "px-3.5 py-2 rounded-lg text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 hover:bg-sky-400/10 transition-colors var(--duration-fast) var(--ease-ios)";
   const activeDesktopStyle = "bg-sky-400/20 text-sky-300 font-semibold";
   const inactiveDesktopStyle = "text-slate-300 hover:text-sky-300";
 
-  const baseMobileStyle = "flex flex-col items-center justify-center h-full w-full text-xs transition-colors duration-150 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sky-400/70 rounded-lg";
+  const baseMobileStyle = "flex flex-col items-center justify-center h-full w-full text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sky-400/70 rounded-lg hover:bg-slate-500/10 transition-colors var(--duration-fast) var(--ease-ios)";
   const activeMobileStyle = "text-sky-300 font-semibold bg-sky-400/15";
-  const inactiveMobileStyle = "text-slate-400 hover:text-sky-300 hover:bg-slate-500/10";
+  const inactiveMobileStyle = "text-slate-400 hover:text-sky-300";
 
 
   return (
@@ -224,20 +222,21 @@ const UserDropdownMenu: React.FC = () => {
         <div className="relative" ref={userDropdownRef}>
             <button
                 onClick={() => setIsUserDropdownOpen(prev => !prev)}
-                className="flex items-center p-1 rounded-full focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-800"
+                className="flex items-center p-1 rounded-full focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-800 group"
                 aria-label="User menu"
                 aria-expanded={isUserDropdownOpen}
                 aria-haspopup="true"
             >
                 {currentUser.imageUrl ? (
-                    <img src={currentUser.imageUrl} alt={currentUser.name || "User"} className="w-8 h-8 sm:w-9 sm:h-9 rounded-full border-2 border-slate-600 hover:border-sky-300 transition-all duration-150" />
+                    <img src={currentUser.imageUrl} alt={currentUser.name || "User"} className="w-8 h-8 sm:w-9 sm:h-9 rounded-full border-2 border-slate-600 group-hover:border-sky-300 transition-colors var(--duration-fast) var(--ease-ios)" />
                 ) : (
-                    <UserCircleIcon className="w-8 h-8 sm:w-9 sm:h-9 text-slate-400 hover:text-sky-300 transition-colors" />
+                    <UserCircleIcon className="w-8 h-8 sm:w-9 sm:h-9 text-slate-400 group-hover:text-sky-300 transition-colors var(--duration-fast) var(--ease-ios)" />
                 )}
             </button>
             <div
-                className={`absolute right-0 mt-2.5 w-60 sm:w-64 glass-effect rounded-xl shadow-2xl py-2 z-50 transition-opacity duration-200 ease-out
-                            ${isUserDropdownOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+                className={`absolute right-0 mt-2.5 w-60 sm:w-64 glass-effect rounded-xl shadow-2xl py-2 z-50 origin-top-right
+                            transition-all var(--duration-fast) var(--ease-ios)
+                            ${isUserDropdownOpen ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-95 pointer-events-none'}`}
             >
                 <div className="px-4 py-3 border-b border-slate-700/70">
                     <p className="text-sm font-semibold text-slate-100 truncate" title={currentUser.name || undefined}>{currentUser.name || t('untitledQuiz')}</p>
@@ -245,7 +244,7 @@ const UserDropdownMenu: React.FC = () => {
                 </div>
                 <button
                     onClick={() => { logout(); setIsUserDropdownOpen(false); }}
-                    className="w-full text-left px-4 py-3 text-sm text-red-400 hover:bg-red-400/15 flex items-center transition-colors hover:text-red-300"
+                    className="w-full text-left px-4 py-3 text-sm text-red-400 hover:bg-red-400/15 flex items-center hover:text-red-300 transition-colors var(--duration-fast) var(--ease-ios)"
                 >
                     <LogoutIcon className="w-4 h-4 mr-2.5 flex-shrink-0" />
                     {t('logout')}
@@ -256,10 +255,29 @@ const UserDropdownMenu: React.FC = () => {
 };
 UserDropdownMenu.displayName = "UserDropdownMenu";
 
+const AnimatedApiKeyWarning: React.FC<{children: ReactNode}> = ({ children }) => {
+  const ref = useRef<HTMLDivElement>(null);
+  // Use freezeOnceVisible: true to ensure animation runs only once when it comes into view
+  const isVisible = useIntersectionObserver(ref, { threshold: 0.1, freezeOnceVisible: true });
+  
+  // The outer div (ref) will handle the animation class based on visibility
+  return (
+    <div 
+      ref={ref} 
+      className={isVisible ? 'animate-page-slide-fade-in' : 'opacity-0'}
+    >
+      {children}
+    </div>
+  );
+};
+AnimatedApiKeyWarning.displayName = "AnimatedApiKeyWarning";
+
+
 const AppLayout: React.FC = () => {
   const { language, setLanguage, currentUser, isGeminiKeyAvailable } = useAppContext(); 
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
   
   const apiKeyWarnings = [];
   if (!isGeminiKeyAvailable) apiKeyWarnings.push("Google Gemini API Key (API_KEY)");
@@ -270,7 +288,7 @@ const AppLayout: React.FC = () => {
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16 md:h-[72px]">
             <div className="flex items-center space-x-2 sm:space-x-3 cursor-pointer group" onClick={() => navigate('/')}>
-              <h1 className="text-xl sm:text-2xl font-bold text-slate-50 group-hover:text-sky-400 transition-colors duration-150 tracking-tight">
+              <h1 className="text-xl sm:text-2xl font-bold text-slate-50 group-hover:text-sky-400 tracking-tight transition-colors var(--duration-fast) var(--ease-ios)">
                 {APP_NAME} 
               </h1>
             </div>
@@ -323,7 +341,7 @@ const AppLayout: React.FC = () => {
           </NavLink>
         </nav>
 
-      <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 md:py-10 mb-20 md:mb-0"> 
+      <main key={location.pathname} className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 md:py-10 mb-20 md:mb-0 animate-page-slide-fade-in"> 
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/signin" element={<SignInPage />} />
@@ -333,7 +351,7 @@ const AppLayout: React.FC = () => {
           <Route path="/review/:quizId" element={<QuizReviewPage />} />
           <Route path="/quiz/:quizId" element={<QuizTakingPage />} />
           <Route path="/practice/:quizId" element={<QuizPracticePage />} />
-          <Route path="/practice-summary/:quizId" element={<PracticeSummaryPage />} />
+          {/* <Route path="/practice-summary/:quizId" element={<PracticeSummaryPage />} /> */} {/* Removed route */}
           <Route path="/results/:quizId" element={<ResultsPage />} />
           <Route path="*" element={<HomePage />} /> 
         </Routes>
@@ -342,31 +360,31 @@ const AppLayout: React.FC = () => {
       <footer className="bg-transparent py-4 md:py-6 mt-auto">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="mb-4 md:mb-5 space-x-3 sm:space-x-4 text-center">
-            <a href="#" className="text-xs text-slate-400 hover:text-sky-300 transition-colors duration-150">{t('footerTerms')}</a>
-            <a href="#" className="text-xs text-slate-400 hover:text-sky-300 transition-colors duration-150">{t('footerPrivacy')}</a>
-            <a href="#" className="text-xs text-slate-400 hover:text-sky-300 transition-colors duration-150">{t('footerFAQ')}</a>
+            <a href="#" className="text-xs text-slate-400 hover:text-sky-300 transition-colors var(--duration-fast) var(--ease-ios)">{t('footerTerms')}</a>
+            <a href="#" className="text-xs text-slate-400 hover:text-sky-300 transition-colors var(--duration-fast) var(--ease-ios)">{t('footerPrivacy')}</a>
+            <a href="#" className="text-xs text-slate-400 hover:text-sky-300 transition-colors var(--duration-fast) var(--ease-ios)">{t('footerFAQ')}</a>
           </div>
 
           <div className="pt-4 md:pt-5 border-t border-slate-700/50">
             <p className="text-sm font-semibold text-slate-300 mb-3 sm:mb-3 text-center">{t('footerContactUs')}</p> 
             <div className="flex justify-center items-center space-x-3 sm:space-x-4">
               <Tooltip content="Facebook" placement="top">
-                <a href="https://www.facebook.com/boboiboy.gala.7/" target="_blank" rel="noopener noreferrer" aria-label="Facebook" className="text-slate-400 hover:text-sky-400 transition-colors duration-150">
+                <a href="https://www.facebook.com/boboiboy.gala.7/" target="_blank" rel="noopener noreferrer" aria-label="Facebook" className="text-slate-400 hover:text-sky-400 transition-colors var(--duration-fast) var(--ease-ios)">
                   <img src="https://img.icons8.com/?size=256&id=uLWV5A9vXIPu&format=png" alt="Facebook" className="w-5 h-5"/>
                 </a>
               </Tooltip>
               <Tooltip content="TikTok" placement="top">
-                <a href="https://www.tiktok.com/@teosushi1014" target="_blank" rel="noopener noreferrer" aria-label="TikTok" className="text-slate-400 hover:text-sky-400 transition-colors duration-150">
+                <a href="https://www.tiktok.com/@teosushi1014" target="_blank" rel="noopener noreferrer" aria-label="TikTok" className="text-slate-400 hover:text-sky-400 transition-colors var(--duration-fast) var(--ease-ios)">
                    <img src="https://img.icons8.com/?size=256&id=118640&format=png" alt="TikTok" className="w-5 h-5"/>
                 </a>
               </Tooltip>
               <Tooltip content="YouTube" placement="top">
-                <a href="https://www.youtube.com/@TeoSushi1014" target="_blank" rel="noopener noreferrer" aria-label="YouTube" className="text-slate-400 hover:text-sky-400 transition-colors duration-150">
+                <a href="https://www.youtube.com/@TeoSushi1014" target="_blank" rel="noopener noreferrer" aria-label="YouTube" className="text-slate-400 hover:text-sky-400 transition-colors var(--duration-fast) var(--ease-ios)">
                    <img src="https://img.icons8.com/?size=256&id=19318&format=png" alt="YouTube" className="w-5 h-5"/>
                 </a>
               </Tooltip>
               <Tooltip content={t('footerGmail')} placement="top">
-                <a href="mailto:teosushi1014@gmail.com" aria-label={t('footerGmail')} className="text-slate-400 hover:text-sky-400 transition-colors duration-150">
+                <a href="mailto:teosushi1014@gmail.com" aria-label={t('footerGmail')} className="text-slate-400 hover:text-sky-400 transition-colors var(--duration-fast) var(--ease-ios)">
                   <img src="https://img.icons8.com/?size=256&id=P7UIlhbpWzZm&format=png" alt="Gmail" className="w-5 h-5"/>
                 </a>
               </Tooltip>
@@ -378,11 +396,13 @@ const AppLayout: React.FC = () => {
       </footer>
       
       {apiKeyWarnings.length > 0 && (
-         <div role="alert" className="fixed bottom-4 left-1/2 -translate-x-1/2 w-auto max-w-[calc(100%-2rem)] bg-amber-500 text-amber-50 p-3 sm:p-3.5 text-xs sm:text-sm shadow-2xl z-[200] flex items-center justify-center gap-2.5 border border-amber-400/50 rounded-xl">
-            <KeyIcon className="w-4 h-4 sm:w-5 sm:h-5 text-amber-950 flex-shrink-0" strokeWidth={2}/>
-            <strong className="font-semibold">{t('apiKeyWarningTitle')}:</strong> 
-            <span className="text-amber-950/90">{t('apiKeyWarningMissing', {keys: apiKeyWarnings.join(', ')})} {t('apiKeyWarningFunctionality')}</span>
-        </div>
+         <AnimatedApiKeyWarning>
+            <div role="alert" className="fixed bottom-4 left-1/2 -translate-x-1/2 w-auto max-w-[calc(100%-2rem)] bg-amber-500 text-amber-50 p-3 sm:p-3.5 text-xs sm:text-sm shadow-2xl z-[200] flex items-center justify-center gap-2.5 border border-amber-400/50 rounded-xl">
+                <KeyIcon className="w-4 h-4 sm:w-5 sm:h-5 text-amber-950 flex-shrink-0" strokeWidth={2}/>
+                <strong className="font-semibold">{t('apiKeyWarningTitle')}:</strong> 
+                <span className="text-amber-950/90">{t('apiKeyWarningMissing', {keys: apiKeyWarnings.join(', ')})} {t('apiKeyWarningFunctionality')}</span>
+            </div>
+        </AnimatedApiKeyWarning>
       )}
     </div>
   );

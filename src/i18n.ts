@@ -154,7 +154,7 @@ export const translations = {
     step3ErrorAPIKeyMissingForModel: "API Key for {modelName} is missing! Quiz generation cannot proceed. Please ensure it is correctly configured in your environment.",
     step3ErrorGenerate: "Failed to generate quiz.",
     step3AIIsRetrying: "AI is retrying (Attempt {currentAttempt}/{maxAttempts})...",
-    step3GeneratingRetryButton: "Retrying Generation ({currentAttempt}/{maxAttempts})...",
+    step3GeneratingRetryButton: "Retrying ({currentAttempt}/{maxAttempts})...",
     fullTextModalTitle: "Full Extracted Text",
     stepCompleted: "Step Completed",
     
@@ -290,6 +290,7 @@ export const translations = {
     quizPracticeTitle: "Practice Quiz: {quizTitle}",
     finishPractice: "Finish Practice",
     practice: "Practice", 
+    quizPracticeEnding: "Processing quiz completion...",
     practiceSummaryTitle: "Practice Summary: {quizTitle}",
     practiceSummarySubtitle: "Review your practice session.",
     practiceSummaryCorrectFirstTry: "Correct on First Try",
@@ -456,7 +457,7 @@ export const translations = {
     step3ErrorAPIKeyMissingForModel: "API Key cho {modelName} bị thiếu! Không thể tạo quiz. Vui lòng đảm bảo đã cấu hình chính xác trong môi trường của bạn.",
     step3ErrorGenerate: "Không thể tạo quiz.",
     step3AIIsRetrying: "AI đang thử lại (Lần {currentAttempt}/{maxAttempts})...",
-    step3GeneratingRetryButton: "Đang Thử Tạo Lại ({currentAttempt}/{maxAttempts})...",
+    step3GeneratingRetryButton: "Đang Thử Lại ({currentAttempt}/{maxAttempts})...",
     fullTextModalTitle: "Toàn bộ văn bản được trích xuất",
     stepCompleted: "Bước hoàn tất",
     
@@ -594,6 +595,7 @@ export const translations = {
     quizPracticeTitle: "Luyện tập Quiz: {quizTitle}",
     finishPractice: "Kết thúc Luyện tập",
     practice: "Luyện tập",
+    quizPracticeEnding: "Đang xử lý hoàn tất quiz...",
     practiceSummaryTitle: "Tổng kết Luyện tập: {quizTitle}",
     practiceSummarySubtitle: "Xem lại phiên luyện tập của bạn.",
     practiceSummaryCorrectFirstTry: "Đúng ở lần thử đầu tiên",

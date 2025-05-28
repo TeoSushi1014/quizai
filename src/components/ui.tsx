@@ -19,17 +19,30 @@ export const Tooltip: React.FC<TooltipProps> = ({
   children,
   wrapperClassName = '',
   tooltipClassName = '',
-  delayDuration = 100,
+  delayDuration = 100, 
 }) => {
   const [isVisible, setIsVisible] = useState(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mountedRef = useRef(false);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
 
   const showTooltip = () => {
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
     }
     timeoutRef.current = setTimeout(() => {
-      setIsVisible(true);
+      if (mountedRef.current) {
+        setIsVisible(true);
+      }
     }, delayDuration);
   };
 
@@ -40,8 +53,9 @@ export const Tooltip: React.FC<TooltipProps> = ({
     setIsVisible(false);
   };
 
-  const baseTooltipStyle = `absolute z-50 whitespace-nowrap rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-semibold text-slate-100 shadow-xl ring-1 ring-slate-700/50 transition-opacity duration-200 ease-out pointer-events-none`;
-
+  const baseTooltipStyle = `absolute z-50 whitespace-nowrap rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-semibold text-slate-100 shadow-xl ring-1 ring-slate-700/50 pointer-events-none
+                           transition-opacity var(--duration-fast) var(--ease-ios)`;
+  
   const placementStyles: Record<NonNullable<TooltipProps['placement']>, string> = {
     'top': 'bottom-full left-1/2 -translate-x-1/2 mb-2',
     'top-start': 'bottom-full left-0 mb-2',
@@ -84,10 +98,10 @@ export const Tooltip: React.FC<TooltipProps> = ({
       tabIndex={needsTabIndex ? 0 : undefined}
     >
       {children}
-      {isVisible && content && (
+      {content && ( 
         <div
           role="tooltip"
-          className={`${baseTooltipStyle} ${placementStyles[placement]} ${tooltipClassName} opacity-100`} // Removed animation class
+          className={`${baseTooltipStyle} ${placementStyles[placement]} ${isVisible ? 'opacity-100' : 'opacity-0'} ${tooltipClassName}`}
         >
           {content}
         </div>
@@ -123,7 +137,10 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(({
   tooltipPlacement,
   ...props
 }, ref) => {
-  const baseStyle = "inline-flex items-center justify-center font-semibold rounded-lg focus:outline-none transition-colors transition-transform transition-opacity transition-shadow duration-200 ease-out transform active:scale-[0.97] disabled:opacity-60 disabled:cursor-not-allowed disabled:shadow-none";
+  const baseStyle = `inline-flex items-center justify-center font-semibold rounded-lg focus:outline-none 
+                     disabled:opacity-60 disabled:cursor-not-allowed disabled:shadow-none
+                     transition-all var(--duration-fast) var(--ease-ios)
+                     hover:scale-[1.02] active:scale-[0.98] will-change-transform`; // Subtle iOS-like scale
 
   const variantStyles = {
     primary: "bg-sky-500 hover:bg-sky-400 text-white shadow-lg hover:shadow-sky-400/40 focus-visible:ring-4 focus-visible:ring-sky-400/30 disabled:bg-sky-500/50 border border-transparent",
@@ -132,7 +149,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(({
     subtle: "bg-slate-700/60 hover:bg-slate-600/80 text-slate-200 focus-visible:ring-4 focus-visible:ring-slate-400/20 shadow-none border border-transparent disabled:text-slate-500",
     danger: "bg-red-500 hover:bg-red-600 text-white shadow-lg hover:shadow-red-500/40 focus-visible:ring-4 focus-visible:ring-red-500/30 disabled:bg-red-500/50 border border-transparent",
     ghost: "bg-transparent hover:bg-slate-400/10 text-slate-300 hover:text-sky-300 focus-visible:ring-4 focus-visible:ring-slate-400/20 disabled:text-slate-500 shadow-none border border-transparent",
-    link: "bg-transparent text-sky-400 hover:text-sky-300 hover:underline focus-visible:ring-1 focus-visible:ring-sky-400/50 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-900 rounded-sm shadow-none p-0 border border-transparent disabled:text-sky-400/70 disabled:no-underline",
+    link: "bg-transparent text-sky-400 hover:text-sky-300 hover:underline focus-visible:ring-1 focus-visible:ring-sky-400/50 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-900 rounded-sm shadow-none p-0 border border-transparent !hover:scale-100 !active:scale-100", // No scale for link
   };
 
   const sizeStyles = {
@@ -191,10 +208,10 @@ interface CardProps {
 }
 
 export const Card: React.FC<CardProps> = ({ children, className = '', onClick, useGlassEffect = false, style }) => {
-  const baseClasses = "rounded-xl p-6 md:p-8 card-float-hover";
+  const baseClasses = `rounded-xl p-6 md:p-8 ${onClick ? 'card-float-hover' : ''}`;
   const themeClasses = useGlassEffect
     ? "glass-effect" 
-    : "bg-slate-800 shadow-slate-950/50 border border-slate-700/70"; 
+    : "bg-slate-800 shadow-slate-950/50 border border-slate-700/70 transition-all var(--duration-normal) var(--ease-ios)";
   const interactivityClasses = onClick ? "cursor-pointer" : "";
 
   const combinedClassName = `${baseClasses} ${themeClasses} ${interactivityClasses} ${className}`.trim().replace(/\s+/g, ' ');
@@ -228,11 +245,13 @@ export const Input: React.FC<InputProps> = ({ label, name, error, className = ''
         <input
           id={name}
           name={name}
-          className={`block w-full bg-slate-700/40 border ${error ? 'border-red-500/80 focus:ring-red-500/50 focus:border-red-500' : 'border-slate-600 focus:ring-sky-400/50 focus:border-sky-400'} text-slate-100 rounded-lg shadow-sm py-3 ${icon ? 'pl-12' : 'px-4'} focus:outline-none sm:text-sm transition-colors transition-border-color transition-shadow duration-200 ease-out placeholder-slate-500 hover:border-slate-500 focus:bg-slate-700/70 disabled:opacity-60 disabled:bg-slate-700/20 disabled:cursor-not-allowed ${inputClassName} ${className}`}
+          className={`block w-full bg-slate-700/40 border ${error ? 'border-red-500/80 focus:ring-red-500/50 focus:border-red-500' : 'border-slate-600 focus:ring-sky-400/50 focus:border-sky-400'} text-slate-100 rounded-lg shadow-sm py-3 ${icon ? 'pl-12' : 'px-4'} focus:outline-none sm:text-sm placeholder-slate-500 hover:border-slate-500 focus:bg-slate-700/70 disabled:opacity-60 disabled:bg-slate-700/20 disabled:cursor-not-allowed 
+                     transition-colors var(--duration-fast) var(--ease-ios), border-color var(--duration-fast) var(--ease-ios), box-shadow var(--duration-fast) var(--ease-ios) will-change-border, background-color, box-shadow
+                     ${inputClassName} ${className}`}
           {...props}
         />
       </div>
-      {error && <p className="mt-2 text-xs text-red-500">{error}</p>}
+      {error && <p className={`mt-2 text-xs text-red-500 animate-fadeIn`}>{error}</p>}
     </div>
   );
 };
@@ -251,10 +270,12 @@ export const Textarea: React.FC<TextareaProps> = ({ label, name, error, classNam
         id={name}
         name={name}
         rows={4}
-        className={`block w-full bg-slate-700/40 border ${error ? 'border-red-500/80 focus:ring-red-500/50 focus:border-red-500' : 'border-slate-600 focus:ring-sky-400/50 focus:border-sky-400'} text-slate-100 rounded-lg shadow-sm py-3 px-4 focus:outline-none sm:text-sm transition-colors transition-border-color transition-shadow duration-200 ease-out placeholder-slate-500 hover:border-slate-500 focus:bg-slate-700/70 disabled:opacity-60 disabled:bg-slate-700/20 disabled:cursor-not-allowed resize-none ${className}`}
+        className={`block w-full bg-slate-700/40 border ${error ? 'border-red-500/80 focus:ring-red-500/50 focus:border-red-500' : 'border-slate-600 focus:ring-sky-400/50 focus:border-sky-400'} text-slate-100 rounded-lg shadow-sm py-3 px-4 focus:outline-none sm:text-sm placeholder-slate-500 hover:border-slate-500 focus:bg-slate-700/70 disabled:opacity-60 disabled:bg-slate-700/20 disabled:cursor-not-allowed resize-none
+                     transition-colors var(--duration-fast) var(--ease-ios), border-color var(--duration-fast) var(--ease-ios), box-shadow var(--duration-fast) var(--ease-ios) will-change-border, background-color, box-shadow
+                     ${className}`}
         {...props}
       />
-      {error && <p className="mt-2 text-xs text-red-500">{error}</p>}
+      {error && <p className={`mt-2 text-xs text-red-500 animate-fadeIn`}>{error}</p>}
     </div>
   );
 };
@@ -276,16 +297,18 @@ export const Select: React.FC<SelectProps> = ({ label, name, error, options, cla
           id={name}
           name={name}
           disabled={disabled}
-          className={`block w-full bg-slate-700/40 border ${error ? 'border-red-500/80 focus:ring-red-500/50 focus:border-red-500' : 'border-slate-600 focus:ring-sky-400/50 focus:border-sky-400'} text-slate-100 rounded-lg shadow-sm py-3 px-4 focus:outline-none sm:text-sm transition-colors transition-border-color transition-shadow duration-200 ease-out appearance-none pr-10 hover:border-slate-500 focus:bg-slate-700/70 ${disabled ? 'opacity-60 bg-slate-700/30 text-slate-400 cursor-not-allowed' : ''} ${className}`}
+          className={`block w-full bg-slate-700/40 border ${error ? 'border-red-500/80 focus:ring-red-500/50 focus:border-red-500' : 'border-slate-600 focus:ring-sky-400/50 focus:border-sky-400'} text-slate-100 rounded-lg shadow-sm py-3 px-4 focus:outline-none sm:text-sm appearance-none pr-10 hover:border-slate-500 focus:bg-slate-700/70 ${disabled ? 'opacity-60 bg-slate-700/30 text-slate-400 cursor-not-allowed' : ''}
+                     transition-colors var(--duration-fast) var(--ease-ios), border-color var(--duration-fast) var(--ease-ios), box-shadow var(--duration-fast) var(--ease-ios) will-change-border, background-color, box-shadow
+                     ${className}`}
           {...props}
         >
           {options.map(opt => (
             <option key={opt.value} value={opt.value} className="bg-slate-800 text-slate-100">{opt.label}</option>
           ))}
         </select>
-        <ChevronDownIcon className={`absolute right-4 top-1/2 transform -translate-y-1/2 w-5 h-5 ${disabled ? 'text-slate-600' : 'text-slate-500'} pointer-events-none`} />
+        <ChevronDownIcon className={`absolute right-4 top-1/2 transform -translate-y-1/2 w-5 h-5 ${disabled ? 'text-slate-600' : 'text-slate-500'} pointer-events-none transition-transform var(--duration-fast) var(--ease-ios)`} />
       </div>
-      {error && <p className="mt-2 text-xs text-red-500">{error}</p>}
+      {error && <p className={`mt-2 text-xs text-red-500 animate-fadeIn`}>{error}</p>}
     </div>
   );
 };
@@ -304,20 +327,52 @@ interface ModalProps {
 
 export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, size = 'md', footerContent, titleClassName = '', hideCloseButton = false }) => {
   const [isMounted, setIsMounted] = useState(false);
+  const [animationState, setAnimationState] = useState<'hidden' | 'entering' | 'visible' | 'exiting'>('hidden');
+  const modalRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    setIsMounted(true); 
-    if (!isOpen) return;
-    const handleEscapeKey = (event: KeyboardEvent) => { if (event.key === 'Escape') onClose(); };
-    document.addEventListener('keydown', handleEscapeKey);
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.removeEventListener('keydown', handleEscapeKey);
-      document.body.style.overflow = 'auto';
-    };
+    setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (isOpen) {
+      setAnimationState('entering');
+      document.body.style.overflow = 'hidden';
+      const handleEscapeKey = (event: KeyboardEvent) => { if (event.key === 'Escape') onClose(); };
+      document.addEventListener('keydown', handleEscapeKey);
+
+      const timer = setTimeout(() => {
+        if (animationStateRef.current === 'entering') setAnimationState('visible');
+      }, parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--duration-fast') || '250'));
+
+
+      return () => {
+        clearTimeout(timer);
+        document.removeEventListener('keydown', handleEscapeKey);
+        // Check if another modal is not opening immediately
+        if (!document.querySelector('.modal-backdrop-enhanced.open')) {
+            document.body.style.overflow = 'auto';
+        }
+      };
+    } else if (animationState !== 'hidden' && animationState !== 'exiting') { // Only trigger exit if it was open or opening
+      setAnimationState('exiting');
+      const timer = setTimeout(() => {
+        setAnimationState('hidden');
+         if (!document.querySelector('.modal-backdrop-enhanced.open')) { // Double check before resetting overflow
+            document.body.style.overflow = 'auto';
+        }
+      }, parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--duration-fast') || '250'));
+      return () => clearTimeout(timer);
+    }
   }, [isOpen, onClose]);
 
-  if (!isOpen || !isMounted) return null; 
+  const animationStateRef = useRef(animationState);
+  useEffect(() => {
+    animationStateRef.current = animationState;
+  }, [animationState]);
+
+
+  if (!isMounted || animationState === 'hidden') return null;
 
   const sizeClasses = {
     sm: 'max-w-md', md: 'max-w-lg', lg: 'max-w-xl', xl: 'max-w-3xl',
@@ -326,9 +381,21 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, 
   
   const modalTitleId = typeof title === 'string' && title ? 'modal-title' : undefined;
 
+  let modalContainerClasses = `bg-slate-800/90 backdrop-blur-md rounded-2xl shadow-2xl w-full ${sizeClasses[size]} flex flex-col max-h-[90vh] !border-slate-700/50 overflow-hidden m-4 border`;
+  if (animationState === 'entering') {
+    modalContainerClasses += ' modal-container-animate-enter-active';
+  } else if (animationState === 'exiting') {
+    modalContainerClasses += ' modal-container-animate-exit-active';
+  } else if (animationState === 'visible') {
+     modalContainerClasses += ' modal-container-animate-enter-active'; // Keep final state class
+  } else {
+     modalContainerClasses += ' modal-container-animate-enter'; // Default initial state
+  }
+
+
   return ReactDOM.createPortal(
     <div
-        className="fixed inset-0 z-[100] flex items-center justify-center modal-backdrop-enhanced opacity-100" // Removed animation
+        className={`fixed inset-0 z-[100] flex items-center justify-center modal-backdrop-enhanced ${isOpen || animationState === 'exiting' ? 'open' : ''}`}
         onClick={(e) => {
           if (e.target === e.currentTarget) {
             onClose();
@@ -339,7 +406,8 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, 
         aria-labelledby={modalTitleId}
     >
       <div
-        className={`bg-slate-800/85 rounded-2xl shadow-2xl w-full ${sizeClasses[size]} flex flex-col max-h-[90vh] !border-slate-700/30 overflow-hidden m-4 border opacity-100`} // Removed animation
+        ref={modalRef}
+        className={modalContainerClasses}
         onClick={(e) => e.stopPropagation()}
       >
         {(title || !hideCloseButton) && (
@@ -348,7 +416,7 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, 
             {!hideCloseButton && (
                 <button
                     onClick={onClose}
-                    className="p-2 text-slate-400 hover:text-slate-200 rounded-lg hover:bg-slate-400/10 transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-800"
+                    className="p-2 text-slate-400 hover:text-slate-200 rounded-lg hover:bg-slate-400/10 focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-800 transition-colors var(--duration-fast) var(--ease-ios)"
                     aria-label="Close modal"
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -377,7 +445,7 @@ export const LoadingSpinner: React.FC<{text?: string; size?: 'sm' | 'md' | 'lg' 
   const sizeClasses = { sm: 'w-7 h-7', md: 'w-10 h-10', lg: 'w-14 h-14', xl: 'w-20 h-20' };
   const textClasses = { sm: 'text-sm', md: 'text-base', lg: 'text-lg', xl: 'text-xl' };
   return (
-    <div className={`flex flex-col items-center justify-center space-y-3.5 p-4 ${className || ''}`}>
+    <div className={`flex flex-col items-center justify-center space-y-3.5 p-4 animate-fadeIn ${className || ''}`}>
       <svg className={`animate-spin text-sky-400 ${sizeClasses[size]}`} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
         <circle className="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3"></circle>
         <path className="opacity-80" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -399,6 +467,10 @@ interface ProgressBarProps {
 export const ProgressBar: React.FC<ProgressBarProps> = ({ progress, label, className, size = 'md', barClassName, showPercentage = true }) => {
   const safeProgress = Math.max(0, Math.min(100, progress));
   const heightClass = size === 'sm' ? 'h-2' : size === 'md' ? 'h-2.5' : 'h-3';
+  
+  const shimmerClass = (safeProgress > 0 && safeProgress < 100) ? 'progress-bar-shimmer' : '';
+  const willChangeStyle = (safeProgress > 0 && safeProgress < 100) ? 'width, background-position' : 'width';
+
   return (
     <div className={`w-full ${className || ''}`}>
       {(label || showPercentage) && <div className="flex justify-between text-xs text-slate-400 mb-1.5">
@@ -407,8 +479,11 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({ progress, label, class
       </div>}
       <div className={`w-full bg-slate-700/80 rounded-full ${heightClass} overflow-hidden shadow-inner`}>
         <div
-          className={`${barClassName || 'bg-sky-400'} ${heightClass} rounded-full transition-all duration-300 ease-out`}
-          style={{ width: `${safeProgress}%` }}
+          className={`${barClassName || 'bg-sky-400'} ${heightClass} rounded-full transition-width var(--duration-normal) var(--ease-ios) ${shimmerClass}`}
+          style={{ 
+            width: `${safeProgress}%`,
+            willChange: willChangeStyle 
+          }}
           role="progressbar"
           aria-valuenow={safeProgress}
           aria-valuemin={0}
@@ -434,26 +509,38 @@ interface AccordionProps {
 
 export const Accordion: React.FC<AccordionProps> = ({ title, children, initiallyOpen = false, titleClassName, icon, containerClassName, contentClassName, chevronIcon }) => {
   const [isOpen, setIsOpen] = useState(initiallyOpen);
+  const contentRef = useRef<HTMLDivElement>(null);
 
   return (
-    <div className={`border border-slate-700/70 rounded-xl overflow-hidden bg-slate-800 shadow-lg ${containerClassName || ''}`}>
+    <div className={`border border-slate-700/70 rounded-xl overflow-hidden bg-slate-800 shadow-lg transition-shadow var(--duration-fast) var(--ease-ios) ${containerClassName || ''}`}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`w-full flex justify-between items-center p-4 sm:p-5 hover:bg-slate-700/50 transition-colors duration-200 text-left focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-inset
-         ${isOpen ? "bg-slate-700/30 border-b border-slate-700/60" : "bg-transparent"} ${titleClassName || ''}`}
+        className={`w-full flex justify-between items-center p-4 sm:p-5 hover:bg-slate-700/50 text-left focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-inset
+         transition-colors var(--duration-fast) var(--ease-ios) ${isOpen ? "bg-slate-700/30 border-b border-slate-700/60" : "bg-transparent"} ${titleClassName || ''}`}
         aria-expanded={isOpen}
       >
-        <div className="flex items-center flex-grow min-w-0 mr-2"> {/* Allow title container to grow and wrap */}
+        <div className="flex items-center flex-grow min-w-0 mr-2">
             {icon && <span className="mr-3.5 text-sky-400 flex-shrink-0">{icon}</span>}
-            <span className="font-semibold text-slate-100 text-sm sm:text-base block min-w-0 w-full">{title}</span> {/* Allow title content to use full width and wrap */}
+            <span className="font-semibold text-slate-100 text-sm sm:text-base block min-w-0 w-full">{title}</span>
         </div>
-        {chevronIcon ? React.cloneElement(chevronIcon, { className: `transform transition-transform duration-250 ease-out ${isOpen ? 'rotate-180' : ''} ${chevronIcon.props.className || ''}`}) : <ChevronDownIcon className={`w-5 h-5 text-slate-400 transform transition-transform duration-250 ease-out ${isOpen ? 'rotate-180' : ''}`} />}
+        {chevronIcon ? React.cloneElement(chevronIcon, { className: `transform transition-transform var(--duration-fast) var(--ease-ios) ${isOpen ? 'rotate-180' : ''} ${chevronIcon.props.className || ''}`}) 
+                     : <ChevronDownIcon className={`w-5 h-5 text-slate-400 transform transition-transform var(--duration-fast) var(--ease-ios) ${isOpen ? 'rotate-180' : ''}`} />}
       </button>
-      {isOpen && (
-        <div className={`p-4 sm:p-5 bg-slate-700/20 opacity-100 ${contentClassName || ''}`}> {/* Removed animation */}
+      <div 
+        ref={contentRef}
+        style={{ 
+          maxHeight: isOpen ? `${contentRef.current?.scrollHeight}px` : '0px',
+          opacity: isOpen ? 1 : 0,
+          transition: 'max-height var(--duration-normal) var(--ease-ios), opacity var(--duration-normal) var(--ease-ios)',
+          overflow: 'hidden',
+          willChange: 'max-height, opacity'
+        }}
+        className={`bg-slate-700/20 ${contentClassName || ''}`}
+      >
+        <div className="p-4 sm:p-5">
           {children}
         </div>
-      )}
+      </div>
     </div>
   );
 };
@@ -479,13 +566,15 @@ export const Toggle: React.FC<ToggleProps> = ({ label, checked, onChange, name, 
             aria-checked={checked}
             onClick={() => !disabled && onChange(!checked)}
             id={id}
-            className={`relative inline-flex flex-shrink-0 h-6 w-11 items-center rounded-full transition-colors duration-250 ease-in-out cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-800 ${checked ? 'bg-sky-400' : 'bg-slate-600'}`}
+            className={`relative inline-flex flex-shrink-0 h-6 w-11 items-center rounded-full cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-800 
+                       transition-colors var(--duration-fast) var(--ease-ios) will-change-background
+                       ${checked ? 'bg-sky-400' : 'bg-slate-600'}`}
             disabled={disabled}
         >
             <span className="sr-only">Use setting</span>
             <span
                 aria-hidden="true"
-                className={`dot pointer-events-none inline-block h-5 w-5 transform rounded-full shadow-lg ring-0 transition-transform duration-250 ease-in-out ${checked ? 'translate-x-[1.375rem]' : 'translate-x-[0.125rem]'}`}
+                className={`dot pointer-events-none inline-block h-5 w-5 transform rounded-full shadow-lg ring-0`} 
             />
         </button>
         {(label || description) && (
@@ -495,7 +584,7 @@ export const Toggle: React.FC<ToggleProps> = ({ label, checked, onChange, name, 
                 ) : (
                      <div className={`${disabled ? 'cursor-not-allowed' : 'cursor-pointer'} ${labelClassName}`} onClick={() => !disabled && onChange(!checked)}>{label}</div>
                 )}
-                {description && <p className="text-xs text-slate-400 mt-1">{description}</p>}
+                {description && <p className={`text-xs text-slate-400 mt-1 animate-fadeIn`}>{description}</p>}
             </div>
         )}
     </div>
@@ -518,7 +607,7 @@ export const Dropzone: React.FC<DropzoneProps> = ({
     acceptedFileTypes = ".pdf,.txt,.docx,.jpg,.png,.jpeg",
     maxFileSizeMB = 10,
     label,
-    icon = <DefaultUploadIcon className="w-10 h-10 sm:w-12 sm:h-12 mb-3 text-slate-500 group-hover:text-sky-400 transition-colors duration-200" strokeWidth={1}/>,
+    icon = <DefaultUploadIcon className="w-10 h-10 sm:w-12 sm:h-12 mb-3 text-slate-500 group-hover:text-sky-400 transition-colors var(--duration-fast) var(--ease-ios)" strokeWidth={1}/>,
     isLoading = false,
     currentFile = null,
 }) => {
@@ -577,27 +666,28 @@ export const Dropzone: React.FC<DropzoneProps> = ({
       <label
         htmlFor="file-upload-dropzone"
         onDragEnter={handleDragEnter} onDragLeave={handleDragLeave} onDragOver={handleDragOver} onDrop={handleDrop}
-        className={`group flex flex-col items-center justify-center w-full min-h-[220px] sm:min-h-[260px] border-2 ${isDragging ? 'border-sky-400 bg-sky-400/15 ring-4 ring-sky-400/20 ring-offset-1 ring-offset-slate-900 shadow-2xl' : 'border-slate-600 border-dashed'} rounded-xl cursor-pointer bg-slate-700/50 hover:bg-slate-700/70 hover:border-slate-500 transition-colors transition-border-color duration-200 ease-out relative p-5`}
+        className={`group flex flex-col items-center justify-center w-full min-h-[220px] sm:min-h-[260px] border-2 ${isDragging ? 'border-sky-400 bg-sky-400/15 ring-4 ring-sky-400/20 ring-offset-1 ring-offset-slate-900 shadow-2xl scale-[1.01]' : 'border-slate-600 border-dashed'} rounded-xl cursor-pointer bg-slate-700/50 hover:bg-slate-700/70 hover:border-slate-500 relative p-5
+                   transition-all var(--duration-fast) var(--ease-ios) will-change-transform, border, background-color`}
         tabIndex={0}
         onKeyDown={(e) => { if(e.key === 'Enter' || e.key === ' ') fileInputRef.current?.click();}}
       >
         {isLoading || currentFile ? (
-            <div className="text-center">
+            <div className="text-center animate-fadeIn">
                 <LoadingSpinner size="md" className="mb-3.5"/>
                 <p className="text-sm text-slate-300 font-semibold">{isLoading ? t('step1ProcessingFile') : t('loading')}</p>
                 {currentFile && <p className="text-xs text-slate-400 mt-1.5 truncate max-w-[200px] sm:max-w-xs">{currentFile.name}</p>}
             </div>
         ) : (
-            <div className="flex flex-col items-center justify-center text-center">
+            <div className="flex flex-col items-center justify-center text-center group-hover:opacity-80 transition-opacity var(--duration-fast) var(--ease-ios)">
             {icon}
-            <p className="mb-2 text-xs sm:text-sm text-slate-300 group-hover:text-slate-200 transition-colors">
-                <span className="font-semibold text-sky-400 group-hover:text-sky-300">{t('step1UploadOrDrag').split(' ')[0]}</span> {t('step1UploadOrDrag').substring(t('step1UploadOrDrag').indexOf(' ')+1)}
+            <p className="mb-2 text-xs sm:text-sm text-slate-300 group-hover:text-slate-200 transition-colors var(--duration-fast) var(--ease-ios)">
+                <span className="font-semibold text-sky-400 group-hover:text-sky-300 transition-colors var(--duration-fast) var(--ease-ios)">{t('step1UploadOrDrag').split(' ')[0]}</span> {t('step1UploadOrDrag').substring(t('step1UploadOrDrag').indexOf(' ')+1)}
             </p>
-            <p className="text-[0.7rem] sm:text-xs text-slate-400 group-hover:text-slate-300 transition-colors">{t('step1AcceptedFiles', {maxFileSizeMB})}</p>
+            <p className="text-[0.7rem] sm:text-xs text-slate-400 group-hover:text-slate-300 transition-colors var(--duration-fast) var(--ease-ios)">{t('step1AcceptedFiles', {maxFileSizeMB})}</p>
             </div>
         )}
         <input id="file-upload-dropzone" ref={fileInputRef} type="file" className="hidden" onChange={handleFileChange} accept={acceptedFileTypes} disabled={isLoading || !!currentFile}/>
-        {error && !isLoading && !currentFile && <div role="alert" className="absolute bottom-3 left-3 right-3 p-2 bg-red-500/30 border border-red-500/60 rounded-lg text-xs text-red-200 text-center shadow-md">{error}</div>}
+        {error && !isLoading && !currentFile && <div role="alert" className={`absolute bottom-3 left-3 right-3 p-2 bg-red-500/30 border border-red-500/60 rounded-lg text-xs text-red-200 text-center shadow-md animate-fadeIn`}>{error}</div>}
       </label>
     </div>
   );

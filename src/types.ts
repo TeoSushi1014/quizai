@@ -52,7 +52,8 @@ export interface QuizResult {
   timeTaken?: number; // in seconds
   totalCorrect: number;
   totalQuestions: number;
-  createdAt?: string; // ISO date string
+  createdAt?: string; // ISO date string - For when the result record itself was created
+  sourceMode?: 'practice' | 'take'; // To distinguish the origin of the result
 }
 
 export type AppView = 'home' | 'dashboard' | 'create-quiz' | 'take-quiz' | 'results' | 'review-quiz';
