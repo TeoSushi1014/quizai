@@ -1,25 +1,26 @@
 
 
+
 import React from 'react';
 
 export const APP_NAME = "QuizAI";
 
-// AI Model Identifiers
+
 export const GEMINI_MODEL_ID: 'gemini' = 'gemini';
 
-// Gemini Model Name (remains specific to Gemini service)
+
 export const GEMINI_TEXT_MODEL = "gemini-2.5-flash-preview-04-17"; 
 
 
-// SVG Icon Components
+
 interface IconProps {
   className?: string;
   strokeWidth?: number;
 }
 
-// Fix: Re-added UploadIcon as it's used as a default in the Dropzone component (ui.tsx).
-// SettingsIcon is removed as it's now an img tag in QuizCreatePage's getStepIndicator function.
-// UploadIcon has been re-added for general use, e.g., as a default in UI components.
+
+
+
 export const UploadIcon: React.FC<IconProps> = ({ className = "w-6 h-6", strokeWidth = 1.5 }) => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={strokeWidth} stroke="currentColor" className={className}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v12" />
@@ -69,8 +70,8 @@ export const CheckCircleIcon: React.FC<IconProps & {isFilled?: boolean}> = ({ cl
     xmlns="http://www.w3.org/2000/svg" 
     viewBox="0 0 24 24" 
     fill={isFilled ? "currentColor" : "none"} 
-    stroke={isFilled ? "none" : "currentColor"} // Solid icons typically don't have a separate stroke or it's the same as fill
-    strokeWidth={isFilled ? undefined : strokeWidth} // strokeWidth is not typically used for solid filled icons of this type
+    stroke={isFilled ? "none" : "currentColor"} 
+    strokeWidth={isFilled ? undefined : strokeWidth} 
     className={className}
   >
     {isFilled ? (

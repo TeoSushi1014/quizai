@@ -2,9 +2,10 @@
 
 
 
+
 import React, { useState, useCallback, ReactNode, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion'; // Added AnimatePresence
+import { motion, AnimatePresence } from 'framer-motion'; 
 import { useAppContext, useTranslation } from '../../App';
 import { QuizConfig, AIModelType, Quiz } from '../../types'; 
 import { Button, Card, Input, Textarea, Select, LoadingSpinner, ProgressBar, Toggle, Dropzone, Modal, Tooltip } from '../../components/ui';
@@ -20,7 +21,7 @@ const MAX_UNAUTH_QUIZZES_PER_DAY = 5;
 const UNAUTH_TIMESTAMPS_KEY = 'quizAICreationTimestamps_unauth';
 const MAX_GENERATION_RETRIES = 2;
 
-const easeIOS = [0.25, 0.1, 0.25, 1]; // Defined for Framer Motion transitions
+const easeIOS = [0.25, 0.1, 0.25, 1]; 
 
 const SummaryItem: React.FC<{icon: ReactNode, label: string, value: ReactNode, iconClassName?: string}> = ({ icon, label, value, iconClassName = "text-sky-300" }) => (
   <div className="flex items-start py-2.5">
@@ -570,8 +571,8 @@ const QuizCreatePage: React.FC = () => {
         const iconSize = "w-5 h-5"; 
         let currentButtonText = t('step3GenerateButton');
         if (isGeneratingQuiz) {
-            const attemptMatch = generationStatusText.match(/Attempt (\d+)\/(\d+)/) || // English
-                                 generationStatusText.match(/Lần (\d+)\/(\d+)/);       // Vietnamese
+            const attemptMatch = generationStatusText.match(/Attempt (\d+)\/(\d+)/) || 
+                                 generationStatusText.match(/Lần (\d+)\/(\d+)/);       
 
             if (attemptMatch && attemptMatch.length === 3) {
                 const currentAttempt = parseInt(attemptMatch[1], 10);

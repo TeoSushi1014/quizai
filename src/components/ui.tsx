@@ -1,7 +1,8 @@
 
 
+
 import React, { ReactNode, useState, useRef, useEffect, Children, cloneElement, ReactElement } from 'react';
-import ReactDOM from 'react-dom'; // Added for createPortal
+import ReactDOM from 'react-dom'; 
 import { ChevronDownIcon, UploadIcon as DefaultUploadIcon, InformationCircleIcon } from '../constants';
 import { useTranslation } from '../App';
 
@@ -75,12 +76,14 @@ export const Tooltip: React.FC<TooltipProps> = ({
   const isFocusableChild = (child: ReactNode): boolean => {
     if (React.isValidElement(child)) {
         const focusableTags = ['button', 'input', 'select', 'textarea', 'a'];
-        // @ts-ignore
+        
         if (typeof child.type === 'string' && focusableTags.includes(child.type)) {
             return true;
         }
-        // @ts-ignore
-        if (child.props && typeof child.props.tabIndex !== 'undefined' && child.props.tabIndex >= 0) {
+        
+        // Check for tabIndex on props
+        const props = child.props as { tabIndex?: any; [key: string]: any };
+        if (props && typeof props.tabIndex !== 'undefined' && Number(props.tabIndex) >= 0) {
             return true;
         }
     }
@@ -141,7 +144,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(({
   const baseStyle = `inline-flex items-center justify-center font-semibold rounded-lg focus:outline-none 
                      disabled:opacity-60 disabled:cursor-not-allowed disabled:shadow-none
                      transition-all var(--duration-fast) var(--ease-ios)
-                     hover:scale-[1.02] active:scale-[0.98] will-change-transform`; // Subtle iOS-like scale
+                     hover:scale-[1.02] active:scale-[0.98] will-change-transform`; 
 
   const variantStyles = {
     primary: "bg-sky-500 hover:bg-sky-400 text-white shadow-lg hover:shadow-sky-400/40 focus-visible:ring-4 focus-visible:ring-sky-400/30 disabled:bg-sky-500/50 border border-transparent",
@@ -150,7 +153,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(({
     subtle: "bg-slate-700/60 hover:bg-slate-600/80 text-slate-200 focus-visible:ring-4 focus-visible:ring-slate-400/20 shadow-none border border-transparent disabled:text-slate-500",
     danger: "bg-red-500 hover:bg-red-600 text-white shadow-lg hover:shadow-red-500/40 focus-visible:ring-4 focus-visible:ring-red-500/30 disabled:bg-red-500/50 border border-transparent",
     ghost: "bg-transparent hover:bg-slate-400/10 text-slate-300 hover:text-sky-300 focus-visible:ring-4 focus-visible:ring-slate-400/20 disabled:text-slate-500 shadow-none border border-transparent",
-    link: "bg-transparent text-sky-400 hover:text-sky-300 hover:underline focus-visible:ring-1 focus-visible:ring-sky-400/50 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-900 rounded-sm shadow-none p-0 border border-transparent !hover:scale-100 !active:scale-100", // No scale for link
+    link: "bg-transparent text-sky-400 hover:text-sky-300 hover:underline focus-visible:ring-1 focus-visible:ring-sky-400/50 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-900 rounded-sm shadow-none p-0 border border-transparent !hover:scale-100 !active:scale-100", 
   };
 
   const sizeStyles = {
@@ -350,16 +353,16 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, 
       return () => {
         clearTimeout(timer);
         document.removeEventListener('keydown', handleEscapeKey);
-        // Check if another modal is not opening immediately
+        
         if (!document.querySelector('.modal-backdrop-enhanced.open')) {
             document.body.style.overflow = 'auto';
         }
       };
-    } else if (animationState !== 'hidden' && animationState !== 'exiting') { // Only trigger exit if it was open or opening
+    } else if (animationState !== 'hidden' && animationState !== 'exiting') { 
       setAnimationState('exiting');
       const timer = setTimeout(() => {
         setAnimationState('hidden');
-         if (!document.querySelector('.modal-backdrop-enhanced.open')) { // Double check before resetting overflow
+         if (!document.querySelector('.modal-backdrop-enhanced.open')) { 
             document.body.style.overflow = 'auto';
         }
       }, parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--duration-fast') || '250'));
@@ -388,9 +391,9 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, 
   } else if (animationState === 'exiting') {
     modalContainerClasses += ' modal-container-animate-exit-active';
   } else if (animationState === 'visible') {
-     modalContainerClasses += ' modal-container-animate-enter-active'; // Keep final state class
+     modalContainerClasses += ' modal-container-animate-enter-active'; 
   } else {
-     modalContainerClasses += ' modal-container-animate-enter'; // Default initial state
+     modalContainerClasses += ' modal-container-animate-enter'; 
   }
 
 

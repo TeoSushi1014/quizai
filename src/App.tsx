@@ -1,7 +1,6 @@
 
 
 
-
 import React, { useState, useCallback, useEffect, createContext, useContext, ReactNode, useMemo, useRef } from 'react';
 import { HashRouter, Routes, Route, useNavigate, useLocation, NavLink as RouterNavLink } from 'react-router-dom';
 import { GoogleOAuthProvider, googleLogout } from '@react-oauth/google';
@@ -11,7 +10,7 @@ import { Button, LoadingSpinner, Tooltip } from './components/ui';
 import { getTranslator, translations } from './i18n';
 import useIntersectionObserver from './hooks/useIntersectionObserver';
 
-// Static import for page components
+
 import HomePage from './features/quiz/HomePage';
 import DashboardPage from './features/quiz/DashboardPage';
 import QuizCreatePage from './features/quiz/QuizCreatePage';
@@ -48,25 +47,25 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
   const [quizResult, setQuizResult] = useState<QuizResult | null>(null);
   const [language, setLanguageState] = useState<Language>('en');
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
-  const [isLoading, setIsLoading] = useState(true); // Start with loading true
+  const [isLoading, setIsLoading] = useState(true); 
   const [isGeminiKeyAvailable, setIsGeminiKeyAvailable] = useState(false);
   const [appInitialized, setAppInitialized] = useState(false);
 
   useEffect(() => {
-    // Initialize Gemini key status based on process.env.API_KEY
+    
     const apiKeyFromEnv = (typeof process !== 'undefined' && process.env) ? process.env.API_KEY : undefined;
     setIsGeminiKeyAvailable(typeof apiKeyFromEnv === 'string' && !!apiKeyFromEnv);
 
-    // Load language from localStorage
+    
     const savedLanguage = localStorage.getItem('appLanguage') as Language | null;
     if (savedLanguage && translations[savedLanguage]) {
       setLanguageState(savedLanguage);
       document.documentElement.lang = savedLanguage;
     } else {
-      document.documentElement.lang = 'en'; // Default
+      document.documentElement.lang = 'en'; 
     }
     
-    // Load user from localStorage
+    
     const savedUser = localStorage.getItem('currentUser');
     if (savedUser) {
       try {
@@ -77,7 +76,7 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
       }
     }
 
-    // Load quizzes from localStorage
+    
     const savedQuizzes = localStorage.getItem('quizzes');
     if (savedQuizzes) {
       try {
@@ -92,19 +91,19 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
 
   useEffect(() => {
     if (appInitialized) {
-      setIsLoading(false); // Stop loading once all initial data is attempted to load
+      setIsLoading(false); 
     }
   }, [appInitialized]);
 
 
   useEffect(() => {
-    if (appInitialized) { // Only save after initial load
+    if (appInitialized) { 
       localStorage.setItem('quizzes', JSON.stringify(allQuizzes));
     }
   }, [allQuizzes, appInitialized]);
   
   useEffect(() => {
-    if (appInitialized) { // Only save after initial load
+    if (appInitialized) { 
       if (currentUser) {
         localStorage.setItem('currentUser', JSON.stringify(currentUser));
       } else {
@@ -149,19 +148,19 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
 
   const login = useCallback((user: UserProfile) => {
     setCurrentUser(user);
-    setIsLoading(true); // Show loading while potentially migrating quizzes
+    setIsLoading(true); 
     
-    // Simulate async operation and update quizzes for the new user
+    
     setTimeout(() => {
       setAllQuizzes(prevAllQuizzes => {
         const updatedQuizzes = prevAllQuizzes.map(q => {
-          // If quiz has no userId, assign it to the new logged-in user
+          
           if (!q.userId) { 
             return { ...q, userId: user.id }; 
           }
           return q;
         });
-        // Note: localStorage for quizzes will be updated by the useEffect for allQuizzes
+        
         return updatedQuizzes;
       });
       setIsLoading(false);
@@ -173,15 +172,15 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     setCurrentUser(null);
     setActiveQuiz(null); 
     setQuizResult(null); 
-    // Do not clear allQuizzes, just filter them in context or let user decide to delete them
+    
     navigate('/'); 
   }, [navigate]);
 
   const quizzesForContext = useMemo(() => {
     if (currentUser) {
-      return allQuizzes.filter(q => q.userId === currentUser.id || !q.userId); // Show user's quizzes and unowned quizzes
+      return allQuizzes.filter(q => q.userId === currentUser.id || !q.userId); 
     }
-    // For logged-out users, show only quizzes that don't have a userId (unowned)
+    
     return allQuizzes.filter(q => !q.userId);
   }, [allQuizzes, currentUser]);
   
@@ -210,8 +209,7 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
   ]);
 
   if (!appInitialized) {
-    // You could return a global loading spinner here if preferred,
-    // but AppLayout will also show a loading state initially if isLoading is true.
+    
     return <div className="fixed inset-0 bg-slate-900 flex items-center justify-center z-[300]"><LoadingSpinner size="xl" /></div>;
   }
 
@@ -333,7 +331,7 @@ const AppLayout: React.FC = () => {
   const location = useLocation();
   
   const apiKeyWarnings = [];
-  // Check process.env.API_KEY based on the new guideline
+  
   const geminiApiKey = (typeof process !== 'undefined' && process.env) ? process.env.API_KEY : undefined;
   if (typeof geminiApiKey !== 'string' || !geminiApiKey) {
     apiKeyWarnings.push("Google Gemini API Key (process.env.API_KEY)");

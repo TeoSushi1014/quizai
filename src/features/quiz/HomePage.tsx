@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useRef, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -8,7 +9,7 @@ import { useAppContext, useTranslation } from '../../App';
 import { Quiz } from '../../types';
 import { PlusIcon, UserCircleIcon, ChevronRightIcon } from '../../constants';
 import QuizCard from './components/QuizCard';
-// FeatureItemCard import removed
+
 import useIntersectionObserver from '../../hooks/useIntersectionObserver';
 import { translations } from '../../i18n';
 import MathText from '../../components/MathText';
@@ -16,7 +17,7 @@ import MathText from '../../components/MathText';
 
 const MAX_RECENT_QUIZZES_HOME = 3;
 
-// Framer Motion Variants
+
 const easeIOS = [0.25, 0.1, 0.25, 1];
 const durationNormal = 0.35;
 const durationSlow = 0.4;
@@ -70,7 +71,7 @@ const FeedbackSection: React.FC = () => {
       initial={{ opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
-      transition={{ duration: durationSlow, ease: easeIOS, delay: 0.2 }} // Added slight delay
+      transition={{ duration: durationSlow, ease: easeIOS, delay: 0.2 }} 
     >
       <Card
         className={`max-w-2xl mx-auto shadow-2xl !rounded-2xl glass-effect !border-slate-700/40`}
@@ -166,7 +167,7 @@ const HomePage: React.FC = () => {
   const handleDeleteQuiz = (quizId: string) => { deleteQuiz(quizId); };
   const handleEditQuiz = (quiz: Quiz) => { navigate(`/review/${quiz.id}`, { state: { existingQuiz: quiz } }); };
 
-  // Removed howItWorksItems and featuresItems arrays
+  
 
 
   if (quizzes.length === 0) {
@@ -212,8 +213,7 @@ const HomePage: React.FC = () => {
           </motion.div>
         </section>
 
-        {/* How It Works Section REMOVED */}
-        {/* Features Section REMOVED */}
+        
 
         <FeedbackSection />
       </div>
@@ -279,7 +279,7 @@ const HomePage: React.FC = () => {
                 quiz={quiz}
                 onDelete={handleDeleteQuiz}
                 onEditQuiz={handleEditQuiz}
-                animationDelay={index * 0.1} // Pass as number in seconds (100ms = 0.1s)
+                animationDelay={index * 0.1} 
               />
             ))}
           </div>

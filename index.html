@@ -1,7 +1,7 @@
 <!DOCTYPE html>
-<html lang="en" class="dark"> <!-- Forced dark theme -->
+<html lang="en" class="dark"> 
 <head>
-  <!-- Google tag (gtag.js) -->
+  
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-PPLMXLJNZT"></script>
   <script>
     window.dataLayer = window.dataLayer || [];
@@ -10,7 +10,7 @@
 
     gtag('config', 'G-PPLMXLJNZT');
   </script>
-  <!-- reCAPTCHA Enterprise -->
+  
   <script src="https://www.google.com/recaptcha/enterprise.js?render=6LfjXkorAAAAAOk4X5LwVd-8RgwMGS0IWxZLtFGQ"></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -26,64 +26,64 @@
       --duration-normal: 350ms;
       --duration-slow: 400ms;
       --ease-ios: cubic-bezier(0.25, 0.1, 0.25, 1);
-      --ease-in-out-quad: cubic-bezier(0.455, 0.03, 0.515, 0.955); /* Alternative easing */
+      --ease-in-out-quad: cubic-bezier(0.455, 0.03, 0.515, 0.955); 
     }
 
-    /* Base HTML and Body styles - Dark Mode Only */
+    
     html {
       font-family: 'Inter', sans-serif;
     }
     body {
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
-      background-color: #0f172a; /* slate-900 */
-      color: #cbd5e1; /* slate-300 */
+      background-color: #0f172a; 
+      color: #cbd5e1; 
       cursor: default; 
     }
 
-    /* Custom scrollbar - Dark Mode Only */
+    
     ::-webkit-scrollbar { width: 7px; height: 7px; cursor: default !important; }
     ::-webkit-scrollbar-track { background: transparent; cursor: default !important; }
-    ::-webkit-scrollbar-thumb { background-color: #475569; /* slate-600 */ border-radius: 10px; border: 2px solid transparent; cursor: default !important; transition: background-color var(--duration-fast) var(--ease-ios); }
-    ::-webkit-scrollbar-thumb:hover { background-color: #64748b; /* slate-500 */ }
+    ::-webkit-scrollbar-thumb { background-color: #475569;  border-radius: 10px; border: 2px solid transparent; cursor: default !important; transition: background-color var(--duration-fast) var(--ease-ios); }
+    ::-webkit-scrollbar-thumb:hover { background-color: #64748b;  }
     ::-webkit-scrollbar-track-piece { cursor: default !important; }
     ::-webkit-scrollbar-button { cursor: default !important; }
     ::-webkit-scrollbar-corner { cursor: default !important; }
 
-    /* Global Focus Ring Style - Dark Mode Only */
+    
     *:focus-visible {
-      outline: 2px solid #38bdf8; /* sky-400 */
+      outline: 2px solid #38bdf8; 
       outline-offset: 2px;
-      box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.25); /* Lighter sky-400 glow */
+      box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.25); 
       transition: outline var(--duration-fast) var(--ease-ios), box-shadow var(--duration-fast) var(--ease-ios);
     }
     
-    /* Modal content scrollable utility */
+    
     .modal-content-scrollable { max-height: 75vh; overflow-y: auto; }
     
-    /* Glassmorphism Effect Utility - Dark Mode Only */
+    
     .glass-effect {
-      background-color: rgba(30, 41, 59, 0.75); /* slate-800/75 adjusted for depth */
+      background-color: rgba(30, 41, 59, 0.75); 
       backdrop-filter: blur(12px); 
       -webkit-backdrop-filter: blur(12px); 
-      border: 1px solid rgba(51, 65, 85, 0.6); /* slate-700/60 */
+      border: 1px solid rgba(51, 65, 85, 0.6); 
       box-shadow: 0 4px 12px rgba(0,0,0,0.2), 0 0 0 1px rgba(128, 128, 128, 0.1); 
     }
 
-    /* Toggle switch dot style - Dark Mode Only */
+    
     .dot { 
-      background-color: #e2e8f0; /* slate-200 */
+      background-color: #e2e8f0; 
       transition: transform var(--duration-fast) var(--ease-ios), background-color var(--duration-fast) var(--ease-ios);
     }
     input:checked + div + .dot, button[aria-checked="true"] .dot { 
-      background-color: #ffffff; /* White dot */ 
-      transform: translateX(calc(1.375rem - 0.125rem)); /* Adjusted for smoother end position */
+      background-color: #ffffff;  
+      transform: translateX(calc(1.375rem - 0.125rem)); 
     }
     button[aria-checked="false"] .dot {
       transform: translateX(0.125rem);
     }
 
-    /* Sticky review actions bar */
+    
     .sticky-review-actions {
       position: sticky;
       top: 4rem; 
@@ -93,19 +93,19 @@
       .sticky-review-actions { top: 4.5rem; }
     }
 
-    /* Enhanced modal backdrop - Dark Mode Only */
+    
     .modal-backdrop-enhanced { 
       backdrop-filter: blur(8px);  
       -webkit-backdrop-filter: blur(8px); 
-      background-color: rgba(15, 23, 42, 0.85); /* slate-900/85 */
-      opacity: 0; /* Initially hidden */
+      background-color: rgba(15, 23, 42, 0.85); 
+      opacity: 0; 
       transition: opacity var(--duration-fast) var(--ease-ios);
     }
     .modal-backdrop-enhanced.open {
-      opacity: 1; /* Made visible by JS */
+      opacity: 1; 
     }
     
-    /* Card hover effect (subtle lift and scale) - Dark Mode Only */
+    
     .card-float-hover { 
       transition: transform var(--duration-normal) var(--ease-ios), box-shadow var(--duration-normal) var(--ease-ios);
       will-change: transform, box-shadow;
@@ -115,7 +115,7 @@
       box-shadow: 0 8px 20px rgba(0,0,0,0.25), 0 0 0 1px rgba(128, 128, 128, 0.15);
     }
 
-    /* Mobile Navigation Bar Style */
+    
     .mobile-nav-style {
       background-color: rgba(22, 32, 53, 0.9); 
       backdrop-filter: blur(10px);
@@ -124,13 +124,13 @@
       box-shadow: 0 -4px 15px rgba(0,0,0,0.25); 
     }
 
-    /* For specifically targeted horizontal thin scrollbars */
+    
     .thin-scrollbar-horizontal::-webkit-scrollbar { height: 4px; cursor: default !important; }
     .thin-scrollbar-horizontal::-webkit-scrollbar-track { background: transparent; border-radius: 4px; cursor: default !important; }
     .thin-scrollbar-horizontal::-webkit-scrollbar-thumb { background-color: #475569; border-radius: 4px; cursor: default !important; transition: background-color var(--duration-fast) var(--ease-ios); }
     .thin-scrollbar-horizontal::-webkit-scrollbar-thumb:hover { background-color: #64748b; }
     
-    /* --- iOS Style Animations --- */
+    
     @keyframes fadeInUp {
       from { opacity: 0; transform: translateY(20px); }
       to { opacity: 1; transform: translateY(0); }
@@ -140,8 +140,8 @@
       will-change: transform, opacity;
     }
 
-    @keyframes slideInRightPage { /* More subtle for page content */
-      from { opacity: 0; transform: translateX(20px); } /* Changed from 30px to 20px */
+    @keyframes slideInRightPage { 
+      from { opacity: 0; transform: translateX(20px); } 
       to { opacity: 1; transform: translateX(0); }
     }
     .animate-slideInRightPage {
@@ -162,25 +162,25 @@
       from { opacity: 0; }
       to { opacity: 1; }
     }
-    .animate-fadeIn { /* For simple fades, can be used for stagger base */
+    .animate-fadeIn { 
       animation: fadeIn var(--duration-normal) var(--ease-ios) forwards;
       will-change: opacity;
     }
     
-    /* Updated existing animation classes to use new iOS style */
-    .animate-page-slide-fade-in { /* Used for main content, page sections */
-      animation: fadeInUp var(--duration-slow) var(--ease-ios) forwards; /* Uses fadeInUp, duration-slow (400ms) */
+    
+    .animate-page-slide-fade-in { 
+      animation: fadeInUp var(--duration-slow) var(--ease-ios) forwards; 
       will-change: transform, opacity;
     }
-    .animate-element-fade-scale-in { /* Used for smaller elements, errors, loading states */
-      animation: scaleIn var(--duration-fast) var(--ease-ios) forwards; /* Uses scaleIn, duration-fast (250ms) */
+    .animate-element-fade-scale-in { 
+      animation: scaleIn var(--duration-fast) var(--ease-ios) forwards; 
       will-change: transform, opacity;
     }
     
-    /* Utility for initially hidden elements for intersection observer animations */
+    
     .opacity-0 { opacity: 0; } 
 
-    /* Modal Animations */
+    
     @keyframes modalPopIn {
       from { opacity: 0; transform: scale(0.9) translateY(15px); }
       to { opacity: 1; transform: scale(1) translateY(0); }
@@ -190,31 +190,31 @@
       to { opacity: 0; transform: scale(0.9) translateY(15px); }
     }
 
-    .modal-container-animate-enter { /* Initial state before enter animation */
+    .modal-container-animate-enter { 
       opacity: 0;
       transform: scale(0.9) translateY(15px);
     }
-    .modal-container-animate-enter-active { /* State during enter animation */
+    .modal-container-animate-enter-active { 
       animation: modalPopIn var(--duration-fast) var(--ease-ios) forwards;
       will-change: transform, opacity;
     }
-    .modal-container-animate-exit { /* Initial state before exit animation (usually full opacity/scale) */
+    .modal-container-animate-exit { 
       opacity: 1;
       transform: scale(1) translateY(0);
     }
-    .modal-container-animate-exit-active { /* State during exit animation */
+    .modal-container-animate-exit-active { 
       animation: modalPopOut var(--duration-fast) var(--ease-ios) forwards;
       will-change: transform, opacity;
     }
 
-    /* Progress Bar Shimmer Animation */
+    
     @keyframes shimmer {
-      0% { background-position: -300px 0; } /* Start off-screen to the left */
-      100% { background-position: calc(100% + 300px) 0; } /* End off-screen to the right, relative to bar's current width */
+      0% { background-position: -300px 0; } 
+      100% { background-position: calc(100% + 300px) 0; } 
     }
     .progress-bar-shimmer {
-      position: relative; /* Needed for overflow hidden on pseudo-elements if used, or direct background */
-      overflow: hidden; /* Ensures shimmer stays within bounds */
+      position: relative; 
+      overflow: hidden; 
     }
     .progress-bar-shimmer::after {
       content: '';
@@ -231,13 +231,13 @@
         rgba(255, 255, 255, 0.12) 70%,
         transparent 100%
       );
-      background-size: 250px 100%; /* Width of the shimmer effect */
+      background-size: 250px 100%; 
       background-repeat: no-repeat;
-      animation: shimmer 1.8s linear infinite; /* Slower shimmer */
+      animation: shimmer 1.8s linear infinite; 
     }
 
 
-    /* Reduced motion preferences */
+    
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after {
         animation-duration: 1ms !important;
@@ -249,7 +249,7 @@
       .animate-fadeInUp, .animate-slideInRightPage, .animate-scaleIn, .animate-fadeIn,
       .animate-page-slide-fade-in, .animate-element-fade-scale-in,
       .modal-container-animate-enter-active, .modal-container-animate-exit-active {
-        animation: none !important; /* Explicitly turn off animation */
+        animation: none !important; 
         opacity: 1 !important;
         transform: none !important;
       }
@@ -259,20 +259,20 @@
       }
       .modal-backdrop-enhanced, .dot, .card-float-hover, .thin-scrollbar-horizontal::-webkit-scrollbar-thumb,
       button, a, input, select, textarea, [role="button"], [role="switch"], [role="tab"],
-      .transition-all, .transition-colors, .transition-opacity, .transition-transform, .transition-width, .transition-shadow { /* Add more specific transition classes if needed */
+      .transition-all, .transition-colors, .transition-opacity, .transition-transform, .transition-width, .transition-shadow { 
         transition: none !important;
       }
-       /* Reset any direct hover/active scaling on buttons for reduced motion */
+       
       .hover\\:scale-\\[1\\.02\\]:hover, .active\\:scale-\\[0\\.98\\]:active {
         transform: none !important;
       }
     }
 
-    /* Prevent reCAPTCHA badge from being obscured by mobile nav */
-    @media (max-width: 767px) { /* md breakpoint in Tailwind is 768px */
+    
+    @media (max-width: 767px) { 
       .grecaptcha-badge {
-        margin-bottom: calc(4rem + 10px) !important; /* 4rem for nav height + 10px for spacing */
-        transition: none !important; /* Prevent transition issues */
+        margin-bottom: calc(4rem + 10px) !important; 
+        transition: none !important; 
       }
     }
   </style>

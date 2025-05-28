@@ -1,11 +1,12 @@
 
+
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Quiz, Question } from '../../../types';
 import { useAppContext } from '../../../App';
 import { AttemptSettings } from '../components/QuizCard';
 
-// Helper function for shuffling (Fisher-Yates shuffle)
+
 function shuffleArray<T>(array: T[]): T[] {
   if (!array) return [];
   const newArray = [...array];
@@ -30,18 +31,18 @@ export const useQuizFlow = (quizIdParam?: string, onTimeUp?: () => void) => {
   const quizId = quizIdParam || routeQuizId;
 
   const [localActiveQuiz, setLocalActiveQuiz] = useState<Quiz | null>(null);
-  const [attemptSettingsState, setAttemptSettingsState] = useState<AttemptSettings>(DEFAULT_ATTEMPT_SETTINGS); // Renamed to avoid conflict
+  const [attemptSettingsState, setAttemptSettingsState] = useState<AttemptSettings>(DEFAULT_ATTEMPT_SETTINGS); 
   const [shuffledQuestions, setShuffledQuestions] = useState<Question[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const timerRef = useRef<number | null>(null);
 
-  // Memoize attemptSettings derived from location.state
+  
   const routeAttemptSettingsFromState = (location.state as { attemptSettings?: AttemptSettings } | null)?.attemptSettings;
   const stableRouteAttemptSettings = useMemo(() => {
     return routeAttemptSettingsFromState;
-  }, [JSON.stringify(routeAttemptSettingsFromState)]); // Stable if content is same
+  }, [JSON.stringify(routeAttemptSettingsFromState)]); 
 
   useEffect(() => {
     let mounted = true;
@@ -51,12 +52,12 @@ export const useQuizFlow = (quizIdParam?: string, onTimeUp?: () => void) => {
         return;
       }
 
-      // Use the memoized route settings or fall back to current state or defaults
+      
       const newAttemptSettings = stableRouteAttemptSettings ||
                                (localActiveQuiz?.id === quizId ? attemptSettingsState : DEFAULT_ATTEMPT_SETTINGS);
 
       if (mounted) {
-        // Only update if settings actually differ to prevent unnecessary re-renders/effects
+        
         if (JSON.stringify(newAttemptSettings) !== JSON.stringify(attemptSettingsState)) {
           setAttemptSettingsState(newAttemptSettings);
         }
@@ -95,7 +96,7 @@ export const useQuizFlow = (quizIdParam?: string, onTimeUp?: () => void) => {
       mounted = false;
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [quizId, quizzes, globalActiveQuiz, navigate, setGlobalActiveQuiz, stableRouteAttemptSettings, localActiveQuiz?.id, attemptSettingsState]); // Added localActiveQuiz.id and attemptSettingsState for correct fallback logic
+  }, [quizId, quizzes, globalActiveQuiz, navigate, setGlobalActiveQuiz, stableRouteAttemptSettings, localActiveQuiz?.id, attemptSettingsState]); 
 
 
   useEffect(() => {
@@ -121,11 +122,11 @@ export const useQuizFlow = (quizIdParam?: string, onTimeUp?: () => void) => {
   const currentQuestion = useMemo(() => {
     if (!shuffledQuestions || shuffledQuestions.length === 0 || currentQuestionIndex >= shuffledQuestions.length) return undefined;
     const question = shuffledQuestions[currentQuestionIndex];
-    if (question && attemptSettingsState.shuffleAnswers) { // Use attemptSettingsState
+    if (question && attemptSettingsState.shuffleAnswers) { 
       return { ...question, options: shuffleArray([...question.options]) };
     }
     return question;
-  }, [shuffledQuestions, currentQuestionIndex, attemptSettingsState.shuffleAnswers]); // Use attemptSettingsState
+  }, [shuffledQuestions, currentQuestionIndex, attemptSettingsState.shuffleAnswers]); 
 
   const goToNextQuestion = useCallback(() => {
     if (currentQuestionIndex < shuffledQuestions.length - 1) {
@@ -156,7 +157,7 @@ export const useQuizFlow = (quizIdParam?: string, onTimeUp?: () => void) => {
     currentQuestionIndex,
     loading,
     timeLeft,
-    attemptSettings: attemptSettingsState, // Expose the state version
+    attemptSettings: attemptSettingsState, 
     goToNextQuestion,
     goToPreviousQuestion,
     formatTime,

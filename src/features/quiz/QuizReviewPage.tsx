@@ -1,13 +1,14 @@
 
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+
+import React, { useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { motion } from 'framer-motion'; // Import motion
+import { motion } from 'framer-motion'; 
 import { useAppContext, useTranslation } from '../../App';
 import { Quiz, Question, QuizConfig } from '../../types';
 import { Button, Card, Input, Textarea, Select, Modal, LoadingSpinner, Tooltip } from '../../components/ui';
 import MathText from '../../components/MathText';
-import { PlusIcon, DeleteIcon, SaveIcon, ArrowUturnLeftIcon, HomeIcon, PlusCircleIcon, EditIcon, ExportIcon, CopyIcon, DownloadIcon } from '../../constants';
+import { PlusIcon, DeleteIcon, SaveIcon, ArrowUturnLeftIcon, HomeIcon, PlusCircleIcon, EditIcon, ExportIcon, CopyIcon, DownloadIcon, InformationCircleIcon } from '../../constants';
 import { formatQuizToAzotaStyle1, formatQuizToAzotaStyle2, formatQuizToAzotaStyle4 } from '../../services/azotaExportService';
 import useIntersectionObserver from '../../hooks/useIntersectionObserver';
 
@@ -95,6 +96,150 @@ const AzotaExportModal: React.FC<{
 AzotaExportModal.displayName = "AzotaExportModal";
 
 
+interface QuestionItemProps {
+  question: Question;
+  index: number;
+  // editableQuiz is not directly used if specific handlers are passed and work on the parent's state
+  // setEditableQuiz is not directly used if specific handlers are passed
+  handleFieldChange: (questionId: string, field: keyof Question, value: any) => void;
+  handleOptionChange: (questionId: string, optionIndex: number, newText: string) => void;
+  handleAddOption: (questionId: string) => void;
+  handleRemoveOption: (questionId: string, optionIndex: number) => void;
+  handleDeleteQuestion: (questionId: string) => void;
+  animationDelayFactor: number;
+}
+
+const QuestionItem: React.FC<QuestionItemProps> = ({
+  question,
+  index,
+  handleFieldChange,
+  handleOptionChange,
+  handleAddOption,
+  handleRemoveOption,
+  handleDeleteQuestion,
+  animationDelayFactor
+}) => {
+  const { t } = useTranslation();
+  const itemRef = useRef<HTMLDivElement>(null);
+  const isVisible = useIntersectionObserver(itemRef, { threshold: 0.1, freezeOnceVisible: true });
+
+  const optionItems = question.options.map((opt, optIndex) => ({
+    value: opt, // Value must be the option text itself to match correctAnswer
+    label: `${t('reviewOptionLabel', {index: optIndex+1})}: ${opt.length > 30 ? opt.substring(0,27) + '...' : opt}`
+  }));
+
+  if (optionItems.length === 0 && question.correctAnswer) {
+     optionItems.push({value: question.correctAnswer, label: question.correctAnswer});
+  } else if (optionItems.length > 0 && !question.options.includes(question.correctAnswer)) {
+     // This case should be handled by handleOptionChange or when initializing/saving to ensure correctAnswer is always valid.
+     // For display, if correctAnswer is somehow not in options, the Select might behave unexpectedly.
+     // A robust solution would be to ensure correctAnswer is always one of the options.
+  }
+
+
+  return (
+    <motion.div
+      ref={itemRef}
+      initial={{ opacity: 0, y: 30 }}
+      animate={isVisible ? { opacity: 1, y: 0 } : { opacity: 0, y: 30 }}
+      transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1], delay: isVisible ? animationDelayFactor * 0.07 : 0 }}
+      className="question-item-motion-wrapper"
+    >
+      <Card useGlassEffect className="shadow-xl !rounded-2xl !border-slate-700/50">
+        <div className="flex justify-between items-center mb-5 sm:mb-6">
+          <h3 className="text-lg sm:text-xl font-semibold text-sky-300">
+            {t('reviewQuestionLabel', { index: index + 1 })}
+          </h3>
+          <Tooltip content={t('reviewDeleteQuestionLabel')} placement="left">
+            <Button
+              variant="danger"
+              size="sm"
+              onClick={() => handleDeleteQuestion(question.id)}
+              className="!p-2.5 rounded-lg shadow-md hover:shadow-red-500/50"
+              aria-label={t('reviewDeleteQuestionLabel')}
+            >
+              <DeleteIcon className="w-4 h-4" />
+            </Button>
+          </Tooltip>
+        </div>
+
+        <div className="space-y-5 sm:space-y-6">
+          <Textarea
+            label={<span className="font-medium text-slate-200">{t('reviewQuestionTextLabel')}</span>}
+            value={question.questionText}
+            onChange={(e) => handleFieldChange(question.id, 'questionText', e.target.value)}
+            placeholder={t('reviewQuestionTextPlaceholder')}
+            rows={3}
+            className="min-h-[80px] text-sm"
+          />
+
+          <div>
+            <label className="block text-sm font-medium text-slate-200 mb-2.5">{t('reviewOptionsLabel')}</label>
+            <div className="space-y-3.5">
+              {question.options.map((optionText, optIndex) => (
+                <div key={optIndex} className="flex items-center gap-3">
+                  <Input
+                    id={`option-input-${question.id}-${optIndex}`}
+                    value={optionText}
+                    onChange={(e) => handleOptionChange(question.id, optIndex, e.target.value)}
+                    placeholder={t('reviewOptionPlaceholder', {index: optIndex + 1})}
+                    inputClassName="text-sm !py-2.5"
+                    containerClassName="flex-grow"
+                  />
+                  {question.options.length > 2 && (
+                    <Tooltip content={t('reviewRemoveOptionLabel')} placement="right">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleRemoveOption(question.id, optIndex)}
+                        className="!p-2.5 rounded-lg text-red-400/80 hover:text-red-400 hover:bg-red-400/15"
+                        aria-label={t('reviewRemoveOptionLabel')}
+                      >
+                        <DeleteIcon className="w-4 h-4" />
+                      </Button>
+                    </Tooltip>
+                  )}
+                </div>
+              ))}
+            </div>
+            {question.options.length < 5 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleAddOption(question.id)}
+                leftIcon={<PlusIcon className="w-4 h-4" strokeWidth={2}/>}
+                className="mt-4 py-2 px-4 rounded-lg border-dashed border-sky-400/70 text-sky-300 hover:bg-sky-400/15 hover:border-sky-400"
+              >
+                {t('reviewAddOption')}
+              </Button>
+            )}
+          </div>
+          
+          <Select
+            label={<span className="font-medium text-slate-200">{t('reviewCorrectAnswerLabel')}</span>}
+            value={question.correctAnswer}
+            onChange={(e) => handleFieldChange(question.id, 'correctAnswer', e.target.value)}
+            options={optionItems.length > 0 ? optionItems : [{value: "", label: "Please add options"}]}
+            disabled={optionItems.length === 0}
+            className="text-sm"
+          />
+
+          <Textarea
+            label={<span className="font-medium text-slate-200">{t('reviewExplanationLabel')}</span>}
+            value={question.explanation}
+            onChange={(e) => handleFieldChange(question.id, 'explanation', e.target.value)}
+            placeholder={t('reviewExplanationPlaceholder')}
+            rows={3}
+            className="min-h-[80px] text-sm"
+          />
+        </div>
+      </Card>
+    </motion.div>
+  );
+};
+QuestionItem.displayName = "QuestionItem";
+
+
 const QuizReviewPage: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -156,6 +301,7 @@ const QuizReviewPage: React.FC = () => {
         ...prev,
         questions: prev.questions.map(q => {
           if (q.id === questionId) {
+            if (q.options.length >= 5) return q; // Max 5 options
             newOptionIndex = q.options.length;
             return { ...q, options: [...q.options, t('reviewNewOptionDefault', { index: newOptionIndex + 1 })] };
           }
@@ -222,151 +368,62 @@ const QuizReviewPage: React.FC = () => {
       </div>
 
       <div>
-        <div ref={titleCardRef} className={`${isTitleCardVisible ? 'animate-fadeInUp' : 'opacity-0'} mb-6 sm:mb-8 mt-6 sm:mt-8`}> {/* Added margin here */}
+        <div ref={titleCardRef} className={`${isTitleCardVisible ? 'animate-fadeInUp' : 'opacity-0'} mb-6 sm:mb-8 mt-6 sm:mt-8`}> 
           <Card useGlassEffect className="shadow-2xl !rounded-2xl">
             <p className="text-sm text-slate-300/90 mb-6">{isEditingExisting ? t('reviewEditQuizDesc') : t('reviewFinalizeQuizDesc')}</p>
             <Input label={<span className="text-base font-semibold text-slate-100">{t('reviewQuizTitleLabel')}</span>} value={editableQuiz.title} onChange={(e) => setEditableQuiz(prev => prev ? { ...prev, title: e.target.value } : null)} className="text-xl mb-3" placeholder={t('step2QuizTitlePlaceholder')} inputClassName="!text-xl !font-semibold !py-3.5 !rounded-xl" />
+             {editableQuiz.config && (
+                <details className="mt-5 text-xs text-slate-400">
+                    <summary className="cursor-pointer hover:text-sky-300 flex items-center font-medium group transition-colors">
+                        <InformationCircleIcon className="w-4 h-4 mr-2 text-slate-500 group-hover:text-sky-400 transition-colors"/>
+                        View Generation Config
+                    </summary>
+                    <div className="mt-2.5 p-3.5 bg-slate-700/60 border border-slate-600/60 rounded-lg shadow-inner space-y-1.5">
+                        <p><strong>Mode:</strong> {editableQuiz.config.difficulty === 'AI-Determined' ? "AI Optimized" : "Manual"}</p>
+                        <p><strong>Questions:</strong> {editableQuiz.config.difficulty === 'AI-Determined' && editableQuiz.config.numQuestions === 0 ? "AI Choice" : editableQuiz.config.numQuestions}</p>
+                        <p><strong>Difficulty:</strong> {editableQuiz.config.difficulty === 'AI-Determined' ? "AI Determined" : editableQuiz.config.difficulty}</p>
+                        <p><strong>Language:</strong> {editableQuiz.config.language}</p>
+                        <p><strong>Model:</strong> {editableQuiz.config.selectedModel}</p>
+                        {editableQuiz.config.customUserPrompt && <p><strong>Custom Prompt:</strong> <MathText text={editableQuiz.config.customUserPrompt} /></p>}
+                    </div>
+                </details>
+            )}
           </Card>
         </div>
         
         <div className="space-y-6 sm:space-y-8">
-          {editableQuiz.questions.map((q, index) => {
+          {editableQuiz.questions.map((q, idx) => {
             return <QuestionItem
                       key={q.id}
                       question={q}
-                      index={index}
-                      editableQuiz={editableQuiz}
-                      setEditableQuiz={setEditableQuiz}
+                      index={idx}
+                      handleFieldChange={handleFieldChange}
+                      handleOptionChange={handleOptionChange}
                       handleAddOption={handleAddOption}
                       handleRemoveOption={handleRemoveOption}
                       handleDeleteQuestion={handleDeleteQuestion}
-                      handleFieldChange={handleFieldChange}
-                      handleOptionChange={handleOptionChange}
-                      animationDelayFactor={index}
+                      animationDelayFactor={idx}
                     />;
           })}
         </div>
       </div>
 
       <div className="mt-10 sm:mt-12 text-center">
-        <Button variant="subtle" onClick={handleAddNewQuestion} leftIcon={<PlusCircleIcon className="w-5 h-5" />} className={`border-2 border-dashed hover:border-solid border-slate-600 hover:border-sky-400 text-slate-300 hover:text-sky-200 py-3.5 px-8 shadow-lg hover:shadow-xl rounded-xl animate-fadeInUp`} style={{animationDelay: `${editableQuiz.questions.length * 0.05 + 0.2}s`}}> {t('reviewAddNewQuestion')} </Button>
+        <Button variant="subtle" onClick={handleAddNewQuestion} leftIcon={<PlusCircleIcon className="w-5 h-5" />} className={`border-2 border-dashed border-slate-600 hover:border-sky-400/80 text-slate-300 hover:text-sky-300 py-3 px-6 rounded-xl shadow-lg hover:shadow-black/20`}>
+           {t('reviewAddNewQuestion')}
+        </Button>
       </div>
       
-       {currentQuizForExport && (<AzotaExportModal isOpen={isAzotaExportModalOpen} onClose={handleCloseAzotaExportModal} quiz={currentQuizForExport} />)}
+      {currentQuizForExport && isAzotaExportModalOpen && (
+        <AzotaExportModal
+          isOpen={isAzotaExportModalOpen}
+          onClose={handleCloseAzotaExportModal}
+          quiz={currentQuizForExport}
+        />
+      )}
     </div>
   );
 };
 QuizReviewPage.displayName = "QuizReviewPage";
-
-
-interface QuestionItemProps {
-  question: Question;
-  index: number;
-  editableQuiz: EditableQuizData;
-  setEditableQuiz: React.Dispatch<React.SetStateAction<EditableQuizData | null>>;
-  handleAddOption: (questionId: string) => void;
-  handleRemoveOption: (questionId: string, optionIndex: number) => void;
-  handleDeleteQuestion: (questionId: string) => void;
-  handleFieldChange: (questionId: string, field: keyof Question, value: any) => void;
-  handleOptionChange: (questionId: string, optionIndex: number, newText: string) => void;
-  animationDelayFactor: number;
-}
-
-const QuestionItem: React.FC<QuestionItemProps> = ({ question: q, index, editableQuiz, setEditableQuiz, handleAddOption, handleRemoveOption, handleDeleteQuestion, handleFieldChange, handleOptionChange, animationDelayFactor }) => {
-  const { t } = useTranslation();
-
-  const easeIOS = [0.25, 0.1, 0.25, 1];
-  const durationNormal = 0.35;
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true }}
-      transition={{
-        delay: animationDelayFactor * 0.1, // Stagger delay
-        duration: durationNormal,
-        ease: easeIOS,
-      }}
-    >
-      <Card className="relative shadow-2xl !rounded-2xl !p-5 sm:!p-6 card-float-hover" useGlassEffect>
-        <div className="flex justify-between items-start mb-5">
-          <h3 className="text-lg sm:text-xl font-semibold text-slate-50 pt-1"> {t('reviewQuestionLabel', {index: index + 1})} </h3>
-          <Tooltip content={t('reviewDeleteQuestionLabel')} placement="left" wrapperClassName="inline-flex">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => handleDeleteQuestion(q.id)}
-              className="!p-2.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10"
-              aria-label={t('reviewDeleteQuestionLabel')}
-              disabled={editableQuiz.questions.length <=1}
-              tooltip={editableQuiz.questions.length <=1 ? t('reviewCannotSaveNoQuestions') : undefined}
-            >
-              <DeleteIcon className="w-5 h-5"/>
-            </Button>
-          </Tooltip>
-        </div>
-        <div className="space-y-5">
-          <Textarea
-            label={<span className="text-sm font-medium text-slate-200">{t('reviewQuestionTextLabel')}</span>}
-            value={q.questionText}
-            onChange={(e) => handleFieldChange(q.id, 'questionText', e.target.value)}
-            rows={3}
-            className="min-h-[90px] font-mono text-sm" placeholder={t('reviewQuestionTextPlaceholder')}
-          />
-          
-          <div className={`space-y-3.5 pl-4 sm:pl-5 border-l-2 border-slate-600/70 py-3`}>
-            <label className="block text-sm font-medium text-slate-200 mb-2">{t('reviewOptionsLabel')}</label>
-            {q.options.map((opt, optIndex) => (
-              <div key={optIndex} className="space-y-2">
-                <div className="flex items-center gap-3">
-                  <Textarea
-                    id={`option-input-${q.id}-${optIndex}`}
-                    value={opt}
-                    onChange={(e) => handleOptionChange(q.id, optIndex, e.target.value)}
-                    rows={1}
-                    className="text-sm font-mono overflow-x-auto overflow-y-hidden whitespace-nowrap !py-2.5 resize-none"
-                    aria-label={t('reviewOptionLabel', {index: optIndex + 1})}
-                    placeholder={t('reviewOptionPlaceholder', {index: optIndex + 1})}
-                    containerClassName="flex-grow min-w-0"
-                  />
-                  <Tooltip content={t('reviewRemoveOptionLabel')} placement="left" wrapperClassName="inline-flex">
-                    <Button
-                      variant="ghost"
-                      onClick={() => handleRemoveOption(q.id, optIndex)}
-                      aria-label={t('reviewRemoveOptionLabel')}
-                      className="!p-3 rounded-lg"
-                      disabled={q.options.length <=2}>
-                        <DeleteIcon className="w-5 h-5" />
-                    </Button>
-                  </Tooltip>
-                </div>
-              </div>
-            ))}
-              {q.options.length < 5 && (<Button variant="outline" onClick={() => handleAddOption(q.id)} leftIcon={<PlusIcon className="w-4 h-4"/>} className="mt-2 py-2 px-4 rounded-lg text-xs"> {t('reviewAddOption')} </Button>)}
-            {q.options.length > 0 && (
-              <Select
-                label={<span className="text-sm font-medium text-slate-200">{t('reviewCorrectAnswerLabel')}</span>}
-                value={q.correctAnswer}
-                onChange={(e) => handleFieldChange(q.id, 'correctAnswer', e.target.value)}
-                options={q.options.map(opt => ({ value: opt, label: opt.length > 70 ? opt.substring(0,67) + '...' : opt  }))}
-                containerClassName="mt-3.5"
-                className="overflow-x-auto overflow-y-hidden whitespace-nowrap cursor-default thin-scrollbar-horizontal"
-              />)}
-          </div>
-          <Textarea
-            label={<span className="text-sm font-medium text-slate-200">{t('reviewExplanationLabel')}</span>}
-            value={q.explanation}
-            onChange={(e) => handleFieldChange(q.id, 'explanation', e.target.value)}
-            rows={3}
-            className="min-h-[110px] font-mono text-sm" placeholder={t('reviewExplanationPlaceholder')}
-          />
-        </div>
-      </Card>
-    </motion.div>
-  );
-};
-QuestionItem.displayName = "QuestionItem";
-
 
 export default QuizReviewPage;

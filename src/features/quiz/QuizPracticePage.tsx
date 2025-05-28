@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAppContext, useTranslation } from '../../App';
@@ -72,13 +73,13 @@ const QuizPracticePage: React.FC = () => {
       const attempt = practiceAttempts.find(pa => pa.questionId === currentQuestion.id);
       if (attempt) {
         nextTentativeSelection = attempt.selectedOption;
-        if (attempt.isCorrect !== null) { // This means it was checked
+        if (attempt.isCorrect !== null) { 
           nextIsChecked = true;
           nextCorrectFeedback = attempt.isCorrect;
         }
       }
     }
-    // Apply new state
+    
     setCurrentTentativeSelection(nextTentativeSelection);
     setIsCurrentSelectionChecked(nextIsChecked);
     setIsCurrentSelectionCorrectFeedback(nextCorrectFeedback);
@@ -115,7 +116,7 @@ const QuizPracticePage: React.FC = () => {
     const correctAnswersCount = practiceAttempts.filter(pa => pa.isCorrect === true).length;
     const finalUserAnswersArray: UserAnswer[] = practiceAttempts.map(pa => ({
       questionId: pa.questionId,
-      answer: pa.selectedOption || "", // Ensure answer is always a string
+      answer: pa.selectedOption || "", 
     }));
 
     const scorePercentage = localActiveQuiz.questions.length > 0
@@ -333,7 +334,7 @@ const QuizPracticePage: React.FC = () => {
         )}
       </div>
 
-      <div className="flex flex-col space-y-3 pt-6 border-t border-slate-700/60 mt-6 sm:mt-8"> {/* Added margin-top here */}
+      <div className="flex flex-col space-y-3 pt-6 border-t border-slate-700/60 mt-6 sm:mt-8"> 
         {!isCurrentSelectionChecked ? (
           <Button onClick={handleCheckAnswer} disabled={!currentTentativeSelection || isFinishingPracticeRef.current} variant="primary" size="lg" leftIcon={<CheckCircleIcon className="w-5 h-5"/>} className="w-full py-3 rounded-xl">
             {t('checkAnswer')}

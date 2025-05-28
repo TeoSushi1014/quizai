@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppContext, useTranslation } from '../../App';
@@ -75,7 +76,7 @@ const DashboardPage: React.FC = () => {
               quiz={quiz}
               onDelete={deleteQuiz}
               onEditQuiz={handleEditQuiz}
-              animationDelay={index * 0.1} // Pass as number in seconds (100ms = 0.1s)
+              animationDelay={index * 0.1} 
             />
           ))}
         </div>

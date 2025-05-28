@@ -1,16 +1,18 @@
 
 
 
+
+
+
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { TokenResponse, useGoogleLogin } from '@react-oauth/google'; // Changed CredentialResponse to TokenResponse
+import { TokenResponse, useGoogleLogin } from '@react-oauth/google'; 
 import { useAppContext, useTranslation } from '../../App';
 import { UserProfile } from '../../types';
 import { Button, Card } from '../../components/ui';
-// Removed import for sendRecaptchaAssessment and validateRecaptchaAssessment as assessment is skipped
-// import { sendRecaptchaAssessment, validateRecaptchaAssessment } from '../../services/recaptchaService';
 
-// Declare grecaptcha for TypeScript
+
+
 declare const grecaptcha: any;
 
 const SignInPage: React.FC = () => {
@@ -19,9 +21,9 @@ const SignInPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Use environment variable for reCAPTCHA site key
-  // @ts-ignore
-  const siteKey = typeof import.meta.env !== 'undefined' ? import.meta.env.VITE_RECAPTCHA_SITE_KEY : undefined;
+  
+  
+  const siteKey = typeof (import.meta as any).env !== 'undefined' ? (import.meta as any).env.VITE_RECAPTCHA_SITE_KEY : undefined;
 
   React.useEffect(() => {
     if (currentUser) {
@@ -32,7 +34,7 @@ const SignInPage: React.FC = () => {
 
   const handleLoginError = () => { 
     console.error("Login Failed. Check Google Cloud Console for redirect_uri_mismatch or other OAuth errors. Also check server COOP headers."); 
-    // Optionally, provide user feedback here
+    
   };
 
   const handleLoginSuccess = async (tokenResponse: TokenResponse) => {
@@ -56,7 +58,7 @@ const SignInPage: React.FC = () => {
           email: userInfo.email,
           imageUrl: userInfo.picture,
         };
-        login(userProfile); // This should trigger context update and navigation
+        login(userProfile); 
       } catch (error) {
         console.error("Error during token validation or fetching user info:", error);
         handleLoginError();
@@ -70,7 +72,7 @@ const SignInPage: React.FC = () => {
   const initiateGoogleLogin = useGoogleLogin({
     onSuccess: handleLoginSuccess,
     onError: handleLoginError,
-    // flow: 'implicit', // Default, suitable for client-side token handling, provides access_token
+    
   });
 
   const handleCustomGoogleLoginClick = () => {
@@ -88,20 +90,20 @@ const SignInPage: React.FC = () => {
 
     grecaptcha.enterprise.ready(async () => {
       try {
-        // Lấy token từ reCAPTCHA với hành động "LOGIN"
+        
         const token = await grecaptcha.enterprise.execute(siteKey, { action: 'LOGIN' });
         console.log('reCAPTCHA token obtained (first 10 chars):', token.slice(0, 10) + '...');
         
-        // Intentionally skipping client-side assessment call (sendRecaptchaAssessment)
-        // as it was causing 403 errors, likely due to API key misconfiguration for client-side assessment.
-        // The application logic previously proceeded with login even if reCAPTCHA validation failed.
-        // For a robust implementation, reCAPTCHA assessment should ideally be done server-side.
+        
+        
+        
+        
         console.log('Skipping reCAPTCHA assessment. Proceeding with login.');
         initiateGoogleLogin();
 
       } catch (error) {
         console.error('Lỗi khi thực thi reCAPTCHA (token generation):', error);
-        // Fallback to login if reCAPTCHA token generation itself fails
+        
         initiateGoogleLogin(); 
       }
     });

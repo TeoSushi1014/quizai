@@ -8,7 +8,7 @@ import MathText from '../../../components/MathText';
 import { EditIcon, DeleteIcon, ShareIcon, XCircleIcon } from '../../../constants';
 import { useTranslation, useAppContext } from '../../../App';
 import { translations } from '../../../i18n';
-// Removed useIntersectionObserver import as it's no longer needed
+
 
 export interface AttemptSettings {
   shuffleQuestions: boolean;
@@ -22,15 +22,15 @@ const DEFAULT_ATTEMPT_SETTINGS: AttemptSettings = {
   timeLimit: 0,
 };
 
-// Animation constants (can be moved to a shared file if used elsewhere)
+
 const easeIOS = [0.25, 0.1, 0.25, 1];
-const durationNormal = 0.35; // Corresponds to --duration-normal (350ms)
+const durationNormal = 0.35; 
 
 interface QuizCardProps {
   quiz: Quiz;
   onDelete: (id: string) => void;
   onEditQuiz: (quiz: Quiz) => void;
-  animationDelay?: number; // Changed to number (seconds)
+  animationDelay?: number; 
 }
 
 const QuizCard: React.FC<QuizCardProps> = ({ quiz, onDelete, onEditQuiz, animationDelay = 0 }) => {
@@ -42,7 +42,7 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onDelete, onEditQuiz, animati
   const { setActiveQuiz, setQuizResult } = useAppContext();
   const navigate = useNavigate();
 
-  // cardRef and isVisible are no longer needed due to framer-motion's whileInView
+  
 
   const difficulty = quiz.config?.difficulty;
   let difficultyTextKey: keyof typeof translations.en;
@@ -122,14 +122,14 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onDelete, onEditQuiz, animati
   return (
     <>
       <motion.div
-        className="h-full" // Ensures motion.div takes full height for flexbox alignment in grid
+        className="h-full" 
         initial={{ opacity: 0, y: 20 }}
         whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, amount: 0.1 }} // Trigger when 10% of the element is visible
+        viewport={{ once: true, amount: 0.1 }} 
         transition={{
           duration: durationNormal,
           ease: easeIOS,
-          delay: animationDelay, // animationDelay is now in seconds
+          delay: animationDelay, 
         }}
       >
         <Card

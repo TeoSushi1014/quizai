@@ -10,7 +10,7 @@ const MathText: React.FC<MathTextProps> = ({ text, className }) => {
     return null; 
   }
 
-  // Render plain text directly. All KaTeX-related parsing is removed.
+  
   return (
     <span className={className}>
       {text}
