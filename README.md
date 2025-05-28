@@ -35,20 +35,32 @@ This project uses GitHub Actions for automated deployment to GitHub Pages.
 1. **Add your Gemini API key to GitHub Secrets:**
    - Go to your repository on GitHub
    - Navigate to Settings > Secrets and variables > Actions
+   - Click on "New repository secret"
    - Add a new repository secret:
-     - Name: `GEMINI_API_KEY`
+     - Name: `GEMINI_API_KEY` (phải chính xác tên này)
      - Value: Your actual Gemini API key
 
-2. **Push to main branch:**
+2. **Push GitHub Actions workflow file:**
    ```bash
-   git add .
-   git commit -m "Add deployment configuration"
+   git add .github/workflows/deploy.yml
+   git commit -m "Add GitHub Actions workflow for deployment"
    git push origin main
    ```
 
-3. **The GitHub Action will automatically:**
+3. **Manually trigger the workflow (if needed):**
+   - Go to your repository on GitHub
+   - Navigate to Actions tab
+   - Select the "Deploy to GitHub Pages" workflow
+   - Click "Run workflow" button
+   - Select the branch (main) and click "Run workflow"
+
+4. **The GitHub Action will automatically:**
    - Build the project with your API key
    - Deploy to GitHub Pages
+
+5. **Verify deployment:**
+   - Check Actions tab to see if the workflow completed successfully
+   - If there are any errors, check the logs for details
 
 ### Manual Deployment (Alternative):
 

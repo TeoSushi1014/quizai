@@ -1,20 +1,56 @@
 
 
 import { GoogleGenAI, GenerateContentResponse, Part, Content } from "@google/genai";
-import { Question, QuizConfig, Quiz, AIModelType } from "../types"; // Removed QuestionType
+import { Question, QuizConfig, Quiz, AIModelType } from "../types";
 import { GEMINI_TEXT_MODEL, GEMINI_MODEL_ID } from "../constants";
 
 let geminiAI: GoogleGenAI | null = null;
 
 const initializeGeminiAI = (): GoogleGenAI => {
   if (!geminiAI) {
-    // API_KEY must be obtained from process.env.GEMINI_API_KEY as per guidelines
-    const apiKey = (typeof process !== 'undefined' && process.env) ? process.env.GEMINI_API_KEY : undefined;
-    if (typeof apiKey !== 'string' || !apiKey) {
-      console.warn("Google Gemini API Key (process.env.GEMINI_API_KEY) environment variable(s) not set. Quiz generation may fail.");
-      // This error will be caught by the calling function and can be displayed to the user.
-      throw new Error("Gemini API Key (process.env.GEMINI_API_KEY) environment variable(s) not set. Quiz generation may fail.");
+    // Try to get API key from different sources
+    let apiKey: string | undefined;
+    
+    // First try import.meta.env (Vite's way to access env vars at build time)
+    try {
+      // @ts-ignore - TypeScript might not recognize import.meta.env in all contexts
+      apiKey = import.meta?.env?.VITE_GEMINI_API_KEY || import.meta?.env?.GEMINI_API_KEY;
+    } catch (e) {
+      console.log("Unable to access import.meta.env");
     }
+    
+    // Then try process.env (Node.js environment variables)
+    if (!apiKey && typeof process !== 'undefined' && process.env) {
+      apiKey = process.env.GEMINI_API_KEY;
+    }
+    
+    if (typeof apiKey !== 'string' || !apiKey) {
+      const errorMessage = "Google Gemini API Key (process.env.GEMINI_API_KEY) environment variable(s) not set. Quiz generation will fail.";
+      console.warn(errorMessage);
+      
+      if (typeof window !== 'undefined') {
+        const alertElement = document.createElement('div');
+        alertElement.style.position = 'fixed';
+        alertElement.style.top = '10px';
+        alertElement.style.left = '50%';
+        alertElement.style.transform = 'translateX(-50%)';
+        alertElement.style.backgroundColor = '#ff4444';
+        alertElement.style.color = 'white';
+        alertElement.style.padding = '10px 20px';
+        alertElement.style.borderRadius = '5px';
+        alertElement.style.zIndex = '9999';
+        alertElement.style.boxShadow = '0 2px 10px rgba(0,0,0,0.2)';
+        alertElement.textContent = errorMessage;
+        document.body.appendChild(alertElement);
+        
+        setTimeout(() => {
+          alertElement.remove();
+        }, 10000);
+      }
+      
+      throw new Error(errorMessage);
+    }
+    
     geminiAI = new GoogleGenAI({ apiKey });
   }
   return geminiAI;
