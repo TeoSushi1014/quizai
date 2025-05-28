@@ -1,21 +1,24 @@
 
 
-import React, { useState, useCallback, useEffect, createContext, useContext, ReactNode, useMemo, useRef } from 'react';
+import React, { useState, useCallback, useEffect, createContext, useContext, ReactNode, useMemo, useRef, lazy, Suspense } from 'react';
 import { HashRouter, Routes, Route, useNavigate, useLocation, NavLink as RouterNavLink } from 'react-router-dom';
 import { GoogleOAuthProvider, googleLogout } from '@react-oauth/google';
 import { Quiz, AppContextType, Language, QuizResult, UserProfile } from './types';
 import { APP_NAME, UserCircleIcon, KeyIcon, LogoutIcon, HomeIcon, PlusCircleIcon, ChartBarIcon } from './constants'; 
 import { Button, LoadingSpinner, Tooltip } from './components/ui';
-import HomePage from './features/quiz/HomePage';
-import DashboardPage from './features/quiz/DashboardPage';
-import QuizCreatePage from './features/quiz/QuizCreatePage';
-import { QuizTakingPage } from './features/quiz/QuizTakingPage';
-import ResultsPage from './features/quiz/ResultsPage';
-import QuizReviewPage from './features/quiz/QuizReviewPage';
-import SignInPage from './features/auth/SignInPage';
-import QuizPracticePage from './features/quiz/QuizPracticePage';
 import { getTranslator, translations } from './i18n';
-import useIntersectionObserver from './hooks/useIntersectionObserver'; // Import useIntersectionObserver
+import useIntersectionObserver from './hooks/useIntersectionObserver';
+
+// Lazy load page components using simple relative paths
+const HomePage = lazy(() => import('./features/quiz/HomePage.tsx'));
+const DashboardPage = lazy(() => import('./features/quiz/DashboardPage.tsx'));
+const QuizCreatePage = lazy(() => import('./features/quiz/QuizCreatePage.tsx'));
+const QuizTakingPage = lazy(() => import('./features/quiz/QuizTakingPage.tsx'));
+const ResultsPage = lazy(() => import('./features/quiz/ResultsPage.tsx'));
+const QuizReviewPage = lazy(() => import('./features/quiz/QuizReviewPage.tsx'));
+const SignInPage = lazy(() => import('./features/auth/SignInPage.tsx'));
+const QuizPracticePage = lazy(() => import('./features/quiz/QuizPracticePage.tsx'));
+
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
@@ -48,10 +51,9 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
   const [appInitialized, setAppInitialized] = useState(false);
 
   useEffect(() => {
-    // Initialize Gemini key status
-    // @ts-ignore
-    const geminiApiKey = typeof import.meta.env !== 'undefined' ? import.meta.env.VITE_GEMINI_API_KEY : undefined;
-    setIsGeminiKeyAvailable(typeof geminiApiKey === 'string' && !!geminiApiKey);
+    // Initialize Gemini key status based on process.env.API_KEY
+    const apiKeyFromEnv = (typeof process !== 'undefined' && process.env) ? process.env.API_KEY : undefined;
+    setIsGeminiKeyAvailable(typeof apiKeyFromEnv === 'string' && !!apiKeyFromEnv);
 
     // Load language from localStorage
     const savedLanguage = localStorage.getItem('appLanguage') as Language | null;
@@ -208,7 +210,7 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
   if (!appInitialized) {
     // You could return a global loading spinner here if preferred,
     // but AppLayout will also show a loading state initially if isLoading is true.
-    return <div className="fixed inset-0 bg-slate-900 flex items-center justify-center"><LoadingSpinner size="xl" /></div>;
+    return <div className="fixed inset-0 bg-slate-900 flex items-center justify-center z-[300]"><LoadingSpinner size="xl" /></div>;
   }
 
   return (
@@ -327,10 +329,10 @@ const AppLayout: React.FC = () => {
   const location = useLocation();
   
   const apiKeyWarnings = [];
-  // Check VITE_GEMINI_API_KEY as this is what geminiService.ts will use
-  // @ts-ignore
-  if (typeof import.meta.env === 'undefined' || !import.meta.env.VITE_GEMINI_API_KEY) {
-    apiKeyWarnings.push("Google Gemini API Key (VITE_GEMINI_API_KEY)");
+  // Check process.env.API_KEY based on the new guideline
+  const geminiApiKey = (typeof process !== 'undefined' && process.env) ? process.env.API_KEY : undefined;
+  if (typeof geminiApiKey !== 'string' || !geminiApiKey) {
+    apiKeyWarnings.push("Google Gemini API Key (process.env.API_KEY)");
   }
   
   if (isLoading) {
@@ -340,6 +342,12 @@ const AppLayout: React.FC = () => {
       </div>
     );
   }
+  
+  const suspenseFallback = (
+    <div className="fixed inset-0 bg-slate-900 flex items-center justify-center z-[300]">
+      <LoadingSpinner size="xl" text={t('loading')} />
+    </div>
+  );
 
   return (
     <div className={`min-h-screen flex flex-col bg-slate-900 selection:bg-sky-500/20 selection:text-sky-300 pb-16 md:pb-0`}>
@@ -401,18 +409,20 @@ const AppLayout: React.FC = () => {
         </nav>
 
       <main key={location.pathname} className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 md:py-10 mb-20 md:mb-0 animate-page-slide-fade-in"> 
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/signin" element={<SignInPage />} />
-          <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/create" element={<QuizCreatePage />} />
-          <Route path="/review" element={<QuizReviewPage />} /> 
-          <Route path="/review/:quizId" element={<QuizReviewPage />} />
-          <Route path="/quiz/:quizId" element={<QuizTakingPage />} />
-          <Route path="/practice/:quizId" element={<QuizPracticePage />} />
-          <Route path="/results/:quizId" element={<ResultsPage />} />
-          <Route path="*" element={<HomePage />} /> 
-        </Routes>
+        <Suspense fallback={suspenseFallback}>
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/signin" element={<SignInPage />} />
+            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/create" element={<QuizCreatePage />} />
+            <Route path="/review" element={<QuizReviewPage />} /> 
+            <Route path="/review/:quizId" element={<QuizReviewPage />} />
+            <Route path="/quiz/:quizId" element={<QuizTakingPage />} />
+            <Route path="/practice/:quizId" element={<QuizPracticePage />} />
+            <Route path="/results/:quizId" element={<ResultsPage />} />
+            <Route path="*" element={<HomePage />} /> 
+          </Routes>
+        </Suspense>
       </main>
 
       <footer className="bg-transparent py-4 md:py-6 mt-auto">

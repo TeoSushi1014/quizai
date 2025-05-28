@@ -8,7 +8,7 @@ import MathText from '../../components/MathText';
 import { CircleIcon, ChevronLeftIcon, ChevronRightIcon, LightbulbIcon } from '../../constants';
 import { useQuizFlow } from './hooks/useQuizFlow'; 
 
-export const QuizTakingPage: React.FC = () => {
+const QuizTakingPage: React.FC = () => {
   const { setQuizResult } = useAppContext();
   const { t } = useTranslation();
   const { quizId } = useParams<{ quizId: string }>();
@@ -258,3 +258,5 @@ export const QuizTakingPage: React.FC = () => {
     </Card>
   );
 };
+
+export default QuizTakingPage;
