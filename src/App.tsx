@@ -14,7 +14,6 @@ import ResultsPage from './features/quiz/ResultsPage';
 import QuizReviewPage from './features/quiz/QuizReviewPage';
 import SignInPage from './features/auth/SignInPage';
 import QuizPracticePage from './features/quiz/QuizPracticePage';
-// import PracticeSummaryPage from './features/quiz/PracticeSummaryPage'; // Removed
 import { getTranslator, translations } from './i18n';
 import useIntersectionObserver from './hooks/useIntersectionObserver'; // Import useIntersectionObserver
 
@@ -351,7 +350,6 @@ const AppLayout: React.FC = () => {
           <Route path="/review/:quizId" element={<QuizReviewPage />} />
           <Route path="/quiz/:quizId" element={<QuizTakingPage />} />
           <Route path="/practice/:quizId" element={<QuizPracticePage />} />
-          {/* <Route path="/practice-summary/:quizId" element={<PracticeSummaryPage />} /> */} {/* Removed route */}
           <Route path="/results/:quizId" element={<ResultsPage />} />
           <Route path="*" element={<HomePage />} /> 
         </Routes>

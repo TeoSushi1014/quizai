@@ -247,7 +247,7 @@ const QuizPracticePage: React.FC = () => {
 
   return (
     <Card className="max-w-3xl mx-auto shadow-2xl !border-slate-700/40 !rounded-2xl animate-page-slide-fade-in" useGlassEffect>
-      <div className="mb-10">
+      <div className="mb-6 sm:mb-8">
         <h1 className="text-2xl sm:text-3xl font-bold text-slate-50 mb-4 leading-tight tracking-tight line-clamp-2" title={localActiveQuiz.title}>
           <MathText text={t('quizPracticeTitle', { quizTitle: localActiveQuiz.title })} />
         </h1>
@@ -265,7 +265,7 @@ const QuizPracticePage: React.FC = () => {
 
       <div>
         <div
-          className={`mb-6 p-6 sm:p-8 bg-slate-700/60 rounded-xl shadow-inner border border-slate-600/70 min-h-[200px] flex flex-col`}
+          className={`p-6 sm:p-8 bg-slate-700/60 rounded-xl shadow-inner border border-slate-600/70 min-h-[200px] flex flex-col`}
         >
           <div key={currentQuestion.id} className="animate-fadeInUp">
             <h2 className="text-lg sm:text-xl font-semibold text-slate-100 mb-8 leading-relaxed">
@@ -332,7 +332,7 @@ const QuizPracticePage: React.FC = () => {
         )}
       </div>
 
-      <div className="flex flex-col space-y-3 pt-6 border-t border-slate-700/60">
+      <div className="flex flex-col space-y-3 pt-6 border-t border-slate-700/60 mt-6 sm:mt-8"> {/* Added margin-top here */}
         {!isCurrentSelectionChecked ? (
           <Button onClick={handleCheckAnswer} disabled={!currentTentativeSelection || isFinishingPracticeRef.current} variant="primary" size="lg" leftIcon={<CheckCircleIcon className="w-5 h-5"/>} className="w-full py-3 rounded-xl">
             {t('checkAnswer')}

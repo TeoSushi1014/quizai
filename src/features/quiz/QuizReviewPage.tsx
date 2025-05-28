@@ -219,8 +219,8 @@ const QuizReviewPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="mt-2 sm:mt-4"> {/* Reduced top margin */}
-        <div ref={titleCardRef} className={`${isTitleCardVisible ? 'animate-fadeInUp' : 'opacity-0'} mb-6 sm:mb-8`}>
+      <div>
+        <div ref={titleCardRef} className={`${isTitleCardVisible ? 'animate-fadeInUp' : 'opacity-0'} mb-6 sm:mb-8 mt-6 sm:mt-8`}> {/* Added margin here */}
           <Card useGlassEffect className="shadow-2xl !rounded-2xl">
             <p className="text-sm text-slate-300/90 mb-6">{isEditingExisting ? t('reviewEditQuizDesc') : t('reviewFinalizeQuizDesc')}</p>
             <Input label={<span className="text-base font-semibold text-slate-100">{t('reviewQuizTitleLabel')}</span>} value={editableQuiz.title} onChange={(e) => setEditableQuiz(prev => prev ? { ...prev, title: e.target.value } : null)} className="text-xl mb-3" placeholder={t('step2QuizTitlePlaceholder')} inputClassName="!text-xl !font-semibold !py-3.5 !rounded-xl" />
@@ -271,7 +271,6 @@ interface QuestionItemProps {
 
 const QuestionItem: React.FC<QuestionItemProps> = ({ question: q, index, editableQuiz, setEditableQuiz, handleAddOption, handleRemoveOption, handleDeleteQuestion, handleFieldChange, handleOptionChange, animationDelayFactor }) => {
   const { t } = useTranslation();
-  // Removed useIntersectionObserver and related variables (questionCardRef, isVisible)
 
   const easeIOS = [0.25, 0.1, 0.25, 1];
   const durationNormal = 0.35;

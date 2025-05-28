@@ -10,7 +10,6 @@ import { Quiz } from '../../types';
 import { PlusIcon, UserCircleIcon, ChevronRightIcon } from '../../constants';
 import QuizCard from './components/QuizCard'; 
 import useIntersectionObserver from '../../hooks/useIntersectionObserver';
-// FeatureItemCard and related icons (DocumentTextIcon, LightbulbIcon, ShareIcon) removed as sections are deleted.
 
 
 const MAX_RECENT_QUIZZES_HOME = 3;
@@ -158,20 +157,11 @@ const HomePage: React.FC = () => {
   const recentQuizzesSectionRef = useRef<HTMLElement>(null);
   const isRecentQuizzesSectionVisible = useIntersectionObserver(recentQuizzesSectionRef, { threshold: 0.05, freezeOnceVisible: true });
   
-  // Removed refs and hooks for "How It Works" and "Features" sections
-  // const howItWorksSectionRef = useRef<HTMLElement>(null);
-  // const isHowItWorksSectionVisible = useIntersectionObserver(howItWorksSectionRef, { threshold: 0.05, freezeOnceVisible: true });
-  
-  // const featuresSectionRef = useRef<HTMLElement>(null);
-  // const isFeaturesSectionVisible = useIntersectionObserver(featuresSectionRef, { threshold: 0.05, freezeOnceVisible: true });
-
   const heroButtonTextKey = quizzes.length > 0 ? 'heroCTACreateAnother' : 'heroCTA';
   const heroButtonText = t(heroButtonTextKey);
 
   const handleDeleteQuiz = (quizId: string) => { deleteQuiz(quizId); };
   const handleEditQuiz = (quiz: Quiz) => { navigate(`/review/${quiz.id}`, { state: { existingQuiz: quiz } }); };
-
-  // Removed howItWorksItems and powerFeaturesItems arrays
 
   if (quizzes.length === 0) {
     return (
@@ -301,8 +291,6 @@ const HomePage: React.FC = () => {
         </section>
       )}
       
-      {/* Removed "How It Works" and "Features" sections */}
-
       <FeedbackSection />
     </div>
   );

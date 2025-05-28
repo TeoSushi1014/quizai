@@ -135,7 +135,7 @@ export const QuizTakingPage: React.FC = () => {
 
   return (
     <Card className="max-w-3xl mx-auto shadow-2xl !border-slate-700/40 !rounded-2xl animate-page-slide-fade-in" useGlassEffect>
-      <div className="mb-8 sm:mb-10">
+      <div className="mb-6 sm:mb-8">
         <h1 className="text-2xl sm:text-3xl font-bold text-slate-50 mb-3 sm:mb-4 leading-tight tracking-tight line-clamp-2" title={localActiveQuiz.title}>
           <MathText text={localActiveQuiz.title} />
         </h1>
@@ -152,7 +152,7 @@ export const QuizTakingPage: React.FC = () => {
       </div>
 
     <div>
-      <div className={`mb-8 sm:mb-10 p-5 sm:p-8 bg-slate-700/60 rounded-xl shadow-inner border border-slate-600/70 min-h-[280px] flex flex-col`}>
+      <div className={`p-5 sm:p-8 bg-slate-700/60 rounded-xl shadow-inner border border-slate-600/70 min-h-[280px] flex flex-col`}>
         <div key={currentQuestion.id} className="animate-fadeInUp">
           <h2 className="text-lg sm:text-xl font-semibold text-slate-100 mb-6 sm:mb-8 leading-relaxed">
             <MathText text={currentQuestion.questionText} />
@@ -190,7 +190,7 @@ export const QuizTakingPage: React.FC = () => {
       </div>
     </div>
 
-      <div className="flex flex-col space-y-3 pt-6 sm:pt-8 border-t border-slate-700/60">
+      <div className="flex flex-col space-y-3 pt-6 sm:pt-8 border-t border-slate-700/60 mt-6 sm:mt-8"> {/* Added margin-top here to space out from question box */}
         <Button 
             onClick={handleNextQuestionAttempt} 
             disabled={!selectedOption} 
