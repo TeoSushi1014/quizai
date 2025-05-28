@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { TokenResponse, useGoogleLogin } from '@react-oauth/google'; // Changed CredentialResponse to TokenResponse
@@ -17,7 +18,9 @@ const SignInPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const siteKey = '6LfjXkorAAAAAOk4X5LwVd-8RgwMGS0IWxZLtFGQ';
+  // Use environment variable for reCAPTCHA site key
+  // @ts-ignore
+  const siteKey = typeof import.meta.env !== 'undefined' ? import.meta.env.VITE_RECAPTCHA_SITE_KEY : undefined;
 
   React.useEffect(() => {
     if (currentUser) {
@@ -70,8 +73,14 @@ const SignInPage: React.FC = () => {
   });
 
   const handleCustomGoogleLoginClick = () => {
-    if (typeof grecaptcha === 'undefined' || typeof grecaptcha.enterprise === 'undefined') {
-      console.error('reCAPTCHA enterprise.js not loaded. Proceeding with login directly.');
+    if (!siteKey) {
+      console.error('VITE_RECAPTCHA_SITE_KEY is not configured. Proceeding with login directly.');
+      initiateGoogleLogin();
+      return;
+    }
+
+    if (typeof grecaptcha === 'undefined' || typeof grecaptcha.enterprise === 'undefined' || typeof grecaptcha.enterprise.ready !== 'function') {
+      console.warn('reCAPTCHA enterprise.js not loaded or not ready. Proceeding with login directly.');
       initiateGoogleLogin();
       return;
     }

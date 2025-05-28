@@ -38,37 +38,76 @@ export const useTranslation = () => {
 const GOOGLE_CLIENT_ID = "486123633428-14f8o50husb82sho688e0qvc962ucr4n.apps.googleusercontent.com"; 
 
 const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
-  const [allQuizzes, setAllQuizzes] = useState<Quiz[]>(() => {
-    const savedQuizzes = localStorage.getItem('quizzes');
-    return savedQuizzes ? JSON.parse(savedQuizzes) : [];
-  });
+  const [allQuizzes, setAllQuizzes] = useState<Quiz[]>([]);
   const [activeQuiz, setActiveQuiz] = useState<Quiz | null>(null);
   const [quizResult, setQuizResult] = useState<QuizResult | null>(null);
-  const [language, setLanguageState] = useState<Language>(() => {
-    return (localStorage.getItem('appLanguage') as Language) || 'en';
-  });
-  const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => {
-    const savedUser = localStorage.getItem('currentUser');
-    return savedUser ? JSON.parse(savedUser) : null;
-  });
-  const [isLoading, setIsLoading] = useState(false); 
+  const [language, setLanguageState] = useState<Language>('en');
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+  const [isLoading, setIsLoading] = useState(true); // Start with loading true
   const [isGeminiKeyAvailable, setIsGeminiKeyAvailable] = useState(false);
+  const [appInitialized, setAppInitialized] = useState(false);
 
   useEffect(() => {
-    setIsGeminiKeyAvailable(typeof process.env.API_KEY === 'string' && !!process.env.API_KEY);
+    // Initialize Gemini key status
+    // @ts-ignore
+    const geminiApiKey = typeof import.meta.env !== 'undefined' ? import.meta.env.VITE_GEMINI_API_KEY : undefined;
+    setIsGeminiKeyAvailable(typeof geminiApiKey === 'string' && !!geminiApiKey);
+
+    // Load language from localStorage
+    const savedLanguage = localStorage.getItem('appLanguage') as Language | null;
+    if (savedLanguage && translations[savedLanguage]) {
+      setLanguageState(savedLanguage);
+      document.documentElement.lang = savedLanguage;
+    } else {
+      document.documentElement.lang = 'en'; // Default
+    }
+    
+    // Load user from localStorage
+    const savedUser = localStorage.getItem('currentUser');
+    if (savedUser) {
+      try {
+        setCurrentUser(JSON.parse(savedUser));
+      } catch (e) {
+        console.error("Failed to parse current user from localStorage", e);
+        localStorage.removeItem('currentUser');
+      }
+    }
+
+    // Load quizzes from localStorage
+    const savedQuizzes = localStorage.getItem('quizzes');
+    if (savedQuizzes) {
+      try {
+        setAllQuizzes(JSON.parse(savedQuizzes));
+      } catch (e) {
+        console.error("Failed to parse quizzes from localStorage", e);
+        localStorage.removeItem('quizzes');
+      }
+    }
+    setAppInitialized(true);
   }, []);
 
   useEffect(() => {
-    localStorage.setItem('quizzes', JSON.stringify(allQuizzes));
-  }, [allQuizzes]);
+    if (appInitialized) {
+      setIsLoading(false); // Stop loading once all initial data is attempted to load
+    }
+  }, [appInitialized]);
+
+
+  useEffect(() => {
+    if (appInitialized) { // Only save after initial load
+      localStorage.setItem('quizzes', JSON.stringify(allQuizzes));
+    }
+  }, [allQuizzes, appInitialized]);
   
   useEffect(() => {
-    if (currentUser) {
-      localStorage.setItem('currentUser', JSON.stringify(currentUser));
-    } else {
-      localStorage.removeItem('currentUser');
+    if (appInitialized) { // Only save after initial load
+      if (currentUser) {
+        localStorage.setItem('currentUser', JSON.stringify(currentUser));
+      } else {
+        localStorage.removeItem('currentUser');
+      }
     }
-  }, [currentUser]);
+  }, [currentUser, appInitialized]);
 
   const setLanguage = useCallback((lang: Language) => {
     setLanguageState(lang);
@@ -106,16 +145,19 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
 
   const login = useCallback((user: UserProfile) => {
     setCurrentUser(user);
-    setIsLoading(true);
+    setIsLoading(true); // Show loading while potentially migrating quizzes
+    
+    // Simulate async operation and update quizzes for the new user
     setTimeout(() => {
       setAllQuizzes(prevAllQuizzes => {
         const updatedQuizzes = prevAllQuizzes.map(q => {
+          // If quiz has no userId, assign it to the new logged-in user
           if (!q.userId) { 
             return { ...q, userId: user.id }; 
           }
           return q;
         });
-        localStorage.setItem('quizzes', JSON.stringify(updatedQuizzes));
+        // Note: localStorage for quizzes will be updated by the useEffect for allQuizzes
         return updatedQuizzes;
       });
       setIsLoading(false);
@@ -127,13 +169,15 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     setCurrentUser(null);
     setActiveQuiz(null); 
     setQuizResult(null); 
+    // Do not clear allQuizzes, just filter them in context or let user decide to delete them
     navigate('/'); 
   }, [navigate]);
 
   const quizzesForContext = useMemo(() => {
     if (currentUser) {
-      return allQuizzes.filter(q => q.userId === currentUser.id);
+      return allQuizzes.filter(q => q.userId === currentUser.id || !q.userId); // Show user's quizzes and unowned quizzes
     }
+    // For logged-out users, show only quizzes that don't have a userId (unowned)
     return allQuizzes.filter(q => !q.userId);
   }, [allQuizzes, currentUser]);
   
@@ -160,6 +204,12 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     addQuiz, deleteQuiz, updateQuiz, activeQuiz, setActiveQuiz, quizResult, 
     setQuizResultWithPersistence, currentUser, login, handleLogout, isGeminiKeyAvailable, isLoading
   ]);
+
+  if (!appInitialized) {
+    // You could return a global loading spinner here if preferred,
+    // but AppLayout will also show a loading state initially if isLoading is true.
+    return <div className="fixed inset-0 bg-slate-900 flex items-center justify-center"><LoadingSpinner size="xl" /></div>;
+  }
 
   return (
     <AppContext.Provider value={contextValue}>
@@ -256,10 +306,8 @@ UserDropdownMenu.displayName = "UserDropdownMenu";
 
 const AnimatedApiKeyWarning: React.FC<{children: ReactNode}> = ({ children }) => {
   const ref = useRef<HTMLDivElement>(null);
-  // Use freezeOnceVisible: true to ensure animation runs only once when it comes into view
   const isVisible = useIntersectionObserver(ref, { threshold: 0.1, freezeOnceVisible: true });
   
-  // The outer div (ref) will handle the animation class based on visibility
   return (
     <div 
       ref={ref} 
@@ -273,14 +321,26 @@ AnimatedApiKeyWarning.displayName = "AnimatedApiKeyWarning";
 
 
 const AppLayout: React.FC = () => {
-  const { language, setLanguage, currentUser, isGeminiKeyAvailable } = useAppContext(); 
+  const { language, setLanguage, currentUser, isGeminiKeyAvailable, isLoading } = useAppContext(); 
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   
   const apiKeyWarnings = [];
-  if (!isGeminiKeyAvailable) apiKeyWarnings.push("Google Gemini API Key (API_KEY)");
+  // Check VITE_GEMINI_API_KEY as this is what geminiService.ts will use
+  // @ts-ignore
+  if (typeof import.meta.env === 'undefined' || !import.meta.env.VITE_GEMINI_API_KEY) {
+    apiKeyWarnings.push("Google Gemini API Key (VITE_GEMINI_API_KEY)");
+  }
   
+  if (isLoading) {
+    return (
+      <div className="fixed inset-0 bg-slate-900 flex items-center justify-center z-[200]">
+        <LoadingSpinner text={t('loading')} size="xl" />
+      </div>
+    );
+  }
+
   return (
     <div className={`min-h-screen flex flex-col bg-slate-900 selection:bg-sky-500/20 selection:text-sky-300 pb-16 md:pb-0`}>
       <header className="glass-effect sticky top-0 z-50 border-b border-slate-700/60 shadow-sm">
