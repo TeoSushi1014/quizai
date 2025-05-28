@@ -1,4 +1,5 @@
 
+
 import { GoogleGenAI, GenerateContentResponse, Part, Content } from "@google/genai";
 import { Question, QuizConfig, Quiz, AIModelType } from "../types"; // Removed QuestionType
 import { GEMINI_TEXT_MODEL, GEMINI_MODEL_ID } from "../constants";
@@ -7,12 +8,12 @@ let geminiAI: GoogleGenAI | null = null;
 
 const initializeGeminiAI = (): GoogleGenAI => {
   if (!geminiAI) {
-    // API_KEY must be obtained from process.env.API_KEY as per guidelines
-    const apiKey = (typeof process !== 'undefined' && process.env) ? process.env.API_KEY : undefined;
+    // API_KEY must be obtained from process.env.GEMINI_API_KEY as per guidelines
+    const apiKey = (typeof process !== 'undefined' && process.env) ? process.env.GEMINI_API_KEY : undefined;
     if (typeof apiKey !== 'string' || !apiKey) {
-      console.error("CRITICAL ERROR: process.env.API_KEY is not defined. GoogleGenAI client cannot be initialized.");
+      console.error("CRITICAL ERROR: process.env.GEMINI_API_KEY is not defined. GoogleGenAI client cannot be initialized.");
       // This error will be caught by the calling function and can be displayed to the user.
-      throw new Error("Gemini API_KEY is not configured. Please ensure the process.env.API_KEY environment variable is correctly set and accessible.");
+      throw new Error("Gemini API Key (GEMINI_API_KEY) is not configured. Please ensure the process.env.GEMINI_API_KEY environment variable is correctly set and accessible.");
     }
     geminiAI = new GoogleGenAI({ apiKey });
   }
@@ -353,8 +354,8 @@ export const generateQuizWithGemini = async (
         const errorMessage = error.message; 
         const lowerErrorMessage = errorMessage.toLowerCase();
 
-        if (lowerErrorMessage.includes("api key not valid") || lowerErrorMessage.includes("api_key_invalid") || lowerErrorMessage.includes("api_key is not configured") || lowerErrorMessage.includes("process.env.api_key")) {
-            detailedMessage = "Invalid or Missing Gemini API Key (process.env.API_KEY). Please ensure the environment variable is correctly configured and accessible.";
+        if (lowerErrorMessage.includes("api key not valid") || lowerErrorMessage.includes("api_key_invalid") || lowerErrorMessage.includes("api_key is not configured") || lowerErrorMessage.includes("process.env.gemini_api_key")) {
+            detailedMessage = "Invalid or Missing Gemini API Key (process.env.GEMINI_API_KEY). Please ensure the environment variable is correctly configured and accessible.";
         } else if (lowerErrorMessage.includes("deadline exceeded")) {
             detailedMessage = "The Gemini AI took too long to respond. This might be due to complex content or a temporary issue. Please try again or simplify the content.";
         } else if (lowerErrorMessage.includes("quota")) {
@@ -399,8 +400,8 @@ export const extractTextFromImageWithGemini = async (
     console.error("Error extracting text from image with Gemini:", error);
     if (error instanceof Error) {
         const lowerErrorMessage = error.message.toLowerCase();
-        if (lowerErrorMessage.includes("api key not valid") || lowerErrorMessage.includes("api_key_invalid") || lowerErrorMessage.includes("api_key is not configured") || lowerErrorMessage.includes("process.env.api_key")) {
-            throw new Error("Invalid or Missing Gemini API Key (process.env.API_KEY) for text extraction. Please ensure the environment variable is correctly configured and accessible.");
+        if (lowerErrorMessage.includes("api key not valid") || lowerErrorMessage.includes("api_key_invalid") || lowerErrorMessage.includes("api_key is not configured") || lowerErrorMessage.includes("process.env.gemini_api_key")) {
+            throw new Error("Invalid or Missing Gemini API Key (process.env.GEMINI_API_KEY) for text extraction. Please ensure the environment variable is correctly configured and accessible.");
         } else if (lowerErrorMessage.includes("500") || lowerErrorMessage.includes("unknown") || lowerErrorMessage.includes("rpc failed") || lowerErrorMessage.includes("xhr error")) {
             throw new Error("Failed to extract text from image due to a server or network error. Please try again.");
         }

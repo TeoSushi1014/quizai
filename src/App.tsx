@@ -1,4 +1,5 @@
 
+
 import React, { useState, useCallback, useEffect, createContext, useContext, ReactNode, useMemo, useRef } from 'react';
 import { HashRouter, Routes, Route, useNavigate, useLocation, NavLink as RouterNavLink } from 'react-router-dom';
 import { GoogleOAuthProvider, googleLogout } from '@react-oauth/google';
@@ -51,7 +52,7 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
 
   useEffect(() => {
     
-    const apiKeyFromEnv = (typeof process !== 'undefined' && process.env) ? process.env.API_KEY : undefined;
+    const apiKeyFromEnv = (typeof process !== 'undefined' && process.env) ? process.env.GEMINI_API_KEY : undefined;
     setIsGeminiKeyAvailable(typeof apiKeyFromEnv === 'string' && !!apiKeyFromEnv);
 
     
@@ -330,9 +331,9 @@ const AppLayout: React.FC = () => {
   
   const apiKeyWarnings = [];
   
-  // Use isGeminiKeyAvailable from context which now checks process.env.API_KEY
+  
   if (!isGeminiKeyAvailable) {
-    apiKeyWarnings.push("Google Gemini API Key (process.env.API_KEY)");
+    apiKeyWarnings.push("Google Gemini API Key (process.env.GEMINI_API_KEY)");
   }
   
   if (isLoading) {
