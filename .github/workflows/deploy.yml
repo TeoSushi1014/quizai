@@ -15,10 +15,10 @@ permissions:
 
 # Allow only one concurrent deployment
 concurrency:
-  group: "pages"
-  cancel-in-progress: true
+  group: "pages"  cancel-in-progress: true
 
-jobs:  # Build job
+jobs:
+  # Build job
   build:
     runs-on: ubuntu-latest
     steps:
@@ -52,8 +52,7 @@ jobs:  # Build job
   deploy:
     # Add a dependency to the build job
     needs: build
-    
-    # Grant GITHUB_TOKEN the permissions required to make a Pages deployment
+      # Grant GITHUB_TOKEN the permissions required to make a Pages deployment
     permissions:
       pages: write      # to deploy to Pages
       id-token: write   # to verify the deployment originates from an appropriate source
@@ -62,7 +61,8 @@ jobs:  # Build job
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-        runs-on: ubuntu-latest
+      
+    runs-on: ubuntu-latest
     steps:
     - name: Deploy to GitHub Pages
       id: deployment
