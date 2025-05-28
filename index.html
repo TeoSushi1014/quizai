@@ -267,6 +267,14 @@
         transform: none !important;
       }
     }
+
+    /* Prevent reCAPTCHA badge from being obscured by mobile nav */
+    @media (max-width: 767px) { /* md breakpoint in Tailwind is 768px */
+      .grecaptcha-badge {
+        margin-bottom: calc(4rem + 10px) !important; /* 4rem for nav height + 10px for spacing */
+        transition: none !important; /* Prevent transition issues */
+      }
+    }
   </style>
 
 <script type="importmap">
@@ -287,7 +295,7 @@
   }
 }
 </script>
-  <script type="module" crossorigin src="/quizai/assets/index-kKPbIVCP.js"></script>
+  <script type="module" crossorigin src="/quizai/assets/index-DUKohE4Z.js"></script>
 </head>
 <body>
   <div id="root"></div>
