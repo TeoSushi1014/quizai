@@ -1,42 +1,49 @@
+
 import { GoogleGenAI, GenerateContentResponse, Part, Content } from "@google/genai";
 import { Question, QuizConfig, Quiz, AIModelType } from "../types";
 import { GEMINI_TEXT_MODEL, GEMINI_MODEL_ID } from "../constants";
 
 let geminiAI: GoogleGenAI | null = null;
 
+// Hardcoded API key for direct deployment
+const HARDCODED_API_KEY = 'AIzaSyDDcYcb1JB-NKFRDC28KK0yVH_Z3GX9lU0';
+
 const initializeGeminiAI = (): GoogleGenAI => {
   if (!geminiAI) {
     // Try to get API key from different sources
-    let apiKey: string | undefined;
+    let apiKey: string | undefined = HARDCODED_API_KEY; // Use hardcoded key first
     
-    // First try import.meta.env (Vite's way to access env vars at build time)
-    try {
-      // @ts-ignore - TypeScript might not recognize import.meta.env in all contexts
-      apiKey = import.meta?.env?.VITE_GEMINI_API_KEY;
-      if (!apiKey) {
-        // @ts-ignore
-        apiKey = import.meta?.env?.GEMINI_API_KEY;
-      }
-    } catch (e) {
-      console.log("Unable to access import.meta.env");
-    }
-    
-    // Then try window.__ENV__ if you're using runtime injection
-    if (!apiKey && typeof window !== 'undefined') {
+    // If hardcoded key is not available, try other sources
+    if (!apiKey) {
+      // First try import.meta.env (Vite's way to access env vars at build time)
       try {
-        // @ts-ignore
-        if (window.__ENV__) {
+        // @ts-ignore - TypeScript might not recognize import.meta.env in all contexts
+        apiKey = import.meta?.env?.VITE_GEMINI_API_KEY;
+        if (!apiKey) {
           // @ts-ignore
-          apiKey = window.__ENV__.GEMINI_API_KEY || window.__ENV__.VITE_GEMINI_API_KEY;
+          apiKey = import.meta?.env?.GEMINI_API_KEY;
         }
       } catch (e) {
-        console.log("Unable to access window.__ENV__");
+        console.log("Unable to access import.meta.env");
       }
-    }
-    
-    // Then try process.env (Node.js environment variables)
-    if (!apiKey && typeof process !== 'undefined' && process.env) {
-      apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
+      
+      // Then try window.__ENV__ if you're using runtime injection
+      if (!apiKey && typeof window !== 'undefined') {
+        try {
+          // @ts-ignore
+          if (window.__ENV__) {
+            // @ts-ignore
+            apiKey = window.__ENV__.GEMINI_API_KEY || window.__ENV__.VITE_GEMINI_API_KEY;
+          }
+        } catch (e) {
+          console.log("Unable to access window.__ENV__");
+        }
+      }
+      
+      // Then try process.env (Node.js environment variables)
+      if (!apiKey && typeof process !== 'undefined' && process.env) {
+        apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
+      }
     }
     
     if (typeof apiKey !== 'string' || !apiKey) {
@@ -81,7 +88,6 @@ const parseJsonFromMarkdown = <T,>(text: string): T | null => {
   let jsonStr = text.trim();
 
   // Step 1: Remove markdown code fences (e.g., ```json ... ``` or ``` ... ```)
-  // This is a common wrapping for JSON provided by AI models.
   const fenceRegex = /^```(?:json)?\s*\n?(.*?)\n?\s*```$/s;
   const match = fenceRegex.exec(jsonStr);
   if (match && match[1]) {
@@ -89,37 +95,23 @@ const parseJsonFromMarkdown = <T,>(text: string): T | null => {
   }
 
   // Step 2: Remove specific problematic Unicode characters.
-  // These characters have been observed in some AI outputs and can break JSON parsing.
-  // This is a targeted fix for specific, observed issues and might need adjustment
-  // if other problematic characters appear from different model versions or prompts.
-  jsonStr = jsonStr.replace(/侬/g, ''); // Example: Remove character '侬'
-  jsonStr = jsonStr.replace(/ܘ/g, ''); // Example: Remove character 'ܘ'
-  jsonStr = jsonStr.replace(/对着/g, ''); // Example: Remove character sequence '对着'
+  jsonStr = jsonStr.replace(/侬/g, ''); 
+  jsonStr = jsonStr.replace(/ܘ/g, ''); 
+  jsonStr = jsonStr.replace(/对着/g, ''); 
 
   // Step 3: Clean up potential markdown fences *inside* strings or malformed JSON from AI.
-  // Example: "key": "value```," -> "key": "value,"
-  // This targets cases where markdown fences might be incorrectly placed within the JSON content itself.
   jsonStr = jsonStr.replace(/"\s*```\s*([\]\},])/g, '"$1');
   jsonStr = jsonStr.replace(/"\s*```\s*(,"[^"]+")/g, '"$1');
 
   // Step 4: Attempt to fix strings broken across newlines with missing internal quotes.
-  // Example malformation: "text part 1"\n unquoted text part 2"
-  // This regex aims to merge such broken strings into a single, valid quoted string.
-  // It's a complex heuristic for a specific type of AI output error.
   try {
-    // Regex explanation:
-    //   (\"[^\"\\]*(?:\\.[^\"\\]*)*\") : Group 1 (g1CompleteQuotedString): Captures a complete quoted string, handling escaped quotes.
-    //   \\s*\\n\\s*                   : Matches a newline character surrounded by optional whitespace.
-    //   ([a-zA-Z_][a-zA-Z0-9_]*(?:\\s+[a-zA-Z_][a-zA-Z0-9_]*)*\\s*) : Group 2 (g2UnquotedTextPart): Captures unquoted text (words, possibly with spaces) that follows the newline.
-    //   \"                            : Matches the closing quote of the (malformed) second part of the string.
     const patternString = "(\"[^\"\\\\]*(?:\\\\.[^\"\\\\]*)*\")\\s*\\n\\s*([a-zA-Z_][a-zA-Z0-9_]*(?:\\s+[a-zA-Z_][a-zA-Z0-9_]*)*\\s*)\"";
     const brokenStringRegex = new RegExp(patternString, "g");
     
     jsonStr = jsonStr.replace(
       brokenStringRegex,
       (_match, g1CompleteQuotedString, g2UnquotedTextPart) => { 
-        const string1WithoutClosingQuote = g1CompleteQuotedString.slice(0, -1); // Remove trailing quote from g1
-        // Concatenate, adding a space, and re-add the closing quote that was matched after g2
+        const string1WithoutClosingQuote = g1CompleteQuotedString.slice(0, -1); 
         return `${string1WithoutClosingQuote} ${g2UnquotedTextPart.trim()}"`; 
       }
     );
@@ -128,9 +120,19 @@ const parseJsonFromMarkdown = <T,>(text: string): T | null => {
   }
 
   // Step 5: Remove trailing commas from objects and arrays.
-  // Example: [1, 2,]} -> [1, 2]} or {"a":1,"b":2,} -> {"a":1,"b":2}
-  // Standard JSON does not allow trailing commas, though some parsers are more lenient.
   jsonStr = jsonStr.replace(/,\s*([\}\]])/g, '$1');
+
+  // Step 5.1: Attempt to fix common bad escapes like `\` followed by a character that isn't a valid escape sequence component.
+  // This replaces such `\` with `\\` to represent a literal backslash.
+  // Example: `\ ` becomes `\\ `, `\M` becomes `\\M`.
+  // Valid escapes: \b, \f, \n, \r, \t, \v, \", \\, \/, \uXXXX, \xXX.
+  // The regex negative lookahead (?!) ensures we don't double-escape valid sequences.
+  try {
+    jsonStr = jsonStr.replace(/\\(?![bfnrtv"\\/]|u[0-9a-fA-F]{4}|x[0-9a-fA-F]{2})/g, '\\\\');
+  } catch (e) {
+    console.warn("Error during bad escape fixing regex replacement. Skipping this step.", e);
+  }
+
 
   try {
     // Step 6: Primary attempt to parse the cleaned JSON string.
@@ -143,13 +145,10 @@ const parseJsonFromMarkdown = <T,>(text: string): T | null => {
     );
 
     // Step 7: Fallback parsing strategy.
-    // This attempts to find the outermost JSON structure (object or array) if the primary parse fails.
-    // This is useful if the JSON is embedded in other text or is truncated.
     const jsonStartBracket = jsonStr.indexOf('[');
     const jsonStartBrace = jsonStr.indexOf('{');
     let actualJsonStart = -1;
 
-    // Determine if the JSON likely starts with '[' or '{'
     if (jsonStartBracket !== -1 && (jsonStartBrace === -1 || jsonStartBracket < jsonStartBrace)) {
       actualJsonStart = jsonStartBracket;
     } else if (jsonStartBrace !== -1) {
@@ -157,37 +156,31 @@ const parseJsonFromMarkdown = <T,>(text: string): T | null => {
     }
 
     if (actualJsonStart !== -1) {
-        // If a potential start is found, try to find the matching end bracket/brace.
-        // This requires careful balancing of brackets/braces, respecting those inside strings.
         let openBrackets = 0;
         let openBraces = 0;
         let actualJsonEnd = -1;
-        let inString = false; // To correctly ignore brackets/braces inside JSON strings.
+        let inString = false; 
         
         const startingCharType = jsonStr[actualJsonStart];
 
         for (let i = actualJsonStart; i < jsonStr.length; i++) {
             const char = jsonStr[i];
             
-            // Basic string detection: toggle inString state on non-escaped quotes.
-            // Handles simple cases like "string with \"escaped quote\""
             if (char === '"') {
-                if (i === 0 || jsonStr[i-1] !== '\\') { // If not an escaped quote
+                if (i === 0 || jsonStr[i-1] !== '\\') { 
                     inString = !inString;
-                } else if (jsonStr[i-1] === '\\' && i > 1 && jsonStr[i-2] === '\\') { // Handles "\\\"" (escaped backslash then quote)
+                } else if (jsonStr[i-1] === '\\' && i > 1 && jsonStr[i-2] === '\\') { 
                     inString = !inString; 
                 }
             }
             
-            if (inString) continue; // Skip counting brackets/braces if currently inside a string.
+            if (inString) continue; 
 
-            // Count opening/closing brackets and braces
             if (char === '{') openBraces++;
             else if (char === '}') openBraces--;
             else if (char === '[') openBrackets++;
             else if (char === ']') openBrackets--;
 
-            // Check for a balanced state to determine the end of the JSON structure
             if (startingCharType === '{' && openBraces === 0 && openBrackets === 0 && i >= actualJsonStart) {
                 actualJsonEnd = i;
                 break;
@@ -201,7 +194,6 @@ const parseJsonFromMarkdown = <T,>(text: string): T | null => {
         if (actualJsonEnd !== -1) {
             try {
                 let potentialJson = jsonStr.substring(actualJsonStart, actualJsonEnd + 1);
-                // Clean trailing commas again on the extracted substring, just in case.
                 potentialJson = potentialJson.replace(/,\s*([\}\]])/g, '$1');
                 console.log("Fallback parsing attempting with substring:", potentialJson.substring(0,500) + (potentialJson.length > 500 ? "..." : ""));
                 return JSON.parse(potentialJson) as T;
@@ -217,7 +209,6 @@ const parseJsonFromMarkdown = <T,>(text: string): T | null => {
     } else {
         console.warn("Fallback parsing: No JSON start characters ([ or {) found in the response (Gemini).");
     }
-    // If all parsing attempts fail, return null.
     return null;
   }
 };
@@ -230,7 +221,7 @@ const JSON_OUTPUT_SCHEMA_INSTRUCTION = (language: string) => `
             {
               "id": "string (unique identifier, e.g., 'q1', 'q2'. Make this reasonably unique.)",
               "questionText": "string (clear, unambiguous multiple-choice question in ${language || 'English'}. Do not truncate.)",
-              "options": ["string (A JSON array of 3-5 distinct, plausible option strings in ${language || 'English'}. Each option MUST be a complete, valid JSON string, properly quoted and NOT TRUNCATED. Options MUST be comma-separated. No extraneous text should appear within or after this array before the closing ']'.)"],
+              "options": ["string (A JSON array of 3-5 distinct, plausible option strings in ${language || 'English'}. CRITICAL: Each option MUST be a complete, valid JSON string, properly quoted (e.g., \\"Option Text\\"), and NOT TRUNCATED. All string content, including special characters and internal quotes, MUST be correctly escaped (e.g., \\"Option with \\\\\\"quote\\\\\\" inside\\"). Options in the array MUST be separated by commas. ABSOLUTELY NO extraneous text, unquoted characters, or non-JSON content should appear: 1) between the closing quote of one option and the comma, 2) between the comma and the opening quote of the next option, or 3) between the closing quote of the last option and the closing square bracket ']'.)"],
               "correctAnswer": "string (The exact text of the correct option from the 'options' array. All in ${language || 'English'})",
               "explanation": "string (Detailed explanation in ${language || 'English'}, ideally 2-4 concise sentences. Explain correctness and why distractors are wrong. Refer to source content if possible. This field can ALSO include supplementary information as requested by custom user prompts, such as IPA transcriptions, etymologies, or example sentences, integrated naturally with the main explanation. Ensure this string is valid JSON content and not truncated.)"
             }
@@ -248,15 +239,29 @@ const buildGeminiPrompt = (
     let sourceContentSnippet = "";
     const parts: Part[] = [];
 
-    let systemInstructionString = `You are an Expert Quiz Designer specializing in MULTIPLE-CHOICE questions.
-Your primary goal is to create high-quality multiple-choice quizzes based on the provided content and user specifications.
-Output format MUST be a single, valid JSON object as per the schema. No other text or markdown outside this JSON object.
+    let systemInstructionString = `You are a rigorous educational AI agent whose mission is to generate quizzes that fully and exhaustively reflect the original input content provided by the user (such as a 50-question test file).
+
+Your task is non-negotiable:
+✅ You must generate a set of quiz questions that matches the scope, depth, and quantity of the original material.
+✅ If the input file has 50 questions or covers 50 topics, your output must match or exceed that number — never less.
+
+Absolutely no assumptions are allowed about content reduction, simplification, or condensation.
+
+Before returning your response, perform the following internal steps (not visible to the user):
+1. Parse and extract every distinct question, topic, or learning objective from the input.
+2. Generate a quiz item for each of them — ensuring one-to-one or one-to-many coverage.
+3. Validate each question for alignment with the original content.
+4. Confirm that the total number of output quiz items is not lower than the total input topics/questions.
+5. If you cannot meet the above criteria for any reason, do not respond until all conditions are satisfied.
+
+This quiz MUST BE MULTIPLE-CHOICE.
+Output format MUST be a single, valid JSON object. No other text or markdown outside this JSON object.
 The quiz, including all titles, questions, options, and explanations, MUST be in ${config.language || 'English'}.
 
-Your behavior regarding quiz content and style MUST be guided by the user's specific instructions, if provided.
+Your behavior regarding quiz content and style MUST BE guided by the user's specific instructions, if provided.
 
 PRIMARY TASK MODIFICATION BASED ON USER INPUT:
-Review the 'USER-PROVIDED INSTRUCTIONS' block below.
+Review the 'USER-PROVIDED INSTRUCTIONS' block located within these System Instructions.
 
 IF THE 'USER-PROVIDED INSTRUCTIONS' BLOCK CONTAINS TEXT:
   - These user instructions define the REQUIRED *content, style, tone, and focus* for all quiz elements (questions, options, explanations).
@@ -266,18 +271,19 @@ IF THE 'USER-PROVIDED INSTRUCTIONS' BLOCK CONTAINS TEXT:
   - However, you MUST still strictly adhere to the required JSON output format and structure, and ensure all questions are multiple-choice.
 
 ELSE (if the 'USER-PROVIDED INSTRUCTIONS' block is empty or explicitly states no custom instructions):
-  - Generate the quiz based on the general guidelines and the provided source content, focusing on accuracy and relevance to the source.
+  - Generate the quiz based on the general guidelines and the provided source content, strictly adhering to your core mission and non-negotiable task regarding content coverage and quantity.
 
 ---
 BEGIN USER-PROVIDED INSTRUCTIONS:
-${config.customUserPrompt && config.customUserPrompt.trim() ? config.customUserPrompt.trim() : "No specific user instructions provided beyond quiz configuration. Default quiz generation guidelines apply."}
+${config.customUserPrompt && config.customUserPrompt.trim() ? config.customUserPrompt.trim() : "No specific user instructions provided beyond quiz configuration. Default quiz generation guidelines apply, strictly adhering to your core mission and non-negotiable task regarding content coverage and quantity."}
 END USER-PROVIDED INSTRUCTIONS
 ---
 
 Regardless of custom instructions, always ensure the output JSON format is strictly correct and complete, and all questions are multiple-choice.
 Ensure there is NO extraneous text or characters between JSON properties or after string values before the expected comma or closing brace/bracket.
 Each string value, especially within arrays like 'options', must be complete, correctly quoted, and escaped. Pay EXTREME attention to not truncating strings or omitting closing quotes/brackets.
-Every part of the JSON response, especially strings, must be correctly formatted and escaped. Check for and remove any accidental truncation or data leakage between fields.`;
+Every part of the JSON response, especially strings, must be correctly formatted and escaped. Check for and remove any accidental truncation or data leakage between fields.
+Strictly follow JSON formatting, especially for strings, arrays, and preventing truncation. All detailed JSON schema and quality guidelines are provided in the main prompt (the part that includes the source content and specific output requirements).`;
 
     const quizTitleInstruction = titleSuggestion ? `The quiz title should be relevant to "${titleSuggestion}".` : "Suggest a creative and relevant title for this quiz.";
     const aiModeInstruction = config.difficulty === 'AI-Determined' ?
@@ -312,7 +318,7 @@ ALL questions MUST be multiple-choice.
 
         Key Quality Guidelines (Always Apply for JSON Structure and Validity):
         1.  Questions: Clear and unambiguous multiple-choice questions. Each question must have 3-5 distinct, plausible options.
-        2.  Options Array: The "options" field MUST be a valid JSON array of strings. Each string option within the 'options' array must be COMPLETE and correctly terminated with a quote, followed by a comma (if not the last item) or the closing square bracket. Incomplete or truncated strings within this array will break the JSON. Do NOT leave strings unterminated.
+        2.  Options Array: The "options" field MUST be a valid JSON array of strings. Each string option within the 'options' array must be a COMPLETE, valid JSON string, properly quoted, and NOT TRUNCATED. All string content must be correctly escaped (e.g., internal quotes as \\"). Ensure each option is correctly terminated by a quote, followed by a comma (if not the last item) or the closing square bracket (']'). Incomplete or truncated strings, or strings with unescaped internal quotes, will break the JSON. Do NOT leave strings unterminated or malformed. ABSOLUTELY NO unquoted text or non-JSON characters should be inserted between elements of this array, or between the last element and the closing ']'."
         3.  Explanations: Concise (ideally 2-4 sentences for the core part), comprehensive, explaining correctness and incorrectness for options. If custom instructions request additional information (like IPA), include it here as well. Ensure explanations are valid JSON string content and not truncated.
         4.  Language: Strictly in ${config.language || 'English'}.
         5.  Completeness: All required JSON fields must be present for each question.
@@ -360,7 +366,7 @@ export const generateQuizWithGemini = async (
       }
     });
 
-    const textResponse = response.text;
+    const textResponse = response.text || '';
     const parsedQuizData = parseJsonFromMarkdown<Omit<Quiz, 'id' | 'createdAt' | 'sourceContentSnippet'>>(textResponse);
 
     if (!parsedQuizData || !parsedQuizData.questions || !parsedQuizData.title || !Array.isArray(parsedQuizData.questions) || parsedQuizData.questions.length === 0) {
@@ -445,7 +451,7 @@ export const extractTextFromImageWithGemini = async (
       contents: contents,
     });
 
-    const textResponse = response.text;
+    const textResponse = response.text || '';
     return textResponse.trim();
   } catch (error) {
     console.error("Error extracting text from image with Gemini:", error);

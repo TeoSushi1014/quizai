@@ -51,9 +51,15 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
   const [appInitialized, setAppInitialized] = useState(false);
 
   useEffect(() => {
-    
+    // Check for hardcoded API key first
+    const hardcodedKey = 'AIzaSyDDcYcb1JB-NKFRDC28KK0yVH_Z3GX9lU0';
     const apiKeyFromEnv = (typeof process !== 'undefined' && process.env) ? process.env.GEMINI_API_KEY : undefined;
-    setIsGeminiKeyAvailable(typeof apiKeyFromEnv === 'string' && !!apiKeyFromEnv);
+    
+    // Check if API key is available from any source (hardcoded or env)
+    setIsGeminiKeyAvailable(
+      (typeof apiKeyFromEnv === 'string' && !!apiKeyFromEnv) || 
+      (typeof hardcodedKey === 'string' && !!hardcodedKey)
+    );
 
     
     const savedLanguage = localStorage.getItem('appLanguage') as Language | null;

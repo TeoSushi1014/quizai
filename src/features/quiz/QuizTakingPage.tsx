@@ -54,19 +54,34 @@ const QuizTakingPage: React.FC = () => {
   const storeCurrentAnswer = useCallback(() => {
     if (currentQuestion && selectedOption) {
       setUserAnswers(prev => ({ ...prev, [currentQuestion.id]: selectedOption }));
+    } else if (currentQuestion && !selectedOption && userAnswers[currentQuestion.id]) {
+      // If user de-selects (though UI doesn't directly support this, but good for robustness)
+      // Or if selectedOption is cleared before storing
+      setUserAnswers(prev => {
+        const newAnswers = {...prev};
+        delete newAnswers[currentQuestion.id];
+        return newAnswers;
+      });
     }
-  }, [currentQuestion, selectedOption]);
+  }, [currentQuestion, selectedOption, userAnswers]);
 
   const handleFinalSubmit = useCallback(() => {
     if (!localActiveQuiz) return;
     
-    storeCurrentAnswer(); 
-
+    // Construct the final userAnswers map for calculation, including the current selection
+    let finalUserAnswersMap = { ...userAnswers };
+    if (currentQuestion && selectedOption) {
+      finalUserAnswersMap[currentQuestion.id] = selectedOption;
+    } else if (currentQuestion && !selectedOption && finalUserAnswersMap[currentQuestion.id]) {
+      // If current question had an answer but is now de-selected
+      delete finalUserAnswersMap[currentQuestion.id];
+    }
+    
     let correctCount = 0;
     const finalUserAnswersArray: UserAnswer[] = [];
 
     localActiveQuiz.questions.forEach(q => {
-      const userAnswerText = userAnswers[q.id]; 
+      const userAnswerText = finalUserAnswersMap[q.id]; 
       if (userAnswerText) {
         finalUserAnswersArray.push({ questionId: q.id, answer: userAnswerText });
         if (userAnswerText === q.correctAnswer) {
@@ -93,7 +108,17 @@ const QuizTakingPage: React.FC = () => {
     setShowConfirmationModal(false);
     setShowTimesUpModalState(false);
     navigate(`/results/${localActiveQuiz.id}`);
-  }, [localActiveQuiz, userAnswers, timeLeft, setQuizResult, navigate, storeCurrentAnswer, totalQuestions, attemptSettings.timeLimit]);
+  }, [
+    localActiveQuiz, 
+    userAnswers, 
+    currentQuestion, 
+    selectedOption, 
+    timeLeft, 
+    setQuizResult, 
+    navigate, 
+    totalQuestions, 
+    attemptSettings.timeLimit
+  ]);
 
 
   const handleNextQuestionAttempt = () => {
@@ -112,7 +137,7 @@ const QuizTakingPage: React.FC = () => {
   
   const handleCloseConfirmationModal = useCallback(() => setShowConfirmationModal(false), []);
   const handleCloseTimesUpModalAndSubmit = useCallback(() => {
-    setShowTimesUpModalState(false);
+    // setShowTimesUpModalState(false); // This will be handled by handleFinalSubmit
     handleFinalSubmit();
   }, [handleFinalSubmit]);
 
@@ -194,7 +219,7 @@ const QuizTakingPage: React.FC = () => {
       <div className="flex flex-col space-y-3 pt-6 sm:pt-8 border-t border-slate-700/60 mt-6 sm:mt-8"> {/* Added margin-top here to space out from question box */}
         <Button 
             onClick={handleNextQuestionAttempt} 
-            disabled={!selectedOption} 
+            disabled={!selectedOption && !(currentQuestion && userAnswers[currentQuestion.id])}
             variant="primary" 
             size="lg" 
             rightIcon={<ChevronRightIcon className="w-5 h-5"/>} 
@@ -233,10 +258,10 @@ const QuizTakingPage: React.FC = () => {
       {showTimesUpModalState && (
         <Modal
           isOpen={showTimesUpModalState}
-          onClose={handleCloseTimesUpModalAndSubmit}
+          onClose={handleCloseTimesUpModalAndSubmit} // Submitting on close
           title={t('timesUp')}
           size="md"
-          hideCloseButton={true}
+          hideCloseButton={true} // Prevent closing without submitting
           footerContent={
             <div className="flex justify-center">
               <Button variant="primary" onClick={handleCloseTimesUpModalAndSubmit} size="md">

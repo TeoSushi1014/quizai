@@ -1,6 +1,5 @@
 
 
-
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAppContext, useTranslation } from '../../App';
@@ -87,34 +86,35 @@ const QuizPracticePage: React.FC = () => {
   }, [currentQuestionIndex, currentQuestion, practiceAttempts]);
 
 
-  const prepareAndCommitFinalAnswer = useCallback(() => {
-    if (!localActiveQuiz) return false;
-
-    if (!isFinishingPracticeRef.current && currentQuestion && currentTentativeSelection && !isCurrentSelectionChecked) {
-        setPracticeAttempts(prev =>
-            prev.map(pa =>
-                pa.questionId === currentQuestion.id
-                ? {
-                    ...pa,
-                    selectedOption: currentTentativeSelection,
-                    isCorrect: null, 
-                    attempts: (pa.attempts || 0) + 1,
-                    ...( (pa.attempts || 0) === 0 && pa.firstTryCorrect === null && { firstTryCorrect: null }),
-                    }
-                : pa
-            )
-        );
-    }
-    return true;
-  }, [localActiveQuiz, currentQuestion, currentTentativeSelection, isCurrentSelectionChecked]);
-
   const triggerFinishPractice = useCallback(() => {
     if (isFinishingPracticeRef.current || !localActiveQuiz) return;
+    isFinishingPracticeRef.current = true; // Set this early
 
-    prepareAndCommitFinalAnswer();
+    let finalPracticeAttempts = [...practiceAttempts];
 
-    const correctAnswersCount = practiceAttempts.filter(pa => pa.isCorrect === true).length;
-    const finalUserAnswersArray: UserAnswer[] = practiceAttempts.map(pa => ({
+    if (currentQuestion && currentTentativeSelection && !isCurrentSelectionChecked) {
+        finalPracticeAttempts = finalPracticeAttempts.map(pa =>
+            pa.questionId === currentQuestion.id
+            ? {
+                ...pa,
+                selectedOption: currentTentativeSelection,
+                isCorrect: null, 
+                attempts: (pa.attempts || 0), 
+              }
+            : pa
+        );
+    } else if (currentQuestion && !currentTentativeSelection && !isCurrentSelectionChecked) {
+        // If current question has no tentative selection and wasn't checked, ensure its selectedOption is null
+        finalPracticeAttempts = finalPracticeAttempts.map(pa =>
+            pa.questionId === currentQuestion.id
+            ? { ...pa, selectedOption: null, isCorrect: null }
+            : pa
+        );
+    }
+
+
+    const correctAnswersCount = finalPracticeAttempts.filter(pa => pa.isCorrect === true).length;
+    const finalUserAnswersArray: UserAnswer[] = finalPracticeAttempts.map(pa => ({
       questionId: pa.questionId,
       answer: pa.selectedOption || "", 
     }));
@@ -135,9 +135,17 @@ const QuizPracticePage: React.FC = () => {
     };
     
     setGlobalQuizResult(resultData);
-    isFinishingPracticeRef.current = true;
     setIsFinishingPractice(true);
-  }, [prepareAndCommitFinalAnswer, localActiveQuiz, practiceAttempts, setGlobalQuizResult, attemptSettings.timeLimit, timeLeft]);
+  }, [
+    localActiveQuiz, 
+    practiceAttempts, 
+    currentQuestion, 
+    currentTentativeSelection, 
+    isCurrentSelectionChecked, 
+    setGlobalQuizResult, 
+    attemptSettings.timeLimit, 
+    timeLeft
+  ]);
 
   useEffect(() => {
     if (isFinishingPractice && isFinishingPracticeRef.current && localActiveQuiz) {
@@ -175,15 +183,27 @@ const QuizPracticePage: React.FC = () => {
   const handleNextQuestionLogic = useCallback(() => {
     if (!localActiveQuiz || !currentQuestion || isFinishingPracticeRef.current) return;
 
+    // If user made a selection but didn't "Check", store it as a tentative selection before moving.
+    // isCorrect remains null or its previous checked state.
     if (currentTentativeSelection && !isCurrentSelectionChecked) {
       setPracticeAttempts(prev =>
         prev.map(pa =>
           pa.questionId === currentQuestion.id && (pa.selectedOption !== currentTentativeSelection || pa.isCorrect === null)
-            ? { ...pa, selectedOption: currentTentativeSelection, isCorrect: null, attempts: pa.attempts || 0 }
+            ? { ...pa, selectedOption: currentTentativeSelection, isCorrect: pa.isCorrect, /* don't reset isCorrect if already checked */ attempts: pa.attempts || 0 }
+            : pa
+        )
+      );
+    } else if (!currentTentativeSelection && !isCurrentSelectionChecked) {
+       // If user skipped by clicking next without selecting, and it wasn't checked.
+       setPracticeAttempts(prev =>
+        prev.map(pa =>
+          pa.questionId === currentQuestion.id && pa.selectedOption !== null && pa.isCorrect === null
+            ? { ...pa, selectedOption: null } // Clear previous tentative if any, if not checked
             : pa
         )
       );
     }
+
 
     if (!goToNextQuestion()) { 
       triggerFinishPractice();
@@ -192,11 +212,20 @@ const QuizPracticePage: React.FC = () => {
 
   const handlePreviousQuestionLogic = useCallback(() => {
     if (!currentQuestion || isFinishingPracticeRef.current) return;
+    
     if (currentTentativeSelection && !isCurrentSelectionChecked) {
       setPracticeAttempts(prev =>
         prev.map(pa =>
           pa.questionId === currentQuestion.id && (pa.selectedOption !== currentTentativeSelection || pa.isCorrect === null)
-            ? { ...pa, selectedOption: currentTentativeSelection, isCorrect: null, attempts: pa.attempts || 0 }
+            ? { ...pa, selectedOption: currentTentativeSelection, isCorrect: pa.isCorrect, attempts: pa.attempts || 0 }
+            : pa
+        )
+      );
+    } else if (!currentTentativeSelection && !isCurrentSelectionChecked) {
+       setPracticeAttempts(prev =>
+        prev.map(pa =>
+          pa.questionId === currentQuestion.id && pa.selectedOption !== null && pa.isCorrect === null
+            ? { ...pa, selectedOption: null }
             : pa
         )
       );
@@ -205,7 +234,7 @@ const QuizPracticePage: React.FC = () => {
   }, [goToPreviousQuestion, currentTentativeSelection, isCurrentSelectionChecked, currentQuestion]);
 
   const handleCloseTimesUpModalAndSubmit = useCallback(() => {
-    setShowTimesUpModalState(false);
+    // setShowTimesUpModalState(false); // This will be handled by triggerFinishPractice -> setIsFinishingPractice
     triggerFinishPractice();
   }, [triggerFinishPractice]);
 
@@ -223,8 +252,8 @@ const QuizPracticePage: React.FC = () => {
   if (!currentQuestion) {
     if (localActiveQuiz && totalQuestions > 0 && currentQuestionIndex >= totalQuestions) {
         if (!isFinishingPracticeRef.current) {
-            console.warn("QuizPracticePage: currentQuestion is undefined because index is out of bounds. Initiating finish.");
-            triggerFinishPractice();
+            // console.warn("QuizPracticePage: currentQuestion is undefined because index is out of bounds. Initiating finish.");
+            triggerFinishPractice(); // Call it directly
         }
         return (
           <div className="flex flex-col items-center justify-center p-8 min-h-[400px]">
@@ -382,10 +411,10 @@ const QuizPracticePage: React.FC = () => {
       {showTimesUpModalState && (
         <Modal
           isOpen={showTimesUpModalState && !isFinishingPracticeRef.current}
-          onClose={handleCloseTimesUpModalAndSubmit}
+          onClose={handleCloseTimesUpModalAndSubmit} // Submitting on close
           title={t('timesUp')}
           size="md"
-          hideCloseButton={true}
+          hideCloseButton={true} // Prevent closing without submitting
           footerContent={
             <div className="flex justify-center">
               <Button variant="primary" onClick={handleCloseTimesUpModalAndSubmit} size="md">
