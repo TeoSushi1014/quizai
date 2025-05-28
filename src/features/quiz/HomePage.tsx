@@ -6,9 +6,9 @@ import { motion } from 'framer-motion';
 import { Button, Card, Textarea, Tooltip } from '../../components/ui';
 import { useAppContext, useTranslation } from '../../App';
 import { Quiz } from '../../types';
-import { PlusIcon, UserCircleIcon, ChevronRightIcon, UploadIcon, EditIcon, ShareIcon, LightbulbIcon, ChartBarIcon } from '../../constants';
+import { PlusIcon, UserCircleIcon, ChevronRightIcon } from '../../constants';
 import QuizCard from './components/QuizCard';
-import FeatureItemCard from './components/FeatureItemCard'; // Import the new component
+// FeatureItemCard import removed
 import useIntersectionObserver from '../../hooks/useIntersectionObserver';
 import { translations } from '../../i18n';
 import MathText from '../../components/MathText';
@@ -166,17 +166,7 @@ const HomePage: React.FC = () => {
   const handleDeleteQuiz = (quizId: string) => { deleteQuiz(quizId); };
   const handleEditQuiz = (quiz: Quiz) => { navigate(`/review/${quiz.id}`, { state: { existingQuiz: quiz } }); };
 
-  const howItWorksItems = [
-    { icon: <UploadIcon />, titleKey: 'howItWorksUploadTitle', descriptionKey: 'howItWorksUploadDesc' },
-    { icon: <EditIcon />, titleKey: 'howItWorksCustomizeTitle', descriptionKey: 'howItWorksCustomizeDesc' },
-    { icon: <ShareIcon />, titleKey: 'howItWorksShareTitle', descriptionKey: 'howItWorksShareDesc' },
-  ];
-
-  const featuresItems = [
-    { icon: <LightbulbIcon />, titleKey: 'featureIntelligentTitle', descriptionKey: 'featureIntelligentDesc' },
-    { icon: <EditIcon />, titleKey: 'featureCustomizeTitle', descriptionKey: 'featureCustomizeDesc' },
-    { icon: <ChartBarIcon />, titleKey: 'featureAnalyticsTitle', descriptionKey: 'featureAnalyticsDesc' },
-  ];
+  // Removed howItWorksItems and featuresItems arrays
 
 
   if (quizzes.length === 0) {
@@ -222,69 +212,8 @@ const HomePage: React.FC = () => {
           </motion.div>
         </section>
 
-        {/* How It Works Section */}
-        <motion.section
-          className="py-16 md:py-20"
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: durationSlow, ease: easeIOS }}
-        >
-          <div className="text-center mb-12 md:mb-16">
-            <motion.h2
-              className="text-3xl sm:text-4xl font-bold text-slate-50 mb-4"
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: durationNormal, ease: easeIOS, delay: 0.1 }}
-            >
-              {t('howItWorksTitle')}
-            </motion.h2>
-          </div>
-          <div className="grid md:grid-cols-3 gap-8 xl:gap-10">
-            {howItWorksItems.map((item, index) => (
-              <FeatureItemCard
-                key={item.titleKey}
-                icon={item.icon}
-                title={t(item.titleKey as keyof typeof translations.en)}
-                description={t(item.descriptionKey as keyof typeof translations.en)}
-                animationDelay={index * 0.15}
-              />
-            ))}
-          </div>
-        </motion.section>
-
-        {/* Features Section */}
-        <motion.section
-          className="py-16 md:py-20"
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: durationSlow, ease: easeIOS, delay: 0.2 }} // Delay after How It Works
-        >
-          <div className="text-center mb-12 md:mb-16">
-            <motion.h2
-              className="text-3xl sm:text-4xl font-bold text-slate-50 mb-4"
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: durationNormal, ease: easeIOS, delay: 0.1 }}
-            >
-              {t('featuresTitle')}
-            </motion.h2>
-          </div>
-          <div className="grid md:grid-cols-3 gap-8 xl:gap-10">
-            {featuresItems.map((item, index) => (
-              <FeatureItemCard
-                key={item.titleKey}
-                icon={item.icon}
-                title={t(item.titleKey as keyof typeof translations.en)}
-                description={t(item.descriptionKey as keyof typeof translations.en)}
-                animationDelay={index * 0.15}
-              />
-            ))}
-          </div>
-        </motion.section>
+        {/* How It Works Section REMOVED */}
+        {/* Features Section REMOVED */}
 
         <FeedbackSection />
       </div>
