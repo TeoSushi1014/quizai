@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion'; // Import motion
@@ -91,6 +92,7 @@ const AzotaExportModal: React.FC<{
     </Modal>
   );
 };
+AzotaExportModal.displayName = "AzotaExportModal";
 
 
 const QuizReviewPage: React.FC = () => {
@@ -254,6 +256,7 @@ const QuizReviewPage: React.FC = () => {
     </div>
   );
 };
+QuizReviewPage.displayName = "QuizReviewPage";
 
 
 interface QuestionItemProps {
@@ -363,6 +366,7 @@ const QuestionItem: React.FC<QuestionItemProps> = ({ question: q, index, editabl
     </motion.div>
   );
 };
+QuestionItem.displayName = "QuestionItem";
 
 
 export default QuizReviewPage;

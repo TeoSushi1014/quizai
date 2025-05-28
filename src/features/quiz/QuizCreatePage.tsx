@@ -1,6 +1,7 @@
 
 
 
+
 import React, { useState, useCallback, ReactNode, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion'; // Added AnimatePresence
@@ -20,6 +21,17 @@ const UNAUTH_TIMESTAMPS_KEY = 'quizAICreationTimestamps_unauth';
 const MAX_GENERATION_RETRIES = 2;
 
 const easeIOS = [0.25, 0.1, 0.25, 1]; // Defined for Framer Motion transitions
+
+const SummaryItem: React.FC<{icon: ReactNode, label: string, value: ReactNode, iconClassName?: string}> = ({ icon, label, value, iconClassName = "text-sky-300" }) => (
+  <div className="flex items-start py-2.5">
+      <span className={`mr-3.5 mt-0.5 flex-shrink-0 ${iconClassName}`}>{icon}</span>
+      <div className="flex-grow">
+          <strong className="text-slate-100 font-medium block text-sm">{label}</strong>
+          <span className="text-slate-300 text-sm leading-relaxed">{value}</span>
+      </div>
+  </div>
+);
+SummaryItem.displayName = "SummaryItem";
 
 const QuizCreatePage: React.FC = () => {
   const { addQuiz, language, isGeminiKeyAvailable, currentUser } = useAppContext(); 
@@ -376,15 +388,6 @@ const QuizCreatePage: React.FC = () => {
     );
   };
   
-  const SummaryItem: React.FC<{icon: ReactNode, label: string, value: ReactNode, iconClassName?: string}> = ({ icon, label, value, iconClassName = "text-sky-300" }) => (
-    <div className="flex items-start py-2.5">
-        <span className={`mr-3.5 mt-0.5 flex-shrink-0 ${iconClassName}`}>{icon}</span>
-        <div className="flex-grow">
-            <strong className="text-slate-100 font-medium block text-sm">{label}</strong>
-            <span className="text-slate-300 text-sm leading-relaxed">{value}</span>
-        </div>
-    </div>
-  );
 
   const renderStepContent = () => {
     switch (step) {
@@ -679,5 +682,6 @@ const QuizCreatePage: React.FC = () => {
     </div>
   );
 };
+QuizCreatePage.displayName = "QuizCreatePage";
 
 export default QuizCreatePage;

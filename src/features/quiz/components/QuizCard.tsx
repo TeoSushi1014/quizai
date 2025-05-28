@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Quiz } from '../../../types';
@@ -288,5 +289,6 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onDelete, onEditQuiz, animati
     </>
   );
 };
+QuizCard.displayName = "QuizCard";
 
 export default QuizCard;

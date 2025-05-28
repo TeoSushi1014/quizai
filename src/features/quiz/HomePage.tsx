@@ -1,15 +1,18 @@
 
 
 
-import React, { useState, useRef } from 'react';
+
+import React, { useState, useRef, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Button, Card, Textarea, Tooltip } from '../../components/ui';
 import { useAppContext, useTranslation } from '../../App';
 import { Quiz } from '../../types';
-import { PlusIcon, UserCircleIcon, ChevronRightIcon } from '../../constants';
+import { PlusIcon, UserCircleIcon, ChevronRightIcon } from '../../constants'; 
 import QuizCard from './components/QuizCard'; 
 import useIntersectionObserver from '../../hooks/useIntersectionObserver';
+import { translations } from '../../i18n';
+import MathText from '../../components/MathText';
 
 
 const MAX_RECENT_QUIZZES_HOME = 3;
@@ -142,6 +145,7 @@ const FeedbackSection: React.FC = () => {
     </motion.section>
   );
 };
+FeedbackSection.displayName = "FeedbackSection";
 
 const HomePage: React.FC = () => {
   const { quizzes, currentUser, setCurrentView, deleteQuiz } = useAppContext(); 
@@ -162,6 +166,7 @@ const HomePage: React.FC = () => {
 
   const handleDeleteQuiz = (quizId: string) => { deleteQuiz(quizId); };
   const handleEditQuiz = (quiz: Quiz) => { navigate(`/review/${quiz.id}`, { state: { existingQuiz: quiz } }); };
+
 
   if (quizzes.length === 0) {
     return (
@@ -290,10 +295,10 @@ const HomePage: React.FC = () => {
           )}
         </section>
       )}
-      
       <FeedbackSection />
     </div>
   );
 };
+HomePage.displayName = "HomePage";
 
 export default HomePage;

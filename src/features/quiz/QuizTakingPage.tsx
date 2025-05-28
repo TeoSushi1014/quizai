@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAppContext, useTranslation } from '../../App';
@@ -220,25 +221,19 @@ const QuizTakingPage: React.FC = () => {
           size="md"
           footerContent={
             <div className="flex justify-end gap-3.5">
-              <Button variant="secondary" onClick={handleCloseConfirmationModal} size="md">
-                {t('cancel')}
-              </Button>
-              <Button variant="primary" onClick={handleFinalSubmit} size="md">
-                {t('submit')}
-              </Button>
+              <Button variant="secondary" onClick={handleCloseConfirmationModal} size="md">{t('cancel')}</Button>
+              <Button variant="primary" onClick={handleFinalSubmit} size="md">{t('submit')}</Button>
             </div>
           }
         >
-          <p className="text-slate-200 text-base leading-relaxed">
-            {t('submitConfirmationMessage')}
-          </p>
+          <p className="text-slate-200 text-base leading-relaxed">{t('submitConfirmationMessage')}</p>
         </Modal>
       )}
 
       {showTimesUpModalState && (
         <Modal
           isOpen={showTimesUpModalState}
-          onClose={handleCloseTimesUpModalAndSubmit} 
+          onClose={handleCloseTimesUpModalAndSubmit}
           title={t('timesUp')}
           size="md"
           hideCloseButton={true}
@@ -258,5 +253,6 @@ const QuizTakingPage: React.FC = () => {
     </Card>
   );
 };
+QuizTakingPage.displayName = "QuizTakingPage";
 
 export default QuizTakingPage;

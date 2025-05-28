@@ -1,5 +1,6 @@
 
 
+
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { TokenResponse, useGoogleLogin } from '@react-oauth/google'; // Changed CredentialResponse to TokenResponse
@@ -137,5 +138,6 @@ const SignInPage: React.FC = () => {
     </div>
   );
 };
+SignInPage.displayName = "SignInPage";
 
 export default SignInPage;

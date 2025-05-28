@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppContext, useTranslation } from '../../App';
@@ -82,5 +83,6 @@ const DashboardPage: React.FC = () => {
     </div>
   );
 };
+DashboardPage.displayName = "DashboardPage";
 
 export default DashboardPage;
