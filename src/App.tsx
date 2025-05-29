@@ -213,10 +213,9 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
   }, [currentUser?.accessToken, setDriveSyncError]);
 
 
-  // Persist quizzes to localforage/localStorage and trigger Drive save
+  // Persist quizzes to Google Drive (if logged in) based on allQuizzes changes
   useEffect(() => {
-    if (appInitialized && !isLoading) { 
-      quizStorage.saveQuizzes(allQuizzes); 
+    if (appInitialized && !isLoading && allQuizzes.length > 0) { // Added allQuizzes.length > 0 to avoid saving empty array on initial load possibly
       if (currentUser?.accessToken) {
         triggerSaveToDrive(allQuizzes);
       }
@@ -264,20 +263,53 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     navigate(viewPath);
   }, [navigate]);
 
-  const addQuiz = useCallback((quiz: Quiz) => {
+  const addQuiz = useCallback(async (quiz: Quiz): Promise<void> => {
     const quizWithOwner = currentUser ? { ...quiz, userId: currentUser.id } : quiz;
-    setAllQuizzes(prev => [quizWithOwner, ...prev]);
-    logger.info('Quiz added', 'AppContext', { quizId: quiz.id, title: quiz.title });
+    let finalQuizzesList: Quiz[] = [];
+    setAllQuizzes(prevQuizzes => {
+      finalQuizzesList = [quizWithOwner, ...prevQuizzes];
+      return finalQuizzesList;
+    });
+    logger.info('Quiz added to context state', 'AppContext', { quizId: quiz.id, title: quiz.title });
+    try {
+      await quizStorage.saveQuizzes(finalQuizzesList);
+      logger.info('Quiz saved to local storage via addQuiz call', 'AppContext', { quizId: quiz.id });
+    } catch (e) {
+      logger.error('Error from quizStorage.saveQuizzes in addQuiz', 'AppContext', { quizId: quiz.id }, e as Error);
+      throw e; 
+    }
   }, [currentUser]);
 
-  const deleteQuiz = useCallback((quizId: string) => {
-    setAllQuizzes(prev => prev.filter(q => q.id !== quizId));
-    logger.info('Quiz deleted', 'AppContext', { quizId });
+  const deleteQuiz = useCallback(async (quizId: string): Promise<void> => {
+    let finalQuizzesList: Quiz[] = [];
+    setAllQuizzes(prevQuizzes => {
+      finalQuizzesList = prevQuizzes.filter(q => q.id !== quizId);
+      return finalQuizzesList;
+    });
+    logger.info('Quiz deleted from context state', 'AppContext', { quizId });
+    try {
+      await quizStorage.saveQuizzes(finalQuizzesList);
+      logger.info('Quizzes (after deletion) saved to local storage via deleteQuiz call', 'AppContext', { quizId });
+    } catch (e) {
+      logger.error('Error from quizStorage.saveQuizzes in deleteQuiz', 'AppContext', { quizId }, e as Error);
+      throw e;
+    }
   }, []);
 
-  const updateQuiz = useCallback((updatedQuiz: Quiz) => {
-    setAllQuizzes(prev => prev.map(q => q.id === updatedQuiz.id ? updatedQuiz : q));
-    logger.info('Quiz updated', 'AppContext', { quizId: updatedQuiz.id, title: updatedQuiz.title });
+  const updateQuiz = useCallback(async (updatedQuiz: Quiz): Promise<void> => {
+    let finalQuizzesList: Quiz[] = [];
+    setAllQuizzes(prevQuizzes => {
+      finalQuizzesList = prevQuizzes.map(q => q.id === updatedQuiz.id ? updatedQuiz : q);
+      return finalQuizzesList;
+    });
+    logger.info('Quiz updated in context state', 'AppContext', { quizId: updatedQuiz.id, title: updatedQuiz.title });
+    try {
+      await quizStorage.saveQuizzes(finalQuizzesList);
+      logger.info('Quiz saved to local storage via updateQuiz call', 'AppContext', { quizId: updatedQuiz.id });
+    } catch (e) {
+      logger.error('Error from quizStorage.saveQuizzes in updateQuiz', 'AppContext', { quizId: updatedQuiz.id }, e as Error);
+      throw e;
+    }
   }, []);
 
   const getQuizByIdFromAll = useCallback((id: string): Quiz | null => {
@@ -290,9 +322,9 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
 
   const login = useCallback((user: UserProfile, token?: string) => {
     const userWithToken = token ? { ...user, accessToken: token } : user;
-    setCurrentUser(userWithToken); // Uses the new setCurrentUser with logging
+    setCurrentUser(userWithToken); 
     setDriveSyncError(null); 
-  }, [setCurrentUser, setDriveSyncError]); // Added setCurrentUser
+  }, [setCurrentUser, setDriveSyncError]); 
 
   const handleLogout = useCallback(async () => { 
     logger.info('Logout initiated', 'AuthContext');
@@ -300,7 +332,7 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     if (saveToDriveTimeoutRef.current) {
       clearTimeout(saveToDriveTimeoutRef.current); 
     }
-    setCurrentUser(null); // Uses the new setCurrentUser with logging
+    setCurrentUser(null); 
     setActiveQuiz(null); 
     setQuizResult(null);
     setAllQuizzes([]); 
@@ -309,7 +341,7 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     setDriveSyncError(null);
     navigate('/'); 
     logger.info('Logout complete', 'AuthContext');
-  }, [navigate, setCurrentUser, setDriveSyncError]); // Added setCurrentUser
+  }, [navigate, setCurrentUser, setDriveSyncError]); 
   
   const syncWithGoogleDrive = useCallback(async () => {
     if (!currentUser?.accessToken) {
@@ -358,7 +390,7 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
 
   const quizzesForContext = useMemo(() => {
     if (currentUser) {
-      return allQuizzes.filter(q => q.userId === currentUser.id || !q.userId); 
+      return allQuizzes; 
     }
     return allQuizzes.filter(q => !q.userId);
   }, [allQuizzes, currentUser]);
@@ -398,7 +430,7 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
   ]);
 
   if (!appInitialized) {
-    return <div className="fixed inset-0 bg-slate-900 flex items-center justify-center z-[300]"><LoadingSpinner size="xl" /></div>;
+    return null;
   }
 
   return (

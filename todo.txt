@@ -1,0 +1,25 @@
+## 8. Security và Data Protection
+
+- **Content Security Policy (CSP)**: Giới hạn các resources có thể được tải
+- **Input Sanitization**: DOMPurify để ngăn XSS khi hiển thị user-generated content
+- **Rate Limiting**: Giới hạn số lượng requests trong một khoảng thời gian
+
+## 9. Internationalization 
+
+- **ICU Message Format**: Định dạng messages phức tạp với số nhiều, giới tính
+- **Language Detection**: Tự động phát hiện ngôn ngữ người dùng
+- **RTL Support**: Hỗ trợ ngôn ngữ viết từ phải sang trái
+
+## 10. Performance Optimization
+
+- **Code Splitting**: Dynamic imports để tải code theo nhu cầu
+- **Tree Shaking**: Loại bỏ unused code khi build
+- **Virtual Scrolling**: Chỉ render các items trong viewport cho danh sách dài
+
+## 11. Google Drive Integration
+
+- **Google Drive REST API v3**: API chính để tương tác với Google Drive
+- **Batch Requests**: Gộp nhiều requests để giảm số lượng network calls
+- **Resumable Upload Protocol**: Upload file lớn và có thể tiếp tục sau khi bị gián đoạn
+
+Ứng dụng các công nghệ và thuật toán này sẽ giúp QuizAI trở nên mạnh mẽ, nhanh chóng và dễ bảo trì hơn.

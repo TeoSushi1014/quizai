@@ -341,7 +341,7 @@ const QuizReviewPage: React.FC = () => {
     logger.info("Added new question to quiz being reviewed.", "QuizReviewPage");
   };
 
-  const handleSaveQuiz = () => {
+  const handleSaveQuiz = async () => {
     if (!editableQuiz || editableQuiz.questions.length === 0) {
       dispatch({ type: 'SET_ERROR', payload: t('reviewCannotSaveNoQuestions') });
       logger.warn("Attempted to save quiz with no questions.", "QuizReviewPage", { quizId: editableQuiz?.id });
@@ -355,23 +355,39 @@ const QuizReviewPage: React.FC = () => {
     }
     dispatch({ type: 'SET_ERROR', payload: null });
     dispatch({ type: 'SET_SAVING', payload: true });
-    logger.info("Saving quiz...", "QuizReviewPage", { quizId: editableQuiz.id, title: editableQuiz.title, questionCount: editableQuiz.questions.length });
+    
+    try {
+      const quizToSave: Quiz = {
+        ...editableQuiz,
+        id: existingQuizIdFromParams || editableQuiz.id || `quiz-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        title: editableQuiz.title.trim() || t('untitledQuiz'),
+        createdAt: existingQuizIdFromParams ? editableQuiz.createdAt || new Date().toISOString() : new Date().toISOString(),
+        config: editableQuiz.config || { 
+          numQuestions: editableQuiz.questions.length, 
+          difficulty: 'Medium', 
+          language: language === 'vi' ? 'Vietnamese' : 'English', 
+          customUserPrompt: '', 
+          selectedModel: GEMINI_MODEL_ID 
+        },
+      };
 
-    const quizToSave: Quiz = {
-      ...editableQuiz,
-      id: existingQuizIdFromParams || editableQuiz.id || `quiz-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      title: editableQuiz.title.trim() || t('untitledQuiz'),
-      createdAt: existingQuizIdFromParams ? editableQuiz.createdAt || new Date().toISOString() : new Date().toISOString(),
-      config: editableQuiz.config || { numQuestions: editableQuiz.questions.length, difficulty: 'Medium', language: language === 'vi' ? 'Vietnamese' : 'English', customUserPrompt: '', selectedModel: GEMINI_MODEL_ID },
-    };
+      logger.info("Attempting to save quiz...", "QuizReviewPage", { quizId: quizToSave.id, title: quizToSave.title, questionCount: quizToSave.questions.length });
 
-    setTimeout(() => {
-      if (existingQuizIdFromParams) updateQuiz(quizToSave);
-      else addQuiz(quizToSave);
-      dispatch({ type: 'SET_SAVING', payload: false });
+      if (existingQuizIdFromParams) {
+        await updateQuiz(quizToSave); 
+      } else {
+        await addQuiz(quizToSave); 
+      }
+      
       logger.info("Quiz saved successfully. Navigating to dashboard.", "QuizReviewPage", { quizId: quizToSave.id });
       navigate('/dashboard');
-    }, 700);
+
+    } catch (error) {
+      logger.error("Error saving quiz", "QuizReviewPage", { quizId: editableQuiz?.id }, error as Error);
+      dispatch({ type: 'SET_ERROR', payload: t('reviewErrorSaving') });
+    } finally {
+      dispatch({ type: 'SET_SAVING', payload: false });
+    }
   };
 
   const handleCloseAzotaExportModal = useCallback(() => setIsAzotaExportModalOpen(false), []);

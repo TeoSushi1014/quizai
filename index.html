@@ -325,7 +325,10 @@
     .question-item-motion-wrapper { /* Already exists, add contain here */
       contain: layout style paint;
     }
-
+    .quiz-list-container {
+      contain: layout style paint;
+      min-height: 300px; /* Ensure it has a minimum height for measurement stability */
+    }
     
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after {
@@ -397,5 +400,6 @@
   <div id="root"></div>
   <script type="module" src="index.tsx"></script>
 </body>
-</html><link rel="stylesheet" href="index.css">
+</html>
+<link rel="stylesheet" href="index.css">
 <script src="index.tsx" type="module"></script>
