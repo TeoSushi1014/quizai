@@ -1,12 +1,10 @@
 
-
-
-
 import React, { ReactNode, useState, useRef, useEffect, Children, cloneElement, ReactElement } from 'react';
 import ReactDOM from 'react-dom'; 
 import { ChevronDownIcon, UploadIcon as DefaultUploadIcon, InformationCircleIcon, XCircleIcon as CloseIcon } from '../constants'; // Added CloseIcon
 import { useTranslation } from '../App';
 import { NotificationState, NotificationType } from '../hooks/useNotification'; // Added NotificationState and Type
+import { useDragAndDrop } from '../hooks/useDragAndDrop'; // Import the new hook
 
 export interface TooltipProps {
   content: ReactNode;
@@ -370,7 +368,7 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, 
       }, parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--duration-fast') || '250'));
       return () => clearTimeout(timer);
     }
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, animationState]); // Added animationState to dependencies
 
   const animationStateRef = useRef(animationState);
   useEffect(() => {
@@ -617,61 +615,38 @@ export const Dropzone: React.FC<DropzoneProps> = ({
     isLoading = false,
     currentFile = null,
 }) => {
-  const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const { t } = useTranslation();
 
-  const handleDragEnter = (e: React.DragEvent<HTMLLabelElement>) => { e.preventDefault(); e.stopPropagation(); setIsDragging(true); setError(null);};
-  const handleDragLeave = (e: React.DragEvent<HTMLLabelElement>) => { e.preventDefault(); e.stopPropagation(); setIsDragging(false); };
-  const handleDragOver = (e: React.DragEvent<HTMLLabelElement>) => { e.preventDefault(); e.stopPropagation(); };
+  const {
+    isDragging,
+    fileInputRef,
+    handlers,
+  } = useDragAndDrop({
+    onFileAccepted: (file) => {
+      setError(null); // Clear any previous error on new successful file acceptance
+      onFileUpload(file);
+    },
+    onError: (errorMessage) => {
+      // The hook calls this with pre-formatted (possibly non-localized) messages.
+      // We can choose to re-translate if the hook sent keys, or just display.
+      // For now, assume the hook sends displayable messages as per user's hook snippet.
+      setError(errorMessage);
+    },
+    maxFileSizeMB,
+    acceptedFileTypes,
+  });
 
-  const handleDrop = (e: React.DragEvent<HTMLLabelElement>) => {
-    e.preventDefault(); e.stopPropagation(); setIsDragging(false); setError(null);
-    const files = e.dataTransfer.files;
-    if (files && files.length > 0) validateAndUploadFile(files[0]);
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setError(null);
-    const files = e.target.files;
-    if (files && files.length > 0) validateAndUploadFile(files[0]);
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  };
-
-  const validateAndUploadFile = (file: File) => {
-    if (file.size > maxFileSizeMB * 1024 * 1024) {
-      setError(t('step1ErrorProcessingFile') + ` ${t('error')}: Max size ${maxFileSizeMB}MB.`); return;
-    }
-
-    const acceptedTypesArray = acceptedFileTypes.split(',').map(type => type.trim().toLowerCase());
-    const fileExtension = ("." + file.name.split('.').pop()?.toLowerCase()) || "";
-    const fileMimeType = file.type.toLowerCase();
-
-    let isValidType = acceptedTypesArray.includes(fileExtension);
-    if (!isValidType) {
-      isValidType = acceptedTypesArray.some(acceptedType => {
-        if (acceptedType.startsWith('.')) return false;
-        if (acceptedType.endsWith('/*')) return fileMimeType.startsWith(acceptedType.slice(0, -2));
-        return fileMimeType === acceptedType;
-      });
-    }
-    if (!isValidType && fileExtension === '.docx' && acceptedFileTypes.includes('.docx')) { isValidType = true; }
-    if (!isValidType && fileExtension === '.pdf' && acceptedFileTypes.includes('.pdf')) { isValidType = true; }
-
-
-    if (!isValidType) {
-        setError(`${t('step1ErrorUnsupportedFile')} ${t('error')}: Accepted types are ${acceptedFileTypes.replace(/\./g, '').toUpperCase()}`); return;
-    }
-    onFileUpload(file);
-  };
 
   return (
     <div className="w-full">
       {label && <div className="block text-sm font-medium text-slate-200 mb-2.5">{label}</div>}
       <label
         htmlFor="file-upload-dropzone"
-        onDragEnter={handleDragEnter} onDragLeave={handleDragLeave} onDragOver={handleDragOver} onDrop={handleDrop}
+        onDragEnter={handlers.handleDragEnter} 
+        onDragLeave={handlers.handleDragLeave} 
+        onDragOver={handlers.handleDragOver} 
+        onDrop={handlers.handleDrop}
         className={`group flex flex-col items-center justify-center w-full min-h-[220px] sm:min-h-[260px] border-2 ${isDragging ? 'border-sky-400 bg-sky-400/15 ring-4 ring-sky-400/20 ring-offset-1 ring-offset-slate-900 shadow-2xl scale-[1.01]' : 'border-slate-600 border-dashed'} rounded-xl cursor-pointer bg-slate-700/50 hover:bg-slate-700/70 hover:border-slate-500 relative p-5
                    transition-all var(--duration-fast) var(--ease-ios) will-change-transform, border, background-color`}
         tabIndex={0}
@@ -692,7 +667,7 @@ export const Dropzone: React.FC<DropzoneProps> = ({
             <p className="text-[0.7rem] sm:text-xs text-slate-400 group-hover:text-slate-300 transition-colors var(--duration-fast) var(--ease-ios)">{t('step1AcceptedFiles', {maxFileSizeMB})}</p>
             </div>
         )}
-        <input id="file-upload-dropzone" ref={fileInputRef} type="file" className="hidden" onChange={handleFileChange} accept={acceptedFileTypes} disabled={isLoading || !!currentFile}/>
+        <input id="file-upload-dropzone" ref={fileInputRef} type="file" className="hidden" onChange={handlers.handleFileChange} accept={acceptedFileTypes} disabled={isLoading || !!currentFile}/>
         {error && !isLoading && !currentFile && <div role="alert" className={`absolute bottom-3 left-3 right-3 p-2 bg-red-500/30 border border-red-500/60 rounded-lg text-xs text-red-200 text-center shadow-md animate-fadeIn`}>{error}</div>}
       </label>
     </div>
