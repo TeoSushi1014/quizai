@@ -26,39 +26,109 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     :root {
+      /* Durations & Easing */
       --duration-fast: 250ms;
       --duration-normal: 350ms;
       --duration-slow: 400ms;
       --ease-ios: cubic-bezier(0.25, 0.1, 0.25, 1);
       --ease-in-out-quad: cubic-bezier(0.455, 0.03, 0.515, 0.955); 
+
+      /* Fonts */
+      --font-primary: 'Inter', sans-serif;
+
+      /* Colors - Base */
+      --color-bg-body: #0f172a;
+      --color-text-body: #cbd5e1;
+      --color-bg-surface-1: #1e293b; /* Example: slate-800 */
+      --color-bg-surface-2: #334155; /* Example: slate-700 */
+      --color-border-default: #475569; /* Example: slate-600 */
+      --color-border-strong: #64748b; /* Example: slate-500 */
+
+      /* Colors - Accent / Interactive */
+      --color-primary-accent: #38bdf8; /* sky-400 */
+      --color-primary-accent-hover: #0ea5e9; /* sky-500 */
+      --color-primary-accent-text: #ffffff;
+      --color-secondary-accent: #64748b; /* slate-500 */
+      --color-secondary-accent-hover: #475569; /* slate-600 */
+      --color-secondary-accent-text: #e2e8f0; /* slate-200 */
+      --color-danger-accent: #f43f5e; /* rose-500 */
+      --color-success-accent: #22c55e; /* green-500 */
+      --color-warning-accent: #f59e0b; /* amber-500 */
+
+
+      /* Colors - Scrollbar */
+      --color-scrollbar-thumb: #475569;
+      --color-scrollbar-thumb-hover: #64748b;
+
+      /* Colors - Focus */
+      --color-focus-ring: var(--color-primary-accent);
+      --color-focus-shadow: rgba(56, 189, 248, 0.25);
+
+      /* Colors - Glass Effect */
+      --color-glass-bg: rgba(30, 41, 59, 0.7); 
+      --color-glass-border: rgba(148, 163, 184, 0.2);
+
+      /* Colors - Toggle Dot */
+      --color-dot-inactive-bg: #e2e8f0; /* slate-200 */
+      --color-dot-active-bg: #ffffff;
+      --color-toggle-bg-inactive: var(--color-secondary-accent);
+      --color-toggle-bg-active: var(--color-primary-accent);
+
+      /* Colors - Modal */
+      --color-modal-backdrop-bg: rgba(15, 23, 42, 0.85);
+      --color-modal-content-bg: rgba(30, 41, 59, 0.9); /* Slightly different from glass for modals */
+      --color-modal-border: rgba(100, 116, 139, 0.3); /* slate-500 @ 30% */
+
+      /* Colors - Mobile Nav */
+      --color-mobile-nav-bg: rgba(22, 32, 53, 0.88); 
+      --color-mobile-nav-border: rgba(100, 116, 139, 0.25);
+
+      /* Shadows */
+      --shadow-color-level-1: rgba(0,0,0,0.05);
+      --shadow-color-level-2: rgba(0,0,0,0.1);
+      --shadow-color-level-3: rgba(0,0,0,0.15);
+      --shadow-sm: 0 1px 2px 0 var(--shadow-color-level-2);
+      --shadow-md: 0 4px 6px -1px var(--shadow-color-level-2), 0 2px 4px -2px var(--shadow-color-level-2);
+      --shadow-lg: 0 10px 15px -3px var(--shadow-color-level-2), 0 4px 6px -4px var(--shadow-color-level-2);
+      --shadow-xl: 0 20px 25px -5px var(--shadow-color-level-3), 0 8px 10px -6px var(--shadow-color-level-3);
+      --shadow-2xl: 0 25px 50px -12px var(--shadow-color-level-3);
+      --shadow-inner: inset 0 2px 4px 0 var(--shadow-color-level-2);
+
+      /* Border Radiuses */
+      --radius-sm: 0.25rem;  /* 4px */
+      --radius-md: 0.5rem;   /* 8px */
+      --radius-lg: 0.75rem;  /* 12px */
+      --radius-xl: 1rem;     /* 16px */
+      --radius-2xl: 1.5rem;  /* 24px */
+      --radius-full: 9999px;
     }
 
     
     html {
-      font-family: 'Inter', sans-serif;
+      font-family: var(--font-primary);
     }
     body {
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
-      background-color: #0f172a; 
-      color: #cbd5e1; 
+      background-color: var(--color-bg-body); 
+      color: var(--color-text-body); 
       cursor: default; 
     }
 
     
     ::-webkit-scrollbar { width: 7px; height: 7px; cursor: default !important; }
     ::-webkit-scrollbar-track { background: transparent; cursor: default !important; }
-    ::-webkit-scrollbar-thumb { background-color: #475569;  border-radius: 10px; border: 2px solid transparent; cursor: default !important; transition: background-color var(--duration-fast) var(--ease-ios); }
-    ::-webkit-scrollbar-thumb:hover { background-color: #64748b;  }
+    ::-webkit-scrollbar-thumb { background-color: var(--color-scrollbar-thumb);  border-radius: var(--radius-full); border: 2px solid transparent; cursor: default !important; transition: background-color var(--duration-fast) var(--ease-ios); }
+    ::-webkit-scrollbar-thumb:hover { background-color: var(--color-scrollbar-thumb-hover);  }
     ::-webkit-scrollbar-track-piece { cursor: default !important; }
     ::-webkit-scrollbar-button { cursor: default !important; }
     ::-webkit-scrollbar-corner { cursor: default !important; }
 
     
     *:focus-visible {
-      outline: 2px solid #38bdf8; 
+      outline: 2px solid var(--color-focus-ring); 
       outline-offset: 2px;
-      box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.25); 
+      box-shadow: 0 0 0 4px var(--color-focus-shadow); 
       transition: outline var(--duration-fast) var(--ease-ios), box-shadow var(--duration-fast) var(--ease-ios);
     }
     
@@ -67,22 +137,22 @@
     
     
     .glass-effect {
-      background-color: rgba(30, 41, 59, 0.7); /* User suggestion: was 0.75 */
+      background-color: var(--color-glass-bg); 
       backdrop-filter: blur(12px); 
       -webkit-backdrop-filter: blur(12px); 
-      border: 1px solid rgba(148, 163, 184, 0.2); /* User suggestion: slate-400 @ 20% was slate-500 @ 25% (rgba(100, 116, 139, 0.25)) */
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.1); /* Softer, more diffuse shadow */
-      border-bottom-left-radius: 0.75rem; 
-      border-bottom-right-radius: 0.75rem;
+      border: 1px solid var(--color-glass-border); 
+      box-shadow: 0 4px 12px var(--shadow-color-level-1), 0 1px 3px var(--shadow-color-level-2); 
+      border-bottom-left-radius: var(--radius-lg); 
+      border-bottom-right-radius: var(--radius-lg);
     }
 
     
     .dot { 
-      background-color: #e2e8f0; 
+      background-color: var(--color-dot-inactive-bg); 
       transition: transform var(--duration-fast) var(--ease-ios), background-color var(--duration-fast) var(--ease-ios);
     }
     input:checked + div + .dot, button[aria-checked="true"] .dot { 
-      background-color: #ffffff;  
+      background-color: var(--color-dot-active-bg);  
       transform: translateX(calc(1.375rem - 0.125rem)); 
     }
     button[aria-checked="false"] .dot {
@@ -103,7 +173,7 @@
     .modal-backdrop-enhanced { 
       backdrop-filter: blur(8px);  
       -webkit-backdrop-filter: blur(8px); 
-      background-color: rgba(15, 23, 42, 0.85); 
+      background-color: var(--color-modal-backdrop-bg); 
       opacity: 0; 
       transition: opacity var(--duration-fast) var(--ease-ios);
     }
@@ -115,28 +185,29 @@
     .card-float-hover { 
       transition: transform var(--duration-normal) var(--ease-ios), box-shadow var(--duration-normal) var(--ease-ios);
       will-change: transform, box-shadow;
+      contain: layout style paint; /* CSS Contain Property */
     }
     .card-float-hover:hover {
       transform: translateY(-3px);
-      box-shadow: 0 8px 20px rgba(0,0,0,0.25), 0 0 0 1px rgba(128, 128, 128, 0.15);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.25), 0 0 0 1px rgba(128, 128, 128, 0.15); /* Keep specific shadow for this hover */
     }
 
     
     .mobile-nav-style {
-      background-color: rgba(22, 32, 53, 0.88); 
+      background-color: var(--color-mobile-nav-bg); 
       backdrop-filter: blur(10px);
       -webkit-backdrop-filter: blur(10px);
-      border-top: 1px solid rgba(100, 116, 139, 0.25); /* Softer border (slate-500 at 25%) */
-      box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.05), 0 -1px 3px rgba(0, 0, 0, 0.1); /* Softer, more diffuse shadow from bottom */
-      border-top-left-radius: 0.75rem;
-      border-top-right-radius: 0.75rem;
+      border-top: 1px solid var(--color-mobile-nav-border); 
+      box-shadow: 0 -4px 12px var(--shadow-color-level-1), 0 -1px 3px var(--shadow-color-level-2); 
+      border-top-left-radius: var(--radius-lg);
+      border-top-right-radius: var(--radius-lg);
     }
 
     
     .thin-scrollbar-horizontal::-webkit-scrollbar { height: 4px; cursor: default !important; }
     .thin-scrollbar-horizontal::-webkit-scrollbar-track { background: transparent; border-radius: 4px; cursor: default !important; }
-    .thin-scrollbar-horizontal::-webkit-scrollbar-thumb { background-color: #475569; border-radius: 4px; cursor: default !important; transition: background-color var(--duration-fast) var(--ease-ios); }
-    .thin-scrollbar-horizontal::-webkit-scrollbar-thumb:hover { background-color: #64748b; }
+    .thin-scrollbar-horizontal::-webkit-scrollbar-thumb { background-color: var(--color-scrollbar-thumb); border-radius: 4px; cursor: default !important; transition: background-color var(--duration-fast) var(--ease-ios); }
+    .thin-scrollbar-horizontal::-webkit-scrollbar-thumb:hover { background-color: var(--color-scrollbar-thumb-hover); }
     
     
     @keyframes fadeInUp {
@@ -198,6 +269,9 @@
       to { opacity: 0; transform: scale(0.9) translateY(15px); }
     }
 
+    .modal-container-base { /* Base class for modal container for contain property */
+      contain: layout style paint; 
+    }
     .modal-container-animate-enter { 
       opacity: 0;
       transform: scale(0.9) translateY(15px);
@@ -244,6 +318,13 @@
       animation: shimmer 1.8s linear infinite; 
     }
 
+    /* CSS Contain for specific components */
+    .accordion-item-container {
+      contain: layout style paint;
+    }
+    .question-item-motion-wrapper { /* Already exists, add contain here */
+      contain: layout style paint;
+    }
 
     
     @media (prefers-reduced-motion: reduce) {
@@ -299,19 +380,22 @@
     "react-dom": "https://esm.sh/react-dom@^19.1.0",
     "katex": "https://esm.sh/katex@^0.16.22",
     "framer-motion": "https://esm.sh/framer-motion@^11.3.1",
+    "localforage": "https://esm.sh/localforage@1.10.0",
     "lucide-react": "https://esm.sh/lucide-react@^0.400.0",
+    "react-window": "https://esm.sh/react-window@1.8.10",
     "path": "https://esm.sh/path@^0.12.7",
     "vite": "https://esm.sh/vite@^6.3.5",
     "dotenv": "https://esm.sh/dotenv@^16.5.0",
     "process": "https://esm.sh/process@^0.11.10",
-    "url": "https://esm.sh/url@^0.11.4"
+    "url": "https://esm.sh/url@^0.11.4",
+    "@testing-library/jest-dom": "https://esm.sh/@testing-library/jest-dom@^6.6.3",
+    "@jest/globals": "https://esm.sh/@jest/globals@^30.0.0-beta.3"
   }
 }
 </script>
-  <script type="module" crossorigin src="/quizai/assets/index-BpuSF-ME.js"></script>
+  <script type="module" crossorigin src="/quizai/assets/index-ClxTFCN0.js"></script>
 </head>
 <body>
   <div id="root"></div>
 </body>
-</html><link rel="stylesheet" href="index.css"><link rel="stylesheet" href="index.css">
-<link rel="stylesheet" href="index.css">
+</html><link rel="stylesheet" href="index.css">
