@@ -4,11 +4,10 @@ import React, { useState, useCallback, useEffect, createContext, useContext, Rea
 import { HashRouter, Routes, Route, useNavigate, useLocation, NavLink as RouterNavLink } from 'react-router-dom';
 import { GoogleOAuthProvider, googleLogout } from '@react-oauth/google';
 import { Quiz, AppContextType, Language, QuizResult, UserProfile } from './types';
-import { APP_NAME, UserCircleIcon, KeyIcon, LogoutIcon, HomeIcon, PlusCircleIcon, ChartBarIcon } from './constants'; 
+import { APP_NAME, UserCircleIcon, KeyIcon, LogoutIcon, HomeIcon, PlusCircleIcon, ChartBarIcon, SettingsIcon, InformationCircleIcon, XCircleIcon } from './constants'; 
 import { Button, LoadingSpinner, Tooltip } from './components/ui';
 import { getTranslator, translations } from './i18n';
 import useIntersectionObserver from './hooks/useIntersectionObserver';
-
 
 import HomePage from './features/quiz/HomePage';
 import DashboardPage from './features/quiz/DashboardPage';
@@ -18,7 +17,8 @@ import ResultsPage from './features/quiz/ResultsPage';
 import QuizReviewPage from './features/quiz/QuizReviewPage';
 import SignInPage from './features/auth/SignInPage';
 import QuizPracticePage from './features/quiz/QuizPracticePage';
-
+import SyncSettingsPage from './features/settings/SyncSettingsPage'; // New import
+import { loadQuizDataFromDrive, saveQuizDataToDrive } from './services/driveService'; // New import
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
@@ -39,6 +39,11 @@ export const useTranslation = () => {
 };
 
 const GOOGLE_CLIENT_ID = "486123633428-14f8o50husb82sho688e0qvc962ucr4n.apps.googleusercontent.com"; 
+const LOCALSTORAGE_QUIZZES_KEY = 'quizzes';
+const LOCALSTORAGE_USER_KEY = 'currentUser'; // Holds UserProfile including accessToken
+const LOCALSTORAGE_LANGUAGE_KEY = 'appLanguage';
+const LOCALSTORAGE_DRIVE_SYNC_KEY = 'driveLastSyncTimestamp';
+
 
 const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
   const [allQuizzes, setAllQuizzes] = useState<Quiz[]>([]);
@@ -50,19 +55,30 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
   const [isGeminiKeyAvailable, setIsGeminiKeyAvailable] = useState(false);
   const [appInitialized, setAppInitialized] = useState(false);
 
+  const [isDriveLoading, setIsDriveLoading] = useState(false);
+  const [driveSyncError, setDriveSyncErrorState] = useState<string | null>(null);
+  const [lastDriveSync, setLastDriveSync] = useState<Date | null>(null);
+  const saveToDriveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  
+  const tForProvider = useMemo(() => getTranslator(language), [language]);
+
+  const setDriveSyncError = useCallback((errorKey: string | null) => {
+    if (errorKey === null) {
+        setDriveSyncErrorState(null);
+    } else {
+        // errorKey is assumed to be a valid translation key from driveService or a generic one
+        setDriveSyncErrorState(tForProvider(errorKey as keyof typeof translations.en) || tForProvider('driveErrorGeneric'));
+    }
+  }, [tForProvider]);
+
+
+  // Load initial data from localStorage and check API keys
   useEffect(() => {
-    // Check for hardcoded API key first
     const hardcodedKey = 'AIzaSyDDcYcb1JB-NKFRDC28KK0yVH_Z3GX9lU0';
     const apiKeyFromEnv = (typeof process !== 'undefined' && process.env) ? process.env.GEMINI_API_KEY : undefined;
-    
-    // Check if API key is available from any source (hardcoded or env)
-    setIsGeminiKeyAvailable(
-      (typeof apiKeyFromEnv === 'string' && !!apiKeyFromEnv) || 
-      (typeof hardcodedKey === 'string' && !!hardcodedKey)
-    );
+    setIsGeminiKeyAvailable(!!(apiKeyFromEnv || hardcodedKey));
 
-    
-    const savedLanguage = localStorage.getItem('appLanguage') as Language | null;
+    const savedLanguage = localStorage.getItem(LOCALSTORAGE_LANGUAGE_KEY) as Language | null;
     if (savedLanguage && translations[savedLanguage]) {
       setLanguageState(savedLanguage);
       document.documentElement.lang = savedLanguage;
@@ -70,56 +86,127 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
       document.documentElement.lang = 'en'; 
     }
     
-    
-    const savedUser = localStorage.getItem('currentUser');
-    if (savedUser) {
+    const savedUserJson = localStorage.getItem(LOCALSTORAGE_USER_KEY);
+    if (savedUserJson) {
       try {
-        setCurrentUser(JSON.parse(savedUser));
-      } catch (e) {
-        console.error("Failed to parse current user from localStorage", e);
-        localStorage.removeItem('currentUser');
-      }
+        const user = JSON.parse(savedUserJson) as UserProfile;
+        setCurrentUser(user); // User will be fully hydrated with Drive data after login sequence
+      } catch (e) { console.error("Failed to parse current user from localStorage", e); localStorage.removeItem(LOCALSTORAGE_USER_KEY); }
     }
+    
+    const lastSyncTimestamp = localStorage.getItem(LOCALSTORAGE_DRIVE_SYNC_KEY);
+    if (lastSyncTimestamp) setLastDriveSync(new Date(lastSyncTimestamp));
 
-    
-    const savedQuizzes = localStorage.getItem('quizzes');
-    if (savedQuizzes) {
-      try {
-        setAllQuizzes(JSON.parse(savedQuizzes));
-      } catch (e) {
-        console.error("Failed to parse quizzes from localStorage", e);
-        localStorage.removeItem('quizzes');
-      }
-    }
-    setAppInitialized(true);
+    setAppInitialized(true); // Basic app init done
   }, []);
 
+  // Effect for loading quizzes based on user state and app initialization
   useEffect(() => {
-    if (appInitialized) {
-      setIsLoading(false); 
-    }
-  }, [appInitialized]);
+    if (!appInitialized) return;
+
+    const loadInitialQuizzes = async () => {
+      setIsLoading(true);
+      setDriveSyncError(null);
+
+      if (currentUser?.accessToken) {
+        setIsDriveLoading(true);
+        try {
+          console.log("Attempting to load from Google Drive...");
+          const driveQuizzes = await loadQuizDataFromDrive(currentUser.accessToken);
+          if (driveQuizzes !== null) { // Data found on Drive (could be empty array)
+            setAllQuizzes(driveQuizzes);
+            localStorage.setItem(LOCALSTORAGE_QUIZZES_KEY, JSON.stringify(driveQuizzes));
+            setLastDriveSync(new Date());
+            localStorage.setItem(LOCALSTORAGE_DRIVE_SYNC_KEY, new Date().toISOString());
+            console.log("Successfully loaded quizzes from Google Drive.");
+            setDriveSyncError(null);
+          } else { // No file on Drive, use local or initialize empty
+            console.log("No quiz data file found on Google Drive. Checking local storage.");
+            const localQuizzesJson = localStorage.getItem(LOCALSTORAGE_QUIZZES_KEY);
+            const localQuizzes = localQuizzesJson ? JSON.parse(localQuizzesJson) : [];
+            setAllQuizzes(localQuizzes);
+            if (localQuizzes.length > 0) { // If local data exists, save it to Drive
+                console.log("Local data found, attempting to save to new Drive file.");
+                await saveQuizDataToDrive(currentUser.accessToken, localQuizzes);
+                setLastDriveSync(new Date());
+                localStorage.setItem(LOCALSTORAGE_DRIVE_SYNC_KEY, new Date().toISOString());
+                console.log("Successfully saved initial local data to Google Drive.");
+            }
+            setDriveSyncError(null); // It's not an error if file is not found for new user
+          }
+        } catch (error: any) {
+          console.error("Failed to load or init quizzes from Google Drive:", error);
+          setDriveSyncError(error.message as keyof typeof translations.en || 'driveErrorLoading');
+          // Fallback to local storage on Drive error
+          const localQuizzesJson = localStorage.getItem(LOCALSTORAGE_QUIZZES_KEY);
+          setAllQuizzes(localQuizzesJson ? JSON.parse(localQuizzesJson) : []);
+        } finally {
+          setIsDriveLoading(false);
+        }
+      } else { // Not logged in or no access token
+        const localQuizzesJson = localStorage.getItem(LOCALSTORAGE_QUIZZES_KEY);
+        setAllQuizzes(localQuizzesJson ? JSON.parse(localQuizzesJson) : []);
+        console.log("User not logged in or no access token, loaded from local storage.");
+      }
+      setIsLoading(false);
+    };
+
+    loadInitialQuizzes();
+  }, [appInitialized, currentUser?.accessToken, setDriveSyncError]); // Added setDriveSyncError dependency
 
 
-  useEffect(() => {
-    if (appInitialized) { 
-      localStorage.setItem('quizzes', JSON.stringify(allQuizzes));
+  // Debounced save to Drive
+  const triggerSaveToDrive = useCallback((quizzesToSave: Quiz[]) => {
+    if (saveToDriveTimeoutRef.current) {
+      clearTimeout(saveToDriveTimeoutRef.current);
     }
-  }, [allQuizzes, appInitialized]);
+    saveToDriveTimeoutRef.current = setTimeout(async () => {
+      if (currentUser?.accessToken) {
+        setIsDriveLoading(true);
+        setDriveSyncError(null);
+        console.log("Attempting to save to Google Drive...");
+        try {
+          await saveQuizDataToDrive(currentUser.accessToken, quizzesToSave);
+          setLastDriveSync(new Date());
+          localStorage.setItem(LOCALSTORAGE_DRIVE_SYNC_KEY, new Date().toISOString());
+          console.log("Successfully saved quizzes to Google Drive.");
+        } catch (error: any) {
+          console.error("Failed to save quizzes to Google Drive:", error);
+          setDriveSyncError(error.message as keyof typeof translations.en || 'driveErrorSaving');
+        } finally {
+          setIsDriveLoading(false);
+        }
+      }
+    }, 1500); // 1.5-second debounce
+  }, [currentUser?.accessToken, setDriveSyncError]);
+
+
+  // Persist quizzes to localStorage and trigger Drive save
+  useEffect(() => {
+    if (appInitialized && !isLoading) { // Only save after initial load is complete
+      localStorage.setItem(LOCALSTORAGE_QUIZZES_KEY, JSON.stringify(allQuizzes));
+      if (currentUser?.accessToken) {
+        triggerSaveToDrive(allQuizzes);
+      }
+    }
+  }, [allQuizzes, appInitialized, isLoading, currentUser?.accessToken, triggerSaveToDrive]);
   
+  // Persist user (including accessToken) to localStorage
   useEffect(() => {
     if (appInitialized) { 
       if (currentUser) {
-        localStorage.setItem('currentUser', JSON.stringify(currentUser));
+        localStorage.setItem(LOCALSTORAGE_USER_KEY, JSON.stringify(currentUser));
       } else {
-        localStorage.removeItem('currentUser');
+        localStorage.removeItem(LOCALSTORAGE_USER_KEY);
+        localStorage.removeItem(LOCALSTORAGE_DRIVE_SYNC_KEY); // Clear last sync time on logout
+        setLastDriveSync(null);
       }
     }
   }, [currentUser, appInitialized]);
 
   const setLanguage = useCallback((lang: Language) => {
     setLanguageState(lang);
-    localStorage.setItem('appLanguage', lang);
+    localStorage.setItem(LOCALSTORAGE_LANGUAGE_KEY, lang);
     document.documentElement.lang = lang; 
   }, []);
   
@@ -128,7 +215,6 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
   }, [language]);
 
   const navigate = useNavigate(); 
-  const location = useLocation();
 
   const setCurrentView = useCallback((viewPath: string, _params?: Record<string, string | number>) => {
     navigate(viewPath);
@@ -151,41 +237,79 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     setQuizResult(result);
   }, []);
 
-  const login = useCallback((user: UserProfile) => {
-    setCurrentUser(user);
-    setIsLoading(true); 
-    
-    
-    setTimeout(() => {
-      setAllQuizzes(prevAllQuizzes => {
-        const updatedQuizzes = prevAllQuizzes.map(q => {
-          
-          if (!q.userId) { 
-            return { ...q, userId: user.id }; 
-          }
-          return q;
-        });
-        
-        return updatedQuizzes;
-      });
-      setIsLoading(false);
-    }, 500); 
-  }, []);
+  const login = useCallback((user: UserProfile, token?: string) => {
+    const userWithToken = token ? { ...user, accessToken: token } : user;
+    setCurrentUser(userWithToken);
+    // Initial quiz loading (including Drive sync) is handled by the useEffect listening to currentUser.accessToken
+    setDriveSyncError(null); // Clear previous errors on new login
+  }, [setDriveSyncError]);
 
   const handleLogout = useCallback(() => { 
     googleLogout();
+    if (saveToDriveTimeoutRef.current) {
+      clearTimeout(saveToDriveTimeoutRef.current); // Cancel any pending save
+    }
     setCurrentUser(null);
     setActiveQuiz(null); 
-    setQuizResult(null); 
-    
+    setQuizResult(null);
+    setAllQuizzes([]); // Clear quizzes state
+    localStorage.removeItem(LOCALSTORAGE_QUIZZES_KEY); // Clear local quiz storage
+    setDriveSyncError(null);
     navigate('/'); 
-  }, [navigate]);
+  }, [navigate, setDriveSyncError]);
+  
+  const syncWithGoogleDrive = useCallback(async () => {
+    if (!currentUser?.accessToken) {
+      setDriveSyncError('driveErrorNoToken');
+      return;
+    }
+    setIsLoading(true); // Use main loading indicator for manual sync
+    setIsDriveLoading(true);
+    setDriveSyncError(null);
+    console.log("Manual sync: Attempting to load from Google Drive...");
+    try {
+      const driveQuizzes = await loadQuizDataFromDrive(currentUser.accessToken);
+      let quizzesToSaveToDrive: Quiz[];
 
+      if (driveQuizzes !== null) { // Data found on Drive
+        console.log("Manual sync: Data found on Drive. Merging strategy: Drive is source of truth.");
+        setAllQuizzes(driveQuizzes); // Update app state with Drive data
+        localStorage.setItem(LOCALSTORAGE_QUIZZES_KEY, JSON.stringify(driveQuizzes));
+        quizzesToSaveToDrive = driveQuizzes; // This might be redundant if no local changes, but ensures consistency
+      } else { // No file on Drive
+        console.log("Manual sync: No data file on Drive. Using current local data.");
+        const localQuizzesJson = localStorage.getItem(LOCALSTORAGE_QUIZZES_KEY);
+        const localQuizzes = localQuizzesJson ? JSON.parse(localQuizzesJson) : [];
+        setAllQuizzes(localQuizzes); // Ensure app state matches local
+        quizzesToSaveToDrive = localQuizzes; // Save current local data to new Drive file
+      }
+      
+      console.log("Manual sync: Saving current state to Google Drive...");
+      await saveQuizDataToDrive(currentUser.accessToken, quizzesToSaveToDrive);
+      setLastDriveSync(new Date());
+      localStorage.setItem(LOCALSTORAGE_DRIVE_SYNC_KEY, new Date().toISOString());
+      console.log("Manual sync: Successfully synced with Google Drive.");
+    } catch (error: any) {
+      console.error("Manual sync: Failed to sync with Google Drive:", error);
+      const potentialKey = error.message as keyof typeof translations.en;
+      if (translations.en[potentialKey]) { // Check if error.message is a known translation key
+        setDriveSyncError(potentialKey);
+      } else {
+        setDriveSyncError('driveErrorGeneric');
+      }
+    } finally {
+      setIsDriveLoading(false);
+      setIsLoading(false);
+    }
+  }, [currentUser?.accessToken, setDriveSyncError]);
+
+  // Filter quizzes by current user (or show unassigned if no user)
   const quizzesForContext = useMemo(() => {
     if (currentUser) {
+      // Show quizzes matching userId OR quizzes that don't have a userId (legacy or public)
       return allQuizzes.filter(q => q.userId === currentUser.id || !q.userId); 
     }
-    
+    // If no user, only show quizzes without a userId (effectively public or pre-login created)
     return allQuizzes.filter(q => !q.userId);
   }, [allQuizzes, currentUser]);
   
@@ -206,15 +330,20 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     login,
     logout: handleLogout, 
     isGeminiKeyAvailable,
-    isLoading
+    isLoading: isLoading || (appInitialized && isDriveLoading && !currentUser), // More nuanced loading
+    isDriveLoading,
+    driveSyncError,
+    lastDriveSync,
+    syncWithGoogleDrive,
+    setDriveSyncError
   }), [
     location.pathname, setCurrentView, language, setLanguage, quizzesForContext, 
     addQuiz, deleteQuiz, updateQuiz, activeQuiz, setActiveQuiz, quizResult, 
-    setQuizResultWithPersistence, currentUser, login, handleLogout, isGeminiKeyAvailable, isLoading
+    setQuizResultWithPersistence, currentUser, login, handleLogout, isGeminiKeyAvailable, isLoading,
+    isDriveLoading, driveSyncError, lastDriveSync, syncWithGoogleDrive, setDriveSyncError, appInitialized
   ]);
 
   if (!appInitialized) {
-    
     return <div className="fixed inset-0 bg-slate-900 flex items-center justify-center z-[300]"><LoadingSpinner size="xl" /></div>;
   }
 
@@ -226,7 +355,6 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
 };
 AppProvider.displayName = "AppProvider";
 
-
 const NavLink: React.FC<{ to: string; children: ReactNode; end?: boolean; className?: string; activeClassName?: string; inactiveClassName?: string; isMobile?: boolean; }> = 
 ({ to, children, end = false, className = '', activeClassName = '', inactiveClassName = '', isMobile = false }) => {
 
@@ -234,10 +362,9 @@ const NavLink: React.FC<{ to: string; children: ReactNode; end?: boolean; classN
   const activeDesktopStyle = "bg-sky-400/20 text-sky-300 font-semibold";
   const inactiveDesktopStyle = "text-slate-300 hover:text-sky-300";
 
-  const baseMobileStyle = "flex flex-col items-center justify-center h-full w-full text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sky-400/70 rounded-lg hover:bg-slate-500/10 transition-colors var(--duration-fast) var(--ease-ios)";
+  const baseMobileStyle = "flex flex-col items-center justify-center h-full w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-800 rounded-lg hover:bg-slate-500/10 transition-colors var(--duration-fast) var(--ease-ios)";
   const activeMobileStyle = "text-sky-300 font-semibold bg-sky-400/15";
   const inactiveMobileStyle = "text-slate-400 hover:text-sky-300";
-
 
   return (
     <RouterNavLink
@@ -256,9 +383,8 @@ const NavLink: React.FC<{ to: string; children: ReactNode; end?: boolean; classN
 };
 NavLink.displayName = "NavLink";
 
-
 const UserDropdownMenu: React.FC = () => {
-    const { currentUser, logout } = useAppContext();
+    const { currentUser, logout, setCurrentView } = useAppContext();
     const { t } = useTranslation();
     const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
     const userDropdownRef = useRef<HTMLDivElement>(null);
@@ -301,6 +427,13 @@ const UserDropdownMenu: React.FC = () => {
                     <p className="text-xs text-slate-400 truncate" title={currentUser.email || undefined}>{currentUser.email}</p>
                 </div>
                 <button
+                    onClick={() => { setCurrentView('/settings'); setIsUserDropdownOpen(false); }}
+                    className="w-full text-left px-4 py-3 text-sm text-slate-200 hover:bg-slate-700/60 flex items-center hover:text-sky-300 transition-colors var(--duration-fast) var(--ease-ios)"
+                >
+                    <SettingsIcon className="w-4 h-4 mr-2.5 flex-shrink-0" strokeWidth={2}/>
+                    {t('navSettings')}
+                </button>
+                <button
                     onClick={() => { logout(); setIsUserDropdownOpen(false); }}
                     className="w-full text-left px-4 py-3 text-sm text-red-400 hover:bg-red-400/15 flex items-center hover:text-red-300 transition-colors var(--duration-fast) var(--ease-ios)"
                 >
@@ -328,32 +461,32 @@ const AnimatedApiKeyWarning: React.FC<{children: ReactNode}> = ({ children }) =>
 };
 AnimatedApiKeyWarning.displayName = "AnimatedApiKeyWarning";
 
-
 const AppLayout: React.FC = () => {
-  const { language, setLanguage, currentUser, isGeminiKeyAvailable, isLoading } = useAppContext(); 
+  const { language, setLanguage, currentUser, isGeminiKeyAvailable, isLoading, isDriveLoading, driveSyncError, lastDriveSync, setDriveSyncError } = useAppContext(); 
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   
   const apiKeyWarnings = [];
-  
-  
   if (!isGeminiKeyAvailable) {
     apiKeyWarnings.push("Google Gemini API Key (process.env.GEMINI_API_KEY)");
   }
   
-  if (isLoading) {
+  // Combined loading state for main app loading and initial Drive loading after login
+  const showGlobalLoader = isLoading || (currentUser && !lastDriveSync && isDriveLoading);
+
+
+  if (showGlobalLoader) {
     return (
       <div className="fixed inset-0 bg-slate-900 flex items-center justify-center z-[200]">
-        <LoadingSpinner text={t('loading')} size="xl" />
+        <LoadingSpinner text={currentUser?.accessToken && isDriveLoading ? t('syncStatusInProgress') : t('loading')} size="xl" />
       </div>
     );
   }
   
-
   return (
     <div className={`min-h-screen flex flex-col bg-slate-900 selection:bg-sky-500/20 selection:text-sky-300 pb-16 md:pb-0`}>
-      <header className="glass-effect sticky top-0 z-50 border-b border-slate-700/60 shadow-sm">
+      <header className="glass-effect sticky top-0 z-50">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16 md:h-[72px]">
             <div className="flex items-center space-x-2 sm:space-x-3 cursor-pointer group" onClick={() => navigate('/')}>
@@ -361,11 +494,12 @@ const AppLayout: React.FC = () => {
                 {APP_NAME} 
               </h1>
             </div>
-            <div className="flex items-center space-x-1.5 sm:space-x-2">
+            <div className="flex items-center space-x-2 sm:space-x-3">
               <nav className="hidden md:flex items-center space-x-1">
                  <NavLink to="/" end>{t('navHome')}</NavLink>
                 <NavLink to="/dashboard">{t('navDashboard')}</NavLink>
                 <NavLink to="/create">{t('navCreateQuiz')}</NavLink>
+                {currentUser && <NavLink to="/settings">{t('navSettings')}</NavLink>}
               </nav>
               
               <Tooltip content={language === 'en' ? "Change Language / Đổi Ngôn Ngữ" : "Đổi Ngôn Ngữ / Change Language"} placement="bottom">
@@ -400,14 +534,19 @@ const AppLayout: React.FC = () => {
 
       <nav className="md:hidden fixed bottom-0 left-0 right-0 mobile-nav-style z-40 flex justify-around items-stretch h-16">
           <NavLink to="/" end isMobile>
-            <HomeIcon className="w-5 h-5 mb-0.5"/> <span className="mt-px text-[0.7rem] font-medium">{t('navHome')}</span>
+            <HomeIcon className="w-5 h-5 mb-1"/> <span className="text-xs font-medium">{t('navHome')}</span>
           </NavLink>
           <NavLink to="/dashboard" isMobile>
-            <ChartBarIcon className="w-5 h-5 mb-0.5"/> <span className="mt-px text-[0.7rem] font-medium">{t('navDashboard')}</span>
+            <ChartBarIcon className="w-5 h-5 mb-1"/> <span className="text-xs font-medium">{t('navDashboard')}</span>
           </NavLink>
           <NavLink to="/create" isMobile>
-            <PlusCircleIcon className="w-5 h-5 mb-0.5"/> <span className="mt-px text-[0.7rem] font-medium">{t('navCreateQuiz')}</span>
+            <PlusCircleIcon className="w-5 h-5 mb-1"/> <span className="text-xs font-medium">{t('navCreateQuiz')}</span>
           </NavLink>
+           {currentUser && (
+            <NavLink to="/settings" isMobile>
+              <SettingsIcon className="w-5 h-5 mb-1" strokeWidth={2}/> <span className="text-xs font-medium">{t('navSettings')}</span>
+            </NavLink>
+          )}
         </nav>
 
       <main key={location.pathname} className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 md:py-10 mb-20 md:mb-0 animate-page-slide-fade-in"> 
@@ -421,6 +560,7 @@ const AppLayout: React.FC = () => {
             <Route path="/quiz/:quizId" element={<QuizTakingPage />} />
             <Route path="/practice/:quizId" element={<QuizPracticePage />} />
             <Route path="/results/:quizId" element={<ResultsPage />} />
+            <Route path="/settings" element={currentUser ? <SyncSettingsPage /> : <HomePage />} /> {/* Protect settings route */}
             <Route path="*" element={<HomePage />} /> 
           </Routes>
       </main>
@@ -469,6 +609,19 @@ const AppLayout: React.FC = () => {
                 <KeyIcon className="w-4 h-4 sm:w-5 sm:h-5 text-amber-950 flex-shrink-0" strokeWidth={2}/>
                 <strong className="font-semibold">{t('apiKeyWarningTitle')}:</strong> 
                 <span className="text-amber-950/90">{t('apiKeyWarningMissing', {keys: apiKeyWarnings.join(', ')})} {t('apiKeyWarningFunctionality')}</span>
+            </div>
+        </AnimatedApiKeyWarning>
+      )}
+
+      {driveSyncError && (
+         <AnimatedApiKeyWarning>
+            <div role="alert" className="fixed bottom-20 md:bottom-4 right-4 w-auto max-w-[calc(100%-2rem)] md:max-w-md bg-red-600 text-white p-3 sm:p-3.5 text-xs sm:text-sm shadow-2xl z-[200] flex items-center gap-2.5 border border-red-500/50 rounded-xl">
+                <InformationCircleIcon className="w-4 h-4 sm:w-5 sm:h-5 text-red-50 flex-shrink-0" />
+                <strong className="font-semibold">{t('error')}:</strong> 
+                <span className="text-red-100">{driveSyncError}</span>
+                 <Button variant="ghost" size="xs" onClick={() => setDriveSyncError(null)} className="!p-1 text-red-100 hover:text-white hover:bg-red-500/20 -mr-1">
+                    <XCircleIcon className="w-4 h-4"/>
+                </Button>
             </div>
         </AnimatedApiKeyWarning>
       )}

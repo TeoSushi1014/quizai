@@ -56,7 +56,7 @@ export interface QuizResult {
   sourceMode?: 'practice' | 'take'; // To distinguish the origin of the result
 }
 
-export type AppView = 'home' | 'dashboard' | 'create-quiz' | 'take-quiz' | 'results' | 'review-quiz';
+export type AppView = 'home' | 'dashboard' | 'create-quiz' | 'take-quiz' | 'results' | 'review-quiz' | 'settings'; // Added 'settings'
 
 export type Language = 'en' | 'vi';
 
@@ -65,6 +65,7 @@ export interface UserProfile {
   name?: string | null;
   email?: string | null;
   imageUrl?: string | null;
+  accessToken?: string; // Added to store Google Access Token
 }
 
 export interface AppContextType {
@@ -86,9 +87,14 @@ export interface AppContextType {
   setQuizResult: (result: QuizResult | null) => void;
   
   currentUser: UserProfile | null;
-  login: (user: UserProfile) => void;
+  login: (user: UserProfile, token?: string) => void; // Added token parameter
   logout: () => void;
 
   isGeminiKeyAvailable: boolean;
   isLoading: boolean;
+  isDriveLoading: boolean; // Added for Drive operations
+  driveSyncError: string | null; // To display Drive sync errors
+  lastDriveSync: Date | null; // Timestamp of last successful sync
+  syncWithGoogleDrive: () => Promise<void>; // Manual sync function
+  setDriveSyncError: (error: string | null) => void; // Function to set Drive sync error
 }

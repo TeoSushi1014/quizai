@@ -1,6 +1,4 @@
 
-
-
 import React, { useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion'; 
@@ -367,8 +365,8 @@ const QuizReviewPage: React.FC = () => {
         </div>
       </div>
 
-      <div>
-        <div ref={titleCardRef} className={`${isTitleCardVisible ? 'animate-fadeInUp' : 'opacity-0'} mb-6 sm:mb-8 mt-6 sm:mt-8`}> 
+      <div className="pt-6 sm:pt-8">
+        <div ref={titleCardRef} className={`${isTitleCardVisible ? 'animate-fadeInUp' : 'opacity-0'}`}> 
           <Card useGlassEffect className="shadow-2xl !rounded-2xl">
             <p className="text-sm text-slate-300/90 mb-6">{isEditingExisting ? t('reviewEditQuizDesc') : t('reviewFinalizeQuizDesc')}</p>
             <Input label={<span className="text-base font-semibold text-slate-100">{t('reviewQuizTitleLabel')}</span>} value={editableQuiz.title} onChange={(e) => setEditableQuiz(prev => prev ? { ...prev, title: e.target.value } : null)} className="text-xl mb-3" placeholder={t('step2QuizTitlePlaceholder')} inputClassName="!text-xl !font-semibold !py-3.5 !rounded-xl" />
@@ -391,7 +389,7 @@ const QuizReviewPage: React.FC = () => {
           </Card>
         </div>
         
-        <div className="space-y-6 sm:space-y-8">
+        <div className="space-y-6 sm:space-y-8 mt-6 sm:mt-8">
           {editableQuiz.questions.map((q, idx) => {
             return <QuestionItem
                       key={q.id}

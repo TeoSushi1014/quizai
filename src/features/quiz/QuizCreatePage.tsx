@@ -1,8 +1,4 @@
 
-
-
-
-
 import React, { useState, useCallback, ReactNode, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion'; 
@@ -79,6 +75,10 @@ const QuizCreatePage: React.FC = () => {
       selectedModel: GEMINI_MODEL_ID
     }));
   }, [language, useAIMode, userSelectedDifficulty, userSelectedNumQuestions]);
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [step]);
 
 
   const isApiKeyMissingForGemini = () => !isGeminiKeyAvailable;

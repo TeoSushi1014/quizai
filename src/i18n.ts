@@ -63,11 +63,11 @@ export const translations = {
     refresh: "Refresh",
     refreshing: "Refreshing...",
 
-
     // Header
     navHome: "Home",
     navDashboard: "Dashboard",
     navCreateQuiz: "Create Quiz",
+    navSettings: "Settings", // New
     languageSwitcherLabel: "Language:",
 
     // HomePage
@@ -169,6 +169,8 @@ export const translations = {
     dashboardQuizCardCreated: "Created: {date}",
     dashboardQuizCardTakeQuiz: "Take Quiz",
     dashboardShareAlert: "Share link: (Conceptual) quiz-ai.com/share/{quizId}",
+    dashboardShareLinkCopied: "Link Copied!",
+    dashboardShareLinkFailed: "Failed to copy!",
 
     // QuizReviewPage
     reviewEditQuizTitle: "Edit Quiz",
@@ -300,6 +302,32 @@ export const translations = {
     practiceSummaryNoSelection: "No selection made.",
     practiceAgain: "Practice Again",
 
+    // Sync Settings Page
+    syncSettingsTitle: "Google Drive Sync",
+    syncSettingsDescription: "Save and load your quiz data directly with your Google Drive account. This allows you to access your quizzes across devices.",
+    syncNowButton: "Sync with Google Drive Now",
+    syncStatus: "Sync Status:",
+    syncStatusNever: "Not synced yet.",
+    syncStatusLast: "Last synced: {dateTime}",
+    syncStatusInProgress: "Syncing...",
+    syncStatusSuccess: "Successfully synced with Google Drive.",
+    syncStatusError: "Error syncing with Google Drive: {error}",
+    driveErrorGeneric: "An error occurred while syncing with Google Drive.",
+    driveErrorFileNotFound: "Quiz data file not found on Google Drive. A new file will be created on next save.",
+    driveErrorNoToken: "Google account not linked or access token unavailable. Please sign in.",
+    driveErrorSaving: "Error saving data to Google Drive.",
+    driveErrorLoading: "Error loading data from Google Drive.",
+    driveErrorCreatingFile: "Error creating file on Google Drive.",
+    driveErrorUpdatingFile: "Error updating file on Google Drive.",
+    driveErrorFindingFile: "Error finding file on Google Drive.",
+    driveDataLoaded: "Quiz data loaded from Google Drive.",
+    driveDataSaved: "Quiz data saved to Google Drive.",
+    driveNoDataFound: "No quiz data found on Google Drive. Your local data will be uploaded on the next save if you proceed.",
+    driveSyncPrompt: "Sync your quizzes with Google Drive?",
+    enableDriveSync: "Enable Google Drive Sync",
+    disableDriveSync: "Disable Google Drive Sync (Uses Local Storage Only)",
+    syncConfirmation: "This will attempt to load data from Google Drive, potentially overwriting local changes if Drive has newer data, and then save current data to Drive. Continue?",
+
 
     testString: "This is a test string.",
     stringWithParam: "Hello {name}!",
@@ -365,11 +393,11 @@ export const translations = {
     refresh: "Làm mới",
     refreshing: "Đang làm mới...",
 
-
     // Header
     navHome: "Trang chủ",
     navDashboard: "Quiz của tôi",
     navCreateQuiz: "Tạo Quiz mới",
+    navSettings: "Cài đặt", // New
     languageSwitcherLabel: "Ngôn ngữ:",
 
     // HomePage
@@ -472,6 +500,8 @@ export const translations = {
     dashboardQuizCardCreated: "Tạo lúc: {date}",
     dashboardQuizCardTakeQuiz: "Làm Quiz",
     dashboardShareAlert: "Liên kết chia sẻ: (Mang tính khái niệm) quiz-ai.com/share/{quizId}",
+    dashboardShareLinkCopied: "Đã sao chép liên kết!",
+    dashboardShareLinkFailed: "Sao chép thất bại!",
 
     // QuizReviewPage
     reviewEditQuizTitle: "Chỉnh sửa Quiz",
@@ -604,6 +634,32 @@ export const translations = {
     practiceSummaryYourSelection: "Lựa chọn của bạn:",
     practiceSummaryNoSelection: "Chưa chọn.",
     practiceAgain: "Luyện tập lại",
+
+    // Sync Settings Page
+    syncSettingsTitle: "Đồng bộ Google Drive",
+    syncSettingsDescription: "Lưu và tải dữ liệu quiz của bạn trực tiếp với tài khoản Google Drive. Điều này cho phép bạn truy cập quiz trên các thiết bị.",
+    syncNowButton: "Đồng bộ với Google Drive Ngay",
+    syncStatus: "Trạng thái Đồng bộ:",
+    syncStatusNever: "Chưa đồng bộ lần nào.",
+    syncStatusLast: "Đồng bộ lần cuối: {dateTime}",
+    syncStatusInProgress: "Đang đồng bộ...",
+    syncStatusSuccess: "Đồng bộ thành công với Google Drive.",
+    syncStatusError: "Lỗi đồng bộ với Google Drive: {error}",
+    driveErrorGeneric: "Đã xảy ra lỗi khi đồng bộ với Google Drive.",
+    driveErrorFileNotFound: "Không tìm thấy tệp dữ liệu quiz trên Google Drive. Tệp mới sẽ được tạo vào lần lưu tới.",
+    driveErrorNoToken: "Chưa liên kết tài khoản Google hoặc không có mã truy cập. Vui lòng đăng nhập.",
+    driveErrorSaving: "Lỗi khi lưu dữ liệu vào Google Drive.",
+    driveErrorLoading: "Lỗi khi tải dữ liệu từ Google Drive.",
+    driveErrorCreatingFile: "Lỗi khi tạo tệp trên Google Drive.",
+    driveErrorUpdatingFile: "Lỗi khi cập nhật tệp trên Google Drive.",
+    driveErrorFindingFile: "Lỗi khi tìm tệp trên Google Drive.",
+    driveDataLoaded: "Dữ liệu quiz đã được tải từ Google Drive.",
+    driveDataSaved: "Dữ liệu quiz đã được lưu vào Google Drive.",
+    driveNoDataFound: "Không tìm thấy dữ liệu quiz trên Google Drive. Dữ liệu cục bộ của bạn sẽ được tải lên vào lần lưu tiếp theo nếu bạn tiếp tục.",
+    driveSyncPrompt: "Đồng bộ quiz của bạn với Google Drive?",
+    enableDriveSync: "Bật Đồng bộ Google Drive",
+    disableDriveSync: "Tắt Đồng bộ Google Drive (Chỉ dùng Bộ nhớ Cục bộ)",
+    syncConfirmation: "Thao tác này sẽ cố gắng tải dữ liệu từ Google Drive, có thể ghi đè các thay đổi cục bộ nếu Drive có dữ liệu mới hơn, sau đó lưu dữ liệu hiện tại vào Drive. Tiếp tục?",
 
 
     testString: "Đây là một chuỗi thử nghiệm.",

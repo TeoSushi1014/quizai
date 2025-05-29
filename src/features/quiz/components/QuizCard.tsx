@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { Quiz } from '../../../types';
 import { Button, Card, Tooltip, Modal, Toggle, Input } from '../../../components/ui';
 import MathText from '../../../components/MathText';
-import { EditIcon, DeleteIcon, ShareIcon, XCircleIcon } from '../../../constants';
+import { EditIcon, DeleteIcon, ShareIcon, XCircleIcon, CheckCircleIcon } from '../../../constants';
 import { useTranslation, useAppContext } from '../../../App';
 import { translations } from '../../../i18n';
 
@@ -38,6 +38,7 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onDelete, onEditQuiz, animati
   const [isConfirmDeleteModalOpen, setIsConfirmDeleteModalOpen] = useState(false);
   const [isAttemptSettingsModalOpen, setIsAttemptSettingsModalOpen] = useState(false);
   const [currentAttemptSettings, setCurrentAttemptSettings] = useState<AttemptSettings>(DEFAULT_ATTEMPT_SETTINGS);
+  const [shareFeedback, setShareFeedback] = useState<{ type: 'idle' | 'copied' | 'failed'; message: string }>({ type: 'idle', message: t('share') });
 
   const { setActiveQuiz, setQuizResult } = useAppContext();
   const navigate = useNavigate();
@@ -117,7 +118,38 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onDelete, onEditQuiz, animati
     }
   };
 
+  const handleShareQuiz = async () => {
+    const shareUrl = `https://teosushi1014.github.io/quizai/#/quiz/${quiz.id}`;
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setShareFeedback({ type: 'copied', message: t('dashboardShareLinkCopied') });
+    } catch (err) {
+      console.error('Failed to copy share link:', err);
+      setShareFeedback({ type: 'failed', message: t('dashboardShareLinkFailed') });
+    } finally {
+      setTimeout(() => setShareFeedback({ type: 'idle', message: t('share') }), 2500);
+    }
+  };
+
   const settingsIconUrl = "https://img.icons8.com/?size=256&id=s5NUIabJrb4C&format=png";
+  
+  let shareButtonIcon;
+  let shareButtonCustomClass = "text-slate-400 hover:text-green-400 hover:bg-green-400/10";
+
+  switch (shareFeedback.type) {
+    case 'copied':
+      shareButtonIcon = <CheckCircleIcon className="w-4 h-4 text-green-400" />;
+      shareButtonCustomClass = "text-green-400 bg-green-400/10";
+      break;
+    case 'failed':
+      shareButtonIcon = <XCircleIcon className="w-4 h-4 text-red-400" />;
+      shareButtonCustomClass = "text-red-400 bg-red-400/10";
+      break;
+    default: // idle
+      shareButtonIcon = <ShareIcon className="w-4 h-4"/>;
+      break;
+  }
+
 
   return (
     <>
@@ -136,14 +168,14 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onDelete, onEditQuiz, animati
             className={`flex flex-col justify-between group relative overflow-hidden !p-0 !rounded-2xl h-full card-float-hover`}
             useGlassEffect={true}
         >
-          <div className="p-5 sm:p-6 flex-grow pb-4">
+          <div className="p-4 sm:p-6 flex-grow pb-3"> {/* Reduced mobile padding, sm padding maintained */}
             <h3
-                className="text-lg sm:text-xl font-semibold text-slate-50 mb-3 group-hover:text-sky-300 line-clamp-2 transition-colors var(--duration-fast) var(--ease-ios)"
+                className="text-base sm:text-lg font-semibold text-slate-50 mb-2.5 group-hover:text-sky-300 line-clamp-2 transition-colors var(--duration-fast) var(--ease-ios)" /* Reduced mobile font size, sm font size also adjusted */
                 title={quiz.title}
             >
                 <MathText text={quiz.title} />
             </h3>
-            <div className="mb-4 space-y-2.5">
+            <div className="mb-3 space-y-3"> {/* Reduced bottom margin */}
                 <div className="text-xs text-slate-400 flex items-center flex-wrap gap-x-3.5 gap-y-1.5">
                     <span className="font-medium text-slate-300">{t('dashboardQuizCardQuestions', { count: quiz.questions.length })}</span>
                     <span className="text-slate-600 text-lg">•</span>
@@ -158,63 +190,84 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onDelete, onEditQuiz, animati
                        {t('dashboardQuizCardSource', { snippet: '' })}<MathText text={quiz.sourceContentSnippet} />
                     </p>
                 )}
-                <p className="text-xs text-slate-500 pt-1.5">{t('dashboardQuizCardCreated', { date: dateFormatted })}</p>
+                <p className="text-xs text-slate-500 pt-1">{t('dashboardQuizCardCreated', { date: dateFormatted })}</p> {/* Reduced top padding */}
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-3 items-center justify-between mt-auto border-t border-slate-700/50 p-4 sm:p-5 bg-slate-800/30 rounded-b-2xl">
-            <div className="flex flex-wrap gap-x-3 gap-y-2 w-full sm:w-auto justify-center sm:justify-start">
+          <div className="flex flex-col sm:flex-row gap-2.5 items-stretch sm:items-center justify-between mt-auto border-t border-slate-700/50 p-3 sm:p-4 bg-slate-800/30 rounded-b-2xl">
+            {/* Row 1 for mobile: Take Quiz & Practice */}
+            <div className="flex gap-2.5 w-full sm:w-auto">
               <Button
-                  size="sm"
-                  variant="primary"
-                  onClick={() => handleStartQuiz('take')}
-                  className="flex-grow xs:flex-grow-0 shadow-lg hover:shadow-sky-400/40 py-2 px-4 rounded-lg"
+                size="sm" 
+                variant="primary"
+                onClick={() => handleStartQuiz('take')}
+                className="flex-grow sm:flex-grow-0 shadow-lg hover:shadow-sky-400/40 py-1.5 px-3 sm:py-2 sm:px-4 rounded-lg"
               >
                 {t('dashboardQuizCardTakeQuiz')}
               </Button>
               <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => handleStartQuiz('practice')}
-                  className="flex-grow xs:flex-grow-0 py-2 px-4 rounded-lg bg-purple-500/80 hover:bg-purple-500/100 text-white hover:shadow-purple-400/40"
+                size="sm" 
+                variant="secondary"
+                onClick={() => handleStartQuiz('practice')}
+                className="flex-grow sm:flex-grow-0 py-1.5 px-3 sm:py-2 sm:px-4 rounded-lg bg-purple-500/80 hover:bg-purple-500 text-white hover:shadow-purple-400/40"
               >
                 {t('practiceModeCardButton')}
               </Button>
-               <Tooltip content={t('edit')} wrapperClassName="inline-flex flex-grow xs:flex-grow-0">
-                <Button
+            </div>
+
+            {/* Row 2 for mobile: Icon buttons, now grouped */}
+            <div className="flex flex-wrap gap-x-2 gap-y-2 w-full sm:w-auto justify-between sm:justify-end items-center">
+              {/* Group 1: Edit & Settings */}
+              <div className="flex items-center gap-x-2">
+                <Tooltip content={t('edit')} wrapperClassName="inline-flex">
+                  <Button
                     size="sm"
                     variant="outline"
                     onClick={() => onEditQuiz(quiz)}
-                    className="w-full py-2 px-4 rounded-lg border-slate-500/70 hover:border-sky-400"
+                    className="!p-2 rounded-lg border-slate-500/70 hover:border-sky-400"
                     aria-label={t('edit')}
-                >
-                  <EditIcon className="w-4 h-4"/>
-                </Button>
-              </Tooltip>
-              <Tooltip content={t('settings')} wrapperClassName="inline-flex flex-grow xs:flex-grow-0">
-                  <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={openAttemptSettingsModal}
-                      className="w-full py-2 px-4 rounded-lg border-slate-500/70 hover:border-sky-400"
-                      aria-label={t('settings')}
                   >
-                      <img src={settingsIconUrl} alt={t('settings')} className="w-4 h-4" />
+                    <EditIcon className="w-4 h-4" strokeWidth={1.5} />
                   </Button>
-              </Tooltip>
-            </div>
-
-            <div className="flex items-center gap-1.5 w-full sm:w-auto justify-center sm:justify-end">
-                <Tooltip content={t('share')} wrapperClassName="inline-flex">
-                <Button size="sm" variant="ghost" onClick={() => alert(t('dashboardShareAlert', {quizId: quiz.id}))} className="text-slate-400 hover:text-green-400 !p-2.5 rounded-lg">
-                    <ShareIcon className="w-4 h-4"/>
-                </Button>
+                </Tooltip>
+                <Tooltip content={t('settings')} wrapperClassName="inline-flex">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={openAttemptSettingsModal}
+                    className="!p-2 rounded-lg border-slate-500/70 hover:border-sky-400"
+                    aria-label={t('settings')}
+                  >
+                    <img src={settingsIconUrl} alt={t('settings')} className="w-4 h-4" />
+                  </Button>
+                </Tooltip>
+              </div>
+              
+              {/* Group 2: Share & Delete */}
+              <div className="flex items-center gap-x-2">
+                <Tooltip content={shareFeedback.message} wrapperClassName="inline-flex"> 
+                  <Button 
+                    size="sm" 
+                    variant="ghost" 
+                    onClick={handleShareQuiz} 
+                    className={`!p-2 rounded-lg ${shareButtonCustomClass}`}
+                    aria-label={t('share')}
+                  >
+                    {shareButtonIcon}
+                  </Button>
                 </Tooltip>
                 <Tooltip content={t('delete')} wrapperClassName="inline-flex">
-                <Button size="sm" variant="ghost" onClick={handleDeleteRequest} className="text-slate-400 hover:text-red-500 !p-2.5 rounded-lg">
+                  <Button 
+                    size="sm" 
+                    variant="ghost" 
+                    onClick={handleDeleteRequest} 
+                    className="text-slate-400 hover:text-red-500 hover:bg-red-400/10 !p-2 rounded-lg"
+                    aria-label={t('delete')}
+                  >
                     <DeleteIcon className="w-4 h-4"/>
-                </Button>
+                  </Button>
                 </Tooltip>
+              </div>
             </div>
           </div>
         </Card>

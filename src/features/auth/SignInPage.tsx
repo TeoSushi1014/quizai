@@ -1,16 +1,10 @@
 
-
-
-
-
-
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { TokenResponse, useGoogleLogin } from '@react-oauth/google'; 
 import { useAppContext, useTranslation } from '../../App';
 import { UserProfile } from '../../types';
 import { Button, Card } from '../../components/ui';
-
 
 
 declare const grecaptcha: any;
@@ -20,8 +14,6 @@ const SignInPage: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
-
-  
   
   const siteKey = typeof (import.meta as any).env !== 'undefined' ? (import.meta as any).env.VITE_RECAPTCHA_SITE_KEY : undefined;
 
@@ -32,9 +24,8 @@ const SignInPage: React.FC = () => {
     }
   }, [currentUser, navigate, location.state]);
 
-  const handleLoginError = () => { 
-    console.error("Login Failed. Check Google Cloud Console for redirect_uri_mismatch or other OAuth errors. Also check server COOP headers."); 
-    
+  const handleLoginError = (error?: any) => { 
+    console.error("Login Failed. Check Google Cloud Console for redirect_uri_mismatch or other OAuth errors. Also check server COOP headers. Error details:", error); 
   };
 
   const handleLoginSuccess = async (tokenResponse: TokenResponse) => {
@@ -47,7 +38,7 @@ const SignInPage: React.FC = () => {
         if (!userInfoResponse.ok) {
           const errorData = await userInfoResponse.json().catch(() => ({ message: "Failed to parse error response from userinfo endpoint" }));
           console.error("Failed to fetch user info:", userInfoResponse.status, userInfoResponse.statusText, errorData);
-          handleLoginError();
+          handleLoginError(errorData);
           return;
         }
 
@@ -57,22 +48,23 @@ const SignInPage: React.FC = () => {
           name: userInfo.name,
           email: userInfo.email,
           imageUrl: userInfo.picture,
+          // accessToken: tokenResponse.access_token // accessToken will be passed as second param to login
         };
-        login(userProfile); 
+        login(userProfile, tokenResponse.access_token); 
       } catch (error) {
         console.error("Error during token validation or fetching user info:", error);
-        handleLoginError();
+        handleLoginError(error);
       }
     } else {
       console.error("Login success callback, but no access_token in tokenResponse:", tokenResponse);
-      handleLoginError();
+      handleLoginError(tokenResponse);
     }
   };
 
   const initiateGoogleLogin = useGoogleLogin({
     onSuccess: handleLoginSuccess,
     onError: handleLoginError,
-    
+    scope: 'email profile https://www.googleapis.com/auth/drive.file', // Added drive.file scope
   });
 
   const handleCustomGoogleLoginClick = () => {
@@ -90,25 +82,17 @@ const SignInPage: React.FC = () => {
 
     grecaptcha.enterprise.ready(async () => {
       try {
-        
         const token = await grecaptcha.enterprise.execute(siteKey, { action: 'LOGIN' });
         console.log('reCAPTCHA token obtained (first 10 chars):', token.slice(0, 10) + '...');
-        
-        
-        
-        
-        
         console.log('Skipping reCAPTCHA assessment. Proceeding with login.');
         initiateGoogleLogin();
 
       } catch (error) {
         console.error('Lỗi khi thực thi reCAPTCHA (token generation):', error);
-        
         initiateGoogleLogin(); 
       }
     });
   };
-
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[calc(100vh-250px)] py-10 sm:py-16">
