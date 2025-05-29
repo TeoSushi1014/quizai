@@ -325,7 +325,10 @@
     .question-item-motion-wrapper { /* Already exists, add contain here */
       contain: layout style paint;
     }
-
+    .quiz-list-container {
+      contain: layout style paint;
+      min-height: 300px; /* Ensure it has a minimum height for measurement stability */
+    }
     
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after {
@@ -393,9 +396,10 @@
   }
 }
 </script>
-  <script type="module" crossorigin src="/quizai/assets/index-ClxTFCN0.js"></script>
+  <script type="module" crossorigin src="/quizai/assets/index-DAyIYyRJ.js"></script>
 </head>
 <body>
   <div id="root"></div>
 </body>
-</html><link rel="stylesheet" href="index.css">
+</html>
+<link rel="stylesheet" href="index.css">
