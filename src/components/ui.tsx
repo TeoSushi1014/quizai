@@ -1,10 +1,12 @@
 
 
 
+
 import React, { ReactNode, useState, useRef, useEffect, Children, cloneElement, ReactElement } from 'react';
 import ReactDOM from 'react-dom'; 
-import { ChevronDownIcon, UploadIcon as DefaultUploadIcon, InformationCircleIcon } from '../constants';
+import { ChevronDownIcon, UploadIcon as DefaultUploadIcon, InformationCircleIcon, XCircleIcon as CloseIcon } from '../constants'; // Added CloseIcon
 import { useTranslation } from '../App';
+import { NotificationState, NotificationType } from '../hooks/useNotification'; // Added NotificationState and Type
 
 export interface TooltipProps {
   content: ReactNode;
@@ -697,3 +699,71 @@ export const Dropzone: React.FC<DropzoneProps> = ({
   );
 };
 Dropzone.displayName = "Dropzone";
+
+interface NotificationDisplayProps {
+  notification: NotificationState | null;
+  onClose: () => void;
+}
+
+export const NotificationDisplay: React.FC<NotificationDisplayProps> = ({ notification, onClose }) => {
+  if (!notification) return null;
+
+  const { type, message } = notification;
+
+  let bgColor = '';
+  let borderColor = '';
+  let textColor = '';
+  let IconComponent: React.FC<any> | null = null; // Type for icon component
+
+  switch (type) {
+    case 'error':
+      bgColor = 'bg-red-600';
+      borderColor = 'border-red-700';
+      textColor = 'text-white';
+      IconComponent = InformationCircleIcon; // Example, use appropriate icons
+      break;
+    case 'success':
+      bgColor = 'bg-green-500';
+      borderColor = 'border-green-600';
+      textColor = 'text-white';
+      IconComponent = InformationCircleIcon; // Example
+      break;
+    case 'info':
+      bgColor = 'bg-sky-500';
+      borderColor = 'border-sky-600';
+      textColor = 'text-white';
+      IconComponent = InformationCircleIcon;
+      break;
+    case 'warning':
+      bgColor = 'bg-amber-500';
+      borderColor = 'border-amber-600';
+      textColor = 'text-white';
+      IconComponent = InformationCircleIcon; // Example
+      break;
+    default:
+      bgColor = 'bg-slate-700';
+      borderColor = 'border-slate-800';
+      textColor = 'text-slate-100';
+      IconComponent = InformationCircleIcon;
+  }
+
+  return (
+    <div 
+      role="alert"
+      className={`fixed top-5 right-5 md:top-6 md:right-6 p-4 rounded-lg shadow-2xl border-l-4 z-[200] animate-slideInRightPage max-w-sm w-[calc(100%-2.5rem)] sm:w-auto ${bgColor} ${borderColor} ${textColor}`}
+    >
+      <div className="flex items-start">
+        {IconComponent && <IconComponent className="w-5 h-5 mr-3 flex-shrink-0 mt-0.5" />}
+        <div className="flex-grow text-sm font-medium">{message}</div>
+        <button
+          onClick={onClose}
+          className="ml-4 -mr-1 -mt-1 p-1.5 rounded-full text-current opacity-80 hover:opacity-100 hover:bg-black/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 transition-opacity"
+          aria-label="Close notification"
+        >
+          <CloseIcon className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
+  );
+};
+NotificationDisplay.displayName = "NotificationDisplay";
