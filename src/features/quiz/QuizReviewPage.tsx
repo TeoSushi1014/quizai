@@ -1,22 +1,17 @@
 
-import React, { useState, useEffect, useCallback, useRef, ReactNode } from 'react';
+import React, { useState, useEffect, useCallback, useRef, ReactNode, useReducer } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { motion } from 'framer-motion'; 
+import { motion } from 'framer-motion';
 import { useAppContext, useTranslation } from '../../App';
 import { Quiz, Question, QuizConfig } from '../../types';
 import { Button, Card, Input, Textarea, Select, Modal, LoadingSpinner, Tooltip } from '../../components/ui';
 import MathText from '../../components/MathText';
-import { PlusIcon, DeleteIcon, SaveIcon, ArrowUturnLeftIcon, HomeIcon, PlusCircleIcon, EditIcon, ExportIcon, CopyIcon, DownloadIcon, InformationCircleIcon } from '../../constants';
+import { PlusIcon, DeleteIcon, SaveIcon, ArrowUturnLeftIcon, HomeIcon, PlusCircleIcon, EditIcon, ExportIcon, CopyIcon, DownloadIcon, InformationCircleIcon, GEMINI_MODEL_ID, DocumentTextIcon } from '../../constants';
 import { formatQuizToAzotaStyle1, formatQuizToAzotaStyle2, formatQuizToAzotaStyle4 } from '../../services/azotaExportService';
 import useIntersectionObserver from '../../hooks/useIntersectionObserver';
+import { quizReducer, initialQuizReviewState, QuizReviewAction } from './quizReducer';
+import { translations } from '../../i18n';
 
-
-interface EditableQuizData {
-  title: string;
-  questions: Question[];
-  config: QuizConfig;
-  sourceContentSnippet?: string;
-}
 
 type AzotaFormat = 'style1' | 'style2' | 'style4';
 
@@ -93,28 +88,17 @@ const AzotaExportModal: React.FC<{
 };
 AzotaExportModal.displayName = "AzotaExportModal";
 
-
 interface QuestionItemProps {
   question: Question;
   index: number;
-  // editableQuiz is not directly used if specific handlers are passed and work on the parent's state
-  // setEditableQuiz is not directly used if specific handlers are passed
-  handleFieldChange: (questionId: string, field: keyof Question, value: any) => void;
-  handleOptionChange: (questionId: string, optionIndex: number, newText: string) => void;
-  handleAddOption: (questionId: string) => void;
-  handleRemoveOption: (questionId: string, optionIndex: number) => void;
-  handleDeleteQuestion: (questionId: string) => void;
+  dispatch: React.Dispatch<QuizReviewAction>;
   animationDelayFactor: number;
 }
 
 const QuestionItem: React.FC<QuestionItemProps> = ({
   question,
-  index,
-  handleFieldChange,
-  handleOptionChange,
-  handleAddOption,
-  handleRemoveOption,
-  handleDeleteQuestion,
+  index: questionIndex,
+  dispatch,
   animationDelayFactor
 }) => {
   const { t } = useTranslation();
@@ -122,18 +106,59 @@ const QuestionItem: React.FC<QuestionItemProps> = ({
   const isVisible = useIntersectionObserver(itemRef, { threshold: 0.1, freezeOnceVisible: true });
 
   const optionItems = question.options.map((opt, optIndex) => ({
-    value: opt, // Value must be the option text itself to match correctAnswer
+    value: opt,
     label: `${t('reviewOptionLabel', {index: optIndex+1})}: ${opt.length > 30 ? opt.substring(0,27) + '...' : opt}`
   }));
 
   if (optionItems.length === 0 && question.correctAnswer) {
      optionItems.push({value: question.correctAnswer, label: question.correctAnswer});
-  } else if (optionItems.length > 0 && !question.options.includes(question.correctAnswer)) {
-     // This case should be handled by handleOptionChange or when initializing/saving to ensure correctAnswer is always valid.
-     // For display, if correctAnswer is somehow not in options, the Select might behave unexpectedly.
-     // A robust solution would be to ensure correctAnswer is always one of the options.
   }
 
+  const handleFieldChange = (field: keyof Question, value: any) => {
+    dispatch({ type: 'UPDATE_QUESTION', payload: { index: questionIndex, question: { ...question, [field]: value } } });
+  };
+
+  const handleOptionChange = (optionIdx: number, newText: string) => {
+    const newOptions = [...question.options];
+    newOptions[optionIdx] = newText;
+    let newCorrectAnswer = question.correctAnswer;
+    // If the changed option was the correct answer, update the correct answer to the new text
+    if (question.correctAnswer === question.options[optionIdx]) {
+      newCorrectAnswer = newText;
+    } else if (!newOptions.includes(question.correctAnswer) && newOptions.length > 0) {
+      // If correct answer is no longer in options (e.g. was deleted or changed), default to first
+      newCorrectAnswer = newOptions[0];
+    } else if (newOptions.length === 0) {
+      newCorrectAnswer = "";
+    }
+    dispatch({ type: 'UPDATE_QUESTION', payload: { index: questionIndex, question: { ...question, options: newOptions, correctAnswer: newCorrectAnswer } } });
+  };
+
+  const handleAddOption = () => {
+    if (question.options.length >= 5) return;
+    const newOptionText = t('reviewNewOptionDefault', { index: question.options.length + 1 });
+    const newOptions = [...question.options, newOptionText];
+    dispatch({ type: 'UPDATE_QUESTION', payload: { index: questionIndex, question: { ...question, options: newOptions } } });
+    // Focus logic for new option might need to be handled in QuizReviewPage useEffect if dispatch is async
+  };
+
+  const handleRemoveOption = (optionIdx: number) => {
+    if (question.options.length <= 2) {
+      alert(t('reviewErrorNotEnoughOptions', {id: ""}).replace(" for question ID: {id}", ""));
+      return;
+    }
+    const oldOptionText = question.options[optionIdx];
+    const newOptions = question.options.filter((_, i) => i !== optionIdx);
+    let newCorrectAnswer = question.correctAnswer;
+    if (oldOptionText === question.correctAnswer && !newOptions.includes(oldOptionText)) {
+      newCorrectAnswer = newOptions.length > 0 ? newOptions[0] : "";
+    }
+    dispatch({ type: 'UPDATE_QUESTION', payload: { index: questionIndex, question: { ...question, options: newOptions, correctAnswer: newCorrectAnswer } } });
+  };
+
+  const handleDeleteQuestion = () => {
+    dispatch({ type: 'REMOVE_QUESTION', payload: { index: questionIndex } });
+  };
 
   return (
     <motion.div
@@ -146,13 +171,13 @@ const QuestionItem: React.FC<QuestionItemProps> = ({
       <Card useGlassEffect className="shadow-xl !rounded-2xl !border-slate-700/50">
         <div className="flex justify-between items-center mb-5 sm:mb-6">
           <h3 className="text-lg sm:text-xl font-semibold text-sky-300">
-            {t('reviewQuestionLabel', { index: index + 1 })}
+            {t('reviewQuestionLabel', { index: questionIndex + 1 })}
           </h3>
           <Tooltip content={t('reviewDeleteQuestionLabel')} placement="left">
             <Button
               variant="danger"
               size="sm"
-              onClick={() => handleDeleteQuestion(question.id)}
+              onClick={handleDeleteQuestion}
               className="!p-2.5 rounded-lg shadow-md hover:shadow-red-500/50"
               aria-label={t('reviewDeleteQuestionLabel')}
             >
@@ -165,7 +190,7 @@ const QuestionItem: React.FC<QuestionItemProps> = ({
           <Textarea
             label={<span className="font-medium text-slate-200">{t('reviewQuestionTextLabel')}</span>}
             value={question.questionText}
-            onChange={(e) => handleFieldChange(question.id, 'questionText', e.target.value)}
+            onChange={(e) => handleFieldChange('questionText', e.target.value)}
             placeholder={t('reviewQuestionTextPlaceholder')}
             rows={3}
             className="min-h-[80px] text-sm"
@@ -179,7 +204,7 @@ const QuestionItem: React.FC<QuestionItemProps> = ({
                   <Input
                     id={`option-input-${question.id}-${optIndex}`}
                     value={optionText}
-                    onChange={(e) => handleOptionChange(question.id, optIndex, e.target.value)}
+                    onChange={(e) => handleOptionChange(optIndex, e.target.value)}
                     placeholder={t('reviewOptionPlaceholder', {index: optIndex + 1})}
                     inputClassName="text-sm !py-2.5"
                     containerClassName="flex-grow"
@@ -189,7 +214,7 @@ const QuestionItem: React.FC<QuestionItemProps> = ({
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleRemoveOption(question.id, optIndex)}
+                        onClick={() => handleRemoveOption(optIndex)}
                         className="!p-2.5 rounded-lg text-red-400/80 hover:text-red-400 hover:bg-red-400/15"
                         aria-label={t('reviewRemoveOptionLabel')}
                       >
@@ -204,7 +229,7 @@ const QuestionItem: React.FC<QuestionItemProps> = ({
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => handleAddOption(question.id)}
+                onClick={handleAddOption}
                 leftIcon={<PlusIcon className="w-4 h-4" strokeWidth={2}/>}
                 className="mt-4 py-2 px-4 rounded-lg border-dashed border-sky-400/70 text-sky-300 hover:bg-sky-400/15 hover:border-sky-400"
               >
@@ -216,7 +241,7 @@ const QuestionItem: React.FC<QuestionItemProps> = ({
           <Select
             label={<span className="font-medium text-slate-200">{t('reviewCorrectAnswerLabel')}</span>}
             value={question.correctAnswer}
-            onChange={(e) => handleFieldChange(question.id, 'correctAnswer', e.target.value)}
+            onChange={(e) => handleFieldChange('correctAnswer', e.target.value)}
             options={optionItems.length > 0 ? optionItems : [{value: "", label: "Please add options"}]}
             disabled={optionItems.length === 0}
             className="text-sm"
@@ -225,7 +250,7 @@ const QuestionItem: React.FC<QuestionItemProps> = ({
           <Textarea
             label={<span className="font-medium text-slate-200">{t('reviewExplanationLabel')}</span>}
             value={question.explanation}
-            onChange={(e) => handleFieldChange(question.id, 'explanation', e.target.value)}
+            onChange={(e) => handleFieldChange('explanation', e.target.value)}
             placeholder={t('reviewExplanationPlaceholder')}
             rows={3}
             className="min-h-[80px] text-sm"
@@ -237,114 +262,121 @@ const QuestionItem: React.FC<QuestionItemProps> = ({
 };
 QuestionItem.displayName = "QuestionItem";
 
-
 const QuizReviewPage: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { t } = useTranslation();
-  const { addQuiz, updateQuiz, quizzes, language } = useAppContext();
+  const { t, language } = useTranslation();
+  const { addQuiz, updateQuiz, quizzes } = useAppContext();
 
-  const [editableQuiz, setEditableQuiz] = useState<EditableQuizData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [state, dispatch] = useReducer(quizReducer, initialQuizReviewState);
+  const { editableQuiz, isLoading, isSaving, error } = state;
+
   const [isAzotaExportModalOpen, setIsAzotaExportModalOpen] = useState(false);
-  const [focusOptionInput, setFocusOptionInput] = useState<{ questionId: string; optionIndex: number } | null>(null);
+  const [focusOptionInput, setFocusOptionInput] = useState<{ questionId: string; optionIndex: number } | null>(null); // Kept for UI focus
 
   const { quizId: existingQuizIdFromParams } = useParams<{ quizId?: string }>();
 
   useEffect(() => {
+    dispatch({ type: 'SET_LOADING', payload: true });
     let initialData: { generatedQuizData?: any; quizTitleSuggestion?: string; finalConfig?: QuizConfig, existingQuiz?: Quiz } | null = null;
+    
     if (location.state) initialData = location.state as any;
+    
     const existingQuizId = existingQuizIdFromParams || initialData?.existingQuiz?.id;
 
-    if (existingQuizId && !initialData?.existingQuiz) {
-        const quizFromContext = quizzes.find(q => q.id === existingQuizId);
-        if (quizFromContext) initialData = { ...initialData, existingQuiz: quizFromContext };
-        else { setError(t('reviewErrorQuizNotFound')); setIsLoading(false); return; }
-    }
-    
-    if (initialData?.existingQuiz) {
-        const q = initialData.existingQuiz;
-        setEditableQuiz({ title: q.title, questions: JSON.parse(JSON.stringify(q.questions)), config: q.config || { numQuestions: q.questions.length, difficulty: 'Medium', language: language === 'vi' ? 'Vietnamese' : 'English', customUserPrompt: '', selectedModel: 'gemini' }, sourceContentSnippet: q.sourceContentSnippet });
+    let quizToLoad: Quiz | null = null;
+
+    if (existingQuizId) {
+      quizToLoad = initialData?.existingQuiz || quizzes.find(q => q.id === existingQuizId) || null;
+      if (!quizToLoad) {
+        dispatch({ type: 'SET_ERROR', payload: t('reviewErrorQuizNotFound') });
+        dispatch({ type: 'SET_LOADING', payload: false });
+        return;
+      }
     } else if (initialData?.generatedQuizData && initialData.finalConfig) {
       const { generatedQuizData, quizTitleSuggestion, finalConfig } = initialData;
-      setEditableQuiz({ title: quizTitleSuggestion || generatedQuizData.title, questions: JSON.parse(JSON.stringify(generatedQuizData.questions)), config: finalConfig, sourceContentSnippet: generatedQuizData.sourceContentSnippet });
-    } else if (!existingQuizIdFromParams) { setError(t('reviewErrorNoQuizData')); }
-    setIsLoading(false);
-  }, [location.state, existingQuizIdFromParams, quizzes, t, language]);
+      quizToLoad = {
+        id: `new-quiz-${Date.now()}`, // Temporary ID for new quiz
+        title: quizTitleSuggestion || generatedQuizData.title || t('untitledQuiz'),
+        questions: generatedQuizData.questions,
+        config: finalConfig,
+        sourceContentSnippet: generatedQuizData.sourceContentSnippet,
+        createdAt: new Date().toISOString(),
+      };
+    }
+
+    if (quizToLoad) {
+      dispatch({ type: 'INIT_QUIZ_DATA', payload: { quiz: quizToLoad, language } });
+    } else if (!existingQuizIdFromParams) { // Only set error if it's not an attempt to load existing by URL and it failed
+      dispatch({ type: 'SET_ERROR', payload: t('reviewErrorNoQuizData') });
+      dispatch({ type: 'SET_LOADING', payload: false });
+    }
+    // SET_LOADING(false) is handled by INIT_QUIZ_DATA
+  }, [location.state, existingQuizIdFromParams, quizzes, t, language, dispatch]);
+
 
   useEffect(() => {
-    if (focusOptionInput) {
-      const inputId = `option-input-${focusOptionInput.questionId}-${focusOptionInput.optionIndex}`;
-      const element = document.getElementById(inputId);
-      element?.focus();
+    if (focusOptionInput && editableQuiz) {
+      const question = editableQuiz.questions.find(q => q.id === focusOptionInput.questionId);
+      if (question) {
+          const inputId = `option-input-${focusOptionInput.questionId}-${focusOptionInput.optionIndex}`;
+          const element = document.getElementById(inputId);
+          element?.focus();
+      }
       setFocusOptionInput(null);
     }
-  }, [focusOptionInput]);
+  }, [focusOptionInput, editableQuiz]);
 
-  const handleFieldChange = (questionId: string, field: keyof Question, value: any) => { setEditableQuiz(prev => prev ? { ...prev, questions: prev.questions.map(q => q.id === questionId ? { ...q, [field]: value } : q) } : null); };
-  const handleOptionChange = (questionId: string, optionIndex: number, newText: string) => {
-    setEditableQuiz(prev => prev ? { ...prev, questions: prev.questions.map(q => { if (q.id === questionId) { const oldOpt = q.options[optionIndex]; const newOpts = [...q.options]; newOpts[optionIndex] = newText; let newCorrect = q.correctAnswer; if (q.correctAnswer === oldOpt) newCorrect = newText; else if (!newOpts.includes(q.correctAnswer) && newOpts.length > 0) newCorrect = newOpts[0]; else if (newOpts.length === 0) newCorrect = ""; return { ...q, options: newOpts, correctAnswer: newCorrect }; } return q; }) } : null);
-  };
-  
-  const handleAddOption = (questionId: string) => {
-    let newOptionIndex = -1;
-    setEditableQuiz(prev => {
-      if (!prev) return null;
-      return {
-        ...prev,
-        questions: prev.questions.map(q => {
-          if (q.id === questionId) {
-            if (q.options.length >= 5) return q; // Max 5 options
-            newOptionIndex = q.options.length;
-            return { ...q, options: [...q.options, t('reviewNewOptionDefault', { index: newOptionIndex + 1 })] };
-          }
-          return q;
-        })
-      };
-    });
-    if (newOptionIndex !== -1) {
-      setFocusOptionInput({ questionId, optionIndex: newOptionIndex });
-    }
+
+  const handleQuizTitleChange = (newTitle: string) => {
+    dispatch({ type: 'UPDATE_QUIZ_TITLE', payload: newTitle });
   };
 
-  const handleRemoveOption = (questionId: string, optionIndex: number) => {
-    setEditableQuiz(prev => prev ? { ...prev, questions: prev.questions.map(q => { if (q.id === questionId) { if (q.options.length <= 2) { alert(t('reviewErrorNotEnoughOptions', {id: ""}).replace(" for question ID: {id}", "")); return q; } const oldOpt = q.options[optionIndex]; const newOpts = q.options.filter((_,i) => i !== optionIndex); let newCorrect = q.correctAnswer; if (oldOpt === q.correctAnswer && !newOpts.includes(oldOpt)) newCorrect = newOpts.length > 0 ? newOpts[0] : ""; return { ...q, options: newOpts, correctAnswer: newCorrect }; } return q; }) } : null);
+  const handleAddNewQuestion = () => {
+    dispatch({ type: 'ADD_QUESTION', payload: { language } });
   };
-  const handleDeleteQuestion = (questionId: string) => { setEditableQuiz(prev => { if (!prev) return null; if (prev.questions.length === 1) { setError(t('reviewCannotSaveNoQuestions')); return prev; } return { ...prev, questions: prev.questions.filter(q => q.id !== questionId) }; }); };
-  const handleAddNewQuestion = () => { setEditableQuiz(prev => prev ? { ...prev, questions: [...prev.questions, { id: `manual-q-${Date.now()}`, questionText: t('reviewNewQuestionDefaultText'), options: [t('reviewNewOptionDefault',{index:1}), t('reviewNewOptionDefault',{index:2})], correctAnswer: t('reviewNewOptionDefault',{index:1}), explanation: t('reviewNewExplanationDefaultText') }] } : null); };
 
   const handleSaveQuiz = () => {
-    if (!editableQuiz || editableQuiz.questions.length === 0) { setError(t('reviewCannotSaveNoQuestions')); return; }
-    for (const q of editableQuiz.questions) {
-        if (!q.questionText.trim()) { setError(t('reviewErrorEmptyQuestionText', {id: q.id.substring(0,8)})); return; }
-        if (q.options.length < 2) { setError(t('reviewErrorNotEnoughOptions', {id: q.id.substring(0,8)})); return; }
-        if (!q.correctAnswer || !q.options.includes(q.correctAnswer)) { setError(t('reviewErrorInvalidCorrectAnswer', {id: q.id.substring(0,8)})); return; }
-        if (!q.explanation.trim()) { setError(t('reviewErrorEmptyExplanation', {id: q.id.substring(0,8)})); return; }
+    if (!editableQuiz || editableQuiz.questions.length === 0) {
+      dispatch({ type: 'SET_ERROR', payload: t('reviewCannotSaveNoQuestions') });
+      return;
     }
-    setError(null); setIsSaving(true);
-    const quizToSave: Quiz = { id: existingQuizIdFromParams || `quiz-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, title: editableQuiz.title.trim() || t('untitledQuiz'), questions: editableQuiz.questions, createdAt: existingQuizIdFromParams ? (quizzes.find(q=>q.id === existingQuizIdFromParams)?.createdAt || new Date().toISOString()) : new Date().toISOString(), sourceContentSnippet: editableQuiz.sourceContentSnippet, config: editableQuiz.config };
-    setTimeout(() => { if (existingQuizIdFromParams) updateQuiz(quizToSave); else addQuiz(quizToSave); setIsSaving(false); navigate('/dashboard'); }, 700);
-  };
-  
-  const handleCloseAzotaExportModal = useCallback(() => {
-    setIsAzotaExportModalOpen(false);
-  }, []);
+    for (const q of editableQuiz.questions) {
+      if (!q.questionText.trim()) { dispatch({ type: 'SET_ERROR', payload: t('reviewErrorEmptyQuestionText', {id: q.id.substring(0,8)})}); return; }
+      if (q.options.length < 2) { dispatch({ type: 'SET_ERROR', payload: t('reviewErrorNotEnoughOptions', {id: q.id.substring(0,8)})}); return; }
+      if (!q.correctAnswer || !q.options.includes(q.correctAnswer)) { dispatch({ type: 'SET_ERROR', payload: t('reviewErrorInvalidCorrectAnswer', {id: q.id.substring(0,8)})}); return; }
+      if (!q.explanation.trim()) { dispatch({ type: 'SET_ERROR', payload: t('reviewErrorEmptyExplanation', {id: q.id.substring(0,8)})}); return; }
+    }
+    dispatch({ type: 'SET_ERROR', payload: null });
+    dispatch({ type: 'SET_SAVING', payload: true });
 
+    const quizToSave: Quiz = {
+      ...editableQuiz,
+      id: existingQuizIdFromParams || editableQuiz.id || `quiz-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      title: editableQuiz.title.trim() || t('untitledQuiz'),
+      createdAt: existingQuizIdFromParams ? editableQuiz.createdAt || new Date().toISOString() : new Date().toISOString(),
+      config: editableQuiz.config || { numQuestions: editableQuiz.questions.length, difficulty: 'Medium', language: language === 'vi' ? 'Vietnamese' : 'English', customUserPrompt: '', selectedModel: GEMINI_MODEL_ID },
+    };
+
+    setTimeout(() => {
+      if (existingQuizIdFromParams) updateQuiz(quizToSave);
+      else addQuiz(quizToSave);
+      dispatch({ type: 'SET_SAVING', payload: false });
+      navigate('/dashboard');
+    }, 700);
+  };
+
+  const handleCloseAzotaExportModal = useCallback(() => setIsAzotaExportModalOpen(false), []);
 
   if (isLoading) return <LoadingSpinner text={t('loading')} className="mt-24" size="xl"/>;
   if (error && !editableQuiz && !isSaving) return <Card className="text-red-400 p-12 text-center shadow-xl !border-red-500/70 !bg-red-800/40 text-lg font-semibold !rounded-2xl animate-fadeInUp" useGlassEffect>{error}</Card>;
   if (!editableQuiz) return <Card className="text-slate-400 p-12 text-center shadow-lg text-lg font-medium !rounded-2xl animate-fadeInUp" useGlassEffect>{t('reviewErrorNoQuizData')}</Card>;
 
   const isEditingExisting = !!existingQuizIdFromParams;
-  const currentQuizForExport: Quiz | null = editableQuiz ? { id: existingQuizIdFromParams || 'temp-id', createdAt: new Date().toISOString(), ...editableQuiz } : null;
 
   return (
     <div className="pb-16">
-      <div
-        className={`sticky-review-actions bg-slate-800 shadow-xl py-4 -mx-4 sm:-mx-6 lg:-mx-8 rounded-b-2xl border-b border-slate-700 animate-fadeInUp`}
-      >
+      <div className={`sticky-review-actions bg-slate-800 shadow-xl py-4 -mx-4 sm:-mx-6 lg:-mx-8 rounded-b-2xl border-b border-slate-700 animate-fadeInUp`}>
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
                 <h1 className="text-xl sm:text-2xl font-bold text-slate-50 leading-tight truncate tracking-tight flex items-center" title={editableQuiz.title}>
@@ -353,32 +385,48 @@ const QuizReviewPage: React.FC = () => {
                 <div className="flex flex-wrap justify-center sm:justify-end items-center gap-2.5">
                     {!isEditingExisting && (<Button variant="outline" size="sm" onClick={() => navigate('/create')} leftIcon={<ArrowUturnLeftIcon className="w-4 h-4"/>} className="py-2.5 px-4 rounded-lg"> {t('reviewDiscardRegenerateShort')} </Button>)}
                     <Button variant="secondary" size="sm" onClick={() => navigate('/dashboard')} leftIcon={<HomeIcon className="w-4 h-4"/>} className="py-2.5 px-4 rounded-lg"> {isEditingExisting ? t('cancel') : t('reviewDiscardToDashboardShort')} </Button>
-                    <Button variant="outline" size="sm" onClick={() => setIsAzotaExportModalOpen(true)} leftIcon={<ExportIcon className="w-4 h-4"/>} className="py-2.5 px-4 rounded-lg border-sky-400/70 text-sky-300 hover:bg-sky-400/15" disabled={!currentQuizForExport || currentQuizForExport.questions.length === 0}> {t('azotaExportButton')} </Button>
+                    <Button variant="outline" size="sm" onClick={() => setIsAzotaExportModalOpen(true)} leftIcon={<ExportIcon className="w-4 h-4"/>} className="py-2.5 px-4 rounded-lg border-sky-400/70 text-sky-300 hover:bg-sky-400/15" disabled={!editableQuiz || editableQuiz.questions.length === 0}> {t('azotaExportButton')} </Button>
                     <Button variant="primary" size="sm" onClick={handleSaveQuiz} isLoading={isSaving} disabled={isSaving || !editableQuiz.questions.length} leftIcon={<SaveIcon className="w-4 h-4"/>} className="bg-gradient-to-r from-green-500 to-teal-500 hover:from-green-600 hover:to-teal-600 text-white py-2.5 px-4 rounded-lg"> {isSaving ? t('reviewSavingButton') : (isEditingExisting ? t('reviewSaveChangesButton') : t('reviewSaveButton'))} </Button>
                 </div>
             </div>
             {error && <p role="alert" className={`text-xs text-red-300 mt-4 bg-red-500/20 p-3 rounded-lg text-center sm:text-left shadow animate-fadeIn`}>{error}</p>}
-            {!editableQuiz.questions.length && <p role="alert" className={`text-xs text-yellow-400 mt-4 bg-yellow-500/20 p-3 rounded-lg text-center sm:text-left shadow animate-fadeIn`}>{t('reviewCannotSaveNoQuestions')}</p>}
+            {editableQuiz && !editableQuiz.questions.length && <p role="alert" className={`text-xs text-yellow-400 mt-4 bg-yellow-500/20 p-3 rounded-lg text-center sm:text-left shadow animate-fadeIn`}>{t('reviewCannotSaveNoQuestions')}</p>}
         </div>
       </div>
 
       <div className="pt-6 sm:pt-8">
-        {/* The Quiz Details Card has been removed as per user request */}
+         <Card useGlassEffect className="shadow-xl !rounded-2xl !border-slate-700/50 mb-6 sm:mb-8">
+            <Input
+                label={<p className="text-lg font-semibold text-slate-100">{t('reviewQuizTitleLabel')}</p>}
+                value={editableQuiz.title}
+                onChange={(e) => handleQuizTitleChange(e.target.value)}
+                placeholder={t('step2QuizTitlePlaceholder')}
+                inputClassName="text-xl py-3.5"
+                containerClassName="mb-2"
+            />
+             {editableQuiz.sourceContentSnippet && (
+                <details className="mt-4">
+                    <summary className="text-xs text-slate-400 cursor-pointer hover:text-sky-300 flex items-center font-semibold group transition-colors var(--duration-fast) var(--ease-ios)">
+                        <DocumentTextIcon className="w-4 h-4 mr-2.5 text-slate-500 group-hover:text-sky-400 transition-colors var(--duration-fast) var(--ease-ios)" strokeWidth={2} />
+                        {t('resultsViewSourceSnippet')}
+                    </summary>
+                    <blockquote className="mt-3 text-xs text-slate-400/80 max-h-24 overflow-y-auto p-3 bg-slate-700/60 border border-slate-600/60 rounded-lg shadow-inner italic">
+                        <MathText text={editableQuiz.sourceContentSnippet} />
+                    </blockquote>
+                </details>
+            )}
+         </Card>
         
         <div className="space-y-6 sm:space-y-8">
-          {editableQuiz.questions.map((q, idx) => {
-            return <QuestionItem
-                      key={q.id}
-                      question={q}
-                      index={idx}
-                      handleFieldChange={handleFieldChange}
-                      handleOptionChange={handleOptionChange}
-                      handleAddOption={handleAddOption}
-                      handleRemoveOption={handleRemoveOption}
-                      handleDeleteQuestion={handleDeleteQuestion}
-                      animationDelayFactor={idx}
-                    />;
-          })}
+          {editableQuiz.questions.map((q, idx) => (
+            <QuestionItem
+              key={q.id} // Ensure Question object has a unique id
+              question={q}
+              index={idx}
+              dispatch={dispatch}
+              animationDelayFactor={idx}
+            />
+          ))}
         </div>
       </div>
 
@@ -388,11 +436,11 @@ const QuizReviewPage: React.FC = () => {
         </Button>
       </div>
       
-      {currentQuizForExport && isAzotaExportModalOpen && (
+      {editableQuiz && isAzotaExportModalOpen && (
         <AzotaExportModal
           isOpen={isAzotaExportModalOpen}
           onClose={handleCloseAzotaExportModal}
-          quiz={currentQuizForExport}
+          quiz={editableQuiz}
         />
       )}
     </div>
