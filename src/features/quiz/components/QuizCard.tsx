@@ -147,7 +147,7 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onDelete, onEditQuiz, animati
       break;
     default: // idle
       shareButtonIcon = <ShareIcon className="w-4 h-4"/>;
-      shareButtonCustomClass = "text-slate-400 hover:text-green-400 hover:bg-green-400/10 hover:border-green-400/70";
+      shareButtonCustomClass = "text-slate-300 opacity-80 hover:text-green-400 hover:bg-green-400/10 hover:border-green-400/70";
       break;
   }
 
@@ -169,29 +169,29 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onDelete, onEditQuiz, animati
             className={`flex flex-col justify-between group relative overflow-hidden !p-0 !rounded-2xl h-full card-float-hover`}
             useGlassEffect={true}
         >
-          <div className="p-4 sm:p-6 flex-grow pb-3"> {/* Reduced mobile padding, sm padding maintained */}
+          <div className="p-4 sm:p-6 flex-grow pb-4">
             <h3
-                className="text-base sm:text-lg font-semibold text-slate-50 mb-2.5 group-hover:text-sky-300 line-clamp-2 transition-colors var(--duration-fast) var(--ease-ios)" /* Reduced mobile font size, sm font size also adjusted */
+                className="text-base sm:text-lg font-semibold text-slate-50 mb-3 group-hover:text-sky-300 line-clamp-2 transition-colors var(--duration-fast) var(--ease-ios)"
                 title={quiz.title}
             >
                 <MathText text={quiz.title} />
             </h3>
-            <div className="mb-3 space-y-3"> {/* Reduced bottom margin */}
-                <div className="text-xs text-slate-400 flex items-center flex-wrap gap-x-3.5 gap-y-1.5">
-                    <span className="font-medium text-slate-300">{t('dashboardQuizCardQuestions', { count: quiz.questions.length })}</span>
+            <div className="mb-3 space-y-2">
+                <div className="text-sm sm:text-xs text-slate-300 opacity-80 flex items-center flex-wrap gap-x-3.5 gap-y-2">
+                    <span className="font-medium text-slate-200">{t('dashboardQuizCardQuestions', { count: quiz.questions.length })}</span>
                     <span className="text-slate-600 text-lg">•</span>
-                    <span className={`px-2.5 py-1 rounded-full text-xs font-semibold shadow-sm bg-sky-400/20 text-sky-300`}>{difficultyText}</span>
+                    <span className={`px-2.5 py-1 rounded-full font-semibold shadow-sm bg-sky-400/20 text-sky-300`}>{difficultyText}</span>
                      {quiz.config?.language && <>
                         <span className="text-slate-600 text-lg">•</span>
-                        <span className={`uppercase text-[0.7rem] font-bold tracking-wider px-2.5 py-1 rounded-full shadow-sm bg-indigo-400/20 text-indigo-300`}>{quiz.config.language.substring(0,2)}</span>
+                        <span className={`uppercase text-[0.7rem] sm:text-xs font-bold tracking-wider px-2.5 py-1 rounded-full shadow-sm bg-indigo-400/20 text-indigo-300`}>{quiz.config.language.substring(0,2)}</span>
                      </>}
                 </div>
                 {quiz.sourceContentSnippet && (
-                    <p className="text-xs text-slate-500 italic line-clamp-1" title={quiz.sourceContentSnippet}>
+                    <p className="text-sm sm:text-xs text-slate-300 opacity-80 italic line-clamp-1" title={quiz.sourceContentSnippet}>
                        {t('dashboardQuizCardSource', { snippet: '' })}<MathText text={quiz.sourceContentSnippet} />
                     </p>
                 )}
-                <p className="text-xs text-slate-500 pt-1">{t('dashboardQuizCardCreated', { date: dateFormatted })}</p> {/* Reduced top padding */}
+                <p className="text-sm sm:text-xs text-slate-300 opacity-80 pt-1">{t('dashboardQuizCardCreated', { date: dateFormatted })}</p>
             </div>
           </div>
 
@@ -202,7 +202,7 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onDelete, onEditQuiz, animati
                 size="sm" 
                 variant="primary"
                 onClick={() => handleStartQuiz('take')}
-                className="flex-grow sm:flex-grow-0 shadow-lg hover:shadow-sky-400/40 py-2 px-3.5 sm:py-2 sm:px-4 rounded-lg"
+                className="flex-grow sm:flex-grow-0 shadow-lg hover:shadow-sky-400/40 py-2.5 px-4 sm:py-2 sm:px-4 rounded-lg min-h-[44px]"
               >
                 {t('dashboardQuizCardTakeQuiz')}
               </Button>
@@ -210,7 +210,7 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onDelete, onEditQuiz, animati
                 size="sm" 
                 variant="secondary"
                 onClick={() => handleStartQuiz('practice')}
-                className="flex-grow sm:flex-grow-0 py-2 px-3.5 sm:py-2 sm:px-4 rounded-lg bg-purple-500/80 hover:bg-purple-500 text-white hover:shadow-purple-400/40"
+                className="flex-grow sm:flex-grow-0 py-2.5 px-4 sm:py-2 sm:px-4 rounded-lg bg-purple-500/80 hover:bg-purple-500 text-white hover:shadow-purple-400/40 min-h-[44px]"
               >
                 {t('practiceModeCardButton')}
               </Button>
@@ -225,7 +225,7 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onDelete, onEditQuiz, animati
                     size="sm"
                     variant="outline"
                     onClick={() => onEditQuiz(quiz)}
-                    className="!p-2 rounded-lg border-slate-500/70 hover:border-sky-400"
+                    className="!p-2.5 rounded-lg border-slate-500/70 hover:border-sky-400 min-w-[40px] min-h-[40px]"
                     aria-label={t('edit')}
                   >
                     <EditIcon className="w-4 h-4" strokeWidth={1.5} />
@@ -236,7 +236,7 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onDelete, onEditQuiz, animati
                     size="sm"
                     variant="outline"
                     onClick={openAttemptSettingsModal}
-                    className="!p-2 rounded-lg border-slate-500/70 hover:border-sky-400"
+                    className="!p-2.5 rounded-lg border-slate-500/70 hover:border-sky-400 min-w-[40px] min-h-[40px]"
                     aria-label={t('settings')}
                   >
                     <img src={settingsIconUrl} alt={t('settings')} className="w-4 h-4" />
@@ -251,7 +251,7 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onDelete, onEditQuiz, animati
                     size="sm" 
                     variant="outline" 
                     onClick={handleShareQuiz} 
-                    className={`!p-2 rounded-lg border-slate-500/70 ${shareButtonCustomClass}`}
+                    className={`!p-2.5 rounded-lg border-slate-500/70 min-w-[40px] min-h-[40px] ${shareButtonCustomClass}`}
                     aria-label={t('share')}
                   >
                     {shareButtonIcon}
@@ -262,7 +262,7 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onDelete, onEditQuiz, animati
                     size="sm" 
                     variant="outline" 
                     onClick={handleDeleteRequest} 
-                    className="!p-2 rounded-lg border-slate-500/70 text-slate-400 hover:text-red-500 hover:bg-red-400/10 hover:border-red-500/70"
+                    className="!p-2.5 rounded-lg border-slate-500/70 text-slate-300 opacity-80 hover:text-red-500 hover:bg-red-400/10 hover:border-red-500/70 min-w-[40px] min-h-[40px]"
                     aria-label={t('delete')}
                   >
                     <DeleteIcon className="w-4 h-4"/>
