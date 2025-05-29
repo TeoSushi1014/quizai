@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en" class="dark"> 
 <head>
@@ -11,8 +12,8 @@
     gtag('config', 'G-PPLMXLJNZT');
   </script>
   
-  <!-- Load environment variables at runtime -->
-  <script src="/quizai/env-config.js"></script>
+  <!-- Load environment variables at runtime - Removed to prevent 404 error -->
+  <!-- <script src="/quizai/env-config.js"></script> -->
   
   <script src="https://www.google.com/recaptcha/enterprise.js?render=6LfjXkorAAAAAOk4X5LwVd-8RgwMGS0IWxZLtFGQ"></script>
   <meta charset="UTF-8" />
@@ -66,10 +67,10 @@
     
     
     .glass-effect {
-      background-color: rgba(30, 41, 59, 0.75); 
+      background-color: rgba(30, 41, 59, 0.7); /* User suggestion: was 0.75 */
       backdrop-filter: blur(12px); 
       -webkit-backdrop-filter: blur(12px); 
-      border: 1px solid rgba(100, 116, 139, 0.25); /* Softer border (slate-500 at 25%) */
+      border: 1px solid rgba(148, 163, 184, 0.2); /* User suggestion: slate-400 @ 20% was slate-500 @ 25% (rgba(100, 116, 139, 0.25)) */
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.1); /* Softer, more diffuse shadow */
       border-bottom-left-radius: 0.75rem; 
       border-bottom-right-radius: 0.75rem;
@@ -298,13 +299,19 @@
     "react-dom": "https://esm.sh/react-dom@^19.1.0",
     "katex": "https://esm.sh/katex@^0.16.22",
     "framer-motion": "https://esm.sh/framer-motion@^11.3.1",
-    "lucide-react": "https://esm.sh/lucide-react@^0.400.0"
+    "lucide-react": "https://esm.sh/lucide-react@^0.400.0",
+    "path": "https://esm.sh/path@^0.12.7",
+    "vite": "https://esm.sh/vite@^6.3.5",
+    "dotenv": "https://esm.sh/dotenv@^16.5.0",
+    "process": "https://esm.sh/process@^0.11.10",
+    "url": "https://esm.sh/url@^0.11.4"
   }
 }
 </script>
-  <script type="module" crossorigin src="/quizai/assets/index-BkMakS0e.js"></script>
+  <script type="module" crossorigin src="/quizai/assets/index-A536Ad6g.js"></script>
 </head>
 <body>
   <div id="root"></div>
 </body>
 </html><link rel="stylesheet" href="index.css"><link rel="stylesheet" href="index.css">
+<link rel="stylesheet" href="index.css">
