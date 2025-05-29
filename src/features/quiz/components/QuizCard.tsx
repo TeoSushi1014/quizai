@@ -134,19 +134,20 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onDelete, onEditQuiz, animati
   const settingsIconUrl = "https://img.icons8.com/?size=256&id=s5NUIabJrb4C&format=png";
   
   let shareButtonIcon;
-  let shareButtonCustomClass = "text-slate-400 hover:text-green-400 hover:bg-green-400/10";
+  let shareButtonCustomClass = "";
 
   switch (shareFeedback.type) {
     case 'copied':
       shareButtonIcon = <CheckCircleIcon className="w-4 h-4 text-green-400" />;
-      shareButtonCustomClass = "text-green-400 bg-green-400/10";
+      shareButtonCustomClass = "text-green-400 bg-green-400/10 !border-green-400/70 hover:!border-green-400";
       break;
     case 'failed':
       shareButtonIcon = <XCircleIcon className="w-4 h-4 text-red-400" />;
-      shareButtonCustomClass = "text-red-400 bg-red-400/10";
+      shareButtonCustomClass = "text-red-400 bg-red-400/10 !border-red-400/70 hover:!border-red-400";
       break;
     default: // idle
       shareButtonIcon = <ShareIcon className="w-4 h-4"/>;
+      shareButtonCustomClass = "text-slate-400 hover:text-green-400 hover:bg-green-400/10 hover:border-green-400/70";
       break;
   }
 
@@ -201,7 +202,7 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onDelete, onEditQuiz, animati
                 size="sm" 
                 variant="primary"
                 onClick={() => handleStartQuiz('take')}
-                className="flex-grow sm:flex-grow-0 shadow-lg hover:shadow-sky-400/40 py-1.5 px-3 sm:py-2 sm:px-4 rounded-lg"
+                className="flex-grow sm:flex-grow-0 shadow-lg hover:shadow-sky-400/40 py-2 px-3.5 sm:py-2 sm:px-4 rounded-lg"
               >
                 {t('dashboardQuizCardTakeQuiz')}
               </Button>
@@ -209,7 +210,7 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onDelete, onEditQuiz, animati
                 size="sm" 
                 variant="secondary"
                 onClick={() => handleStartQuiz('practice')}
-                className="flex-grow sm:flex-grow-0 py-1.5 px-3 sm:py-2 sm:px-4 rounded-lg bg-purple-500/80 hover:bg-purple-500 text-white hover:shadow-purple-400/40"
+                className="flex-grow sm:flex-grow-0 py-2 px-3.5 sm:py-2 sm:px-4 rounded-lg bg-purple-500/80 hover:bg-purple-500 text-white hover:shadow-purple-400/40"
               >
                 {t('practiceModeCardButton')}
               </Button>
@@ -248,9 +249,9 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onDelete, onEditQuiz, animati
                 <Tooltip content={shareFeedback.message} wrapperClassName="inline-flex"> 
                   <Button 
                     size="sm" 
-                    variant="ghost" 
+                    variant="outline" 
                     onClick={handleShareQuiz} 
-                    className={`!p-2 rounded-lg ${shareButtonCustomClass}`}
+                    className={`!p-2 rounded-lg border-slate-500/70 ${shareButtonCustomClass}`}
                     aria-label={t('share')}
                   >
                     {shareButtonIcon}
@@ -259,9 +260,9 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onDelete, onEditQuiz, animati
                 <Tooltip content={t('delete')} wrapperClassName="inline-flex">
                   <Button 
                     size="sm" 
-                    variant="ghost" 
+                    variant="outline" 
                     onClick={handleDeleteRequest} 
-                    className="text-slate-400 hover:text-red-500 hover:bg-red-400/10 !p-2 rounded-lg"
+                    className="!p-2 rounded-lg border-slate-500/70 text-slate-400 hover:text-red-500 hover:bg-red-400/10 hover:border-red-500/70"
                     aria-label={t('delete')}
                   >
                     <DeleteIcon className="w-4 h-4"/>
