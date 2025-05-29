@@ -11,6 +11,7 @@ import { formatQuizToAzotaStyle1, formatQuizToAzotaStyle2, formatQuizToAzotaStyl
 import useIntersectionObserver from '../../hooks/useIntersectionObserver';
 import { quizReducer, initialQuizReviewState, QuizReviewAction } from './quizReducer';
 import { translations } from '../../i18n';
+import { logger } from '../../services/logService'; // Import logger
 
 
 type AzotaFormat = 'style1' | 'style2' | 'style4';
@@ -39,7 +40,7 @@ const AzotaExportModal: React.FC<{
         }
         setFormattedText(text);
       } catch (error) {
-        console.error("Error formatting quiz for Azota:", error);
+        logger.error("Error formatting quiz for Azota:", 'AzotaExportModal', { quizId: quiz.id, format: selectedFormat }, error as Error);
         setFormattedText(t('azotaExportErrorGenerating'));
         setFormattingError(error instanceof Error ? error.message : String(error));
       }
@@ -47,8 +48,12 @@ const AzotaExportModal: React.FC<{
   }, [isOpen, quiz, selectedFormat, t]);
 
   const handleCopyToClipboard = () => {
-    navigator.clipboard.writeText(formattedText).then(() => { setCopySuccess(true); setTimeout(() => setCopySuccess(false), 2000); })
-    .catch(err => { console.error('Failed to copy text: ', err); alert(t('azotaExportErrorCopy')); });
+    navigator.clipboard.writeText(formattedText)
+      .then(() => { setCopySuccess(true); setTimeout(() => setCopySuccess(false), 2000); })
+      .catch(err => { 
+        logger.error('Failed to copy Azota text to clipboard', 'AzotaExportModal', undefined, err);
+        alert(t('azotaExportErrorCopy')); 
+      });
   };
 
   const handleDownload = () => {
@@ -58,6 +63,7 @@ const AzotaExportModal: React.FC<{
     const safeTitle = quiz.title.replace(/[^a-z0-9_.-]/gi, '_').substring(0, 50) || 'quiz';
     link.download = `${safeTitle}_Azota_${selectedFormat}.txt`;
     document.body.appendChild(link); link.click(); document.body.removeChild(link);
+    logger.info('Azota quiz downloaded', 'AzotaExportModal', { quizId: quiz.id, format: selectedFormat, filename: link.download });
   };
 
   const formatOptions: { value: AzotaFormat; label: string }[] = [
@@ -122,11 +128,9 @@ const QuestionItem: React.FC<QuestionItemProps> = ({
     const newOptions = [...question.options];
     newOptions[optionIdx] = newText;
     let newCorrectAnswer = question.correctAnswer;
-    // If the changed option was the correct answer, update the correct answer to the new text
     if (question.correctAnswer === question.options[optionIdx]) {
       newCorrectAnswer = newText;
     } else if (!newOptions.includes(question.correctAnswer) && newOptions.length > 0) {
-      // If correct answer is no longer in options (e.g. was deleted or changed), default to first
       newCorrectAnswer = newOptions[0];
     } else if (newOptions.length === 0) {
       newCorrectAnswer = "";
@@ -139,7 +143,6 @@ const QuestionItem: React.FC<QuestionItemProps> = ({
     const newOptionText = t('reviewNewOptionDefault', { index: question.options.length + 1 });
     const newOptions = [...question.options, newOptionText];
     dispatch({ type: 'UPDATE_QUESTION', payload: { index: questionIndex, question: { ...question, options: newOptions } } });
-    // Focus logic for new option might need to be handled in QuizReviewPage useEffect if dispatch is async
   };
 
   const handleRemoveOption = (optionIdx: number) => {
@@ -272,46 +275,47 @@ const QuizReviewPage: React.FC = () => {
   const { editableQuiz, isLoading, isSaving, error } = state;
 
   const [isAzotaExportModalOpen, setIsAzotaExportModalOpen] = useState(false);
-  const [focusOptionInput, setFocusOptionInput] = useState<{ questionId: string; optionIndex: number } | null>(null); // Kept for UI focus
+  const [focusOptionInput, setFocusOptionInput] = useState<{ questionId: string; optionIndex: number } | null>(null); 
 
   const { quizId: existingQuizIdFromParams } = useParams<{ quizId?: string }>();
 
   useEffect(() => {
+    logger.info("QuizReviewPage: Initializing or location state changed.", "QuizReviewPage", { hasLocationState: !!location.state, existingQuizIdFromParams });
     dispatch({ type: 'SET_LOADING', payload: true });
     let initialData: { generatedQuizData?: any; quizTitleSuggestion?: string; finalConfig?: QuizConfig, existingQuiz?: Quiz } | null = null;
-    
     if (location.state) initialData = location.state as any;
-    
     const existingQuizId = existingQuizIdFromParams || initialData?.existingQuiz?.id;
-
     let quizToLoad: Quiz | null = null;
 
     if (existingQuizId) {
       quizToLoad = initialData?.existingQuiz || quizzes.find(q => q.id === existingQuizId) || null;
       if (!quizToLoad) {
+        logger.error("Quiz not found for editing.", "QuizReviewPage", { existingQuizId });
         dispatch({ type: 'SET_ERROR', payload: t('reviewErrorQuizNotFound') });
         dispatch({ type: 'SET_LOADING', payload: false });
         return;
       }
+      logger.info("Loading existing quiz for review/edit.", "QuizReviewPage", { quizId: quizToLoad.id });
     } else if (initialData?.generatedQuizData && initialData.finalConfig) {
       const { generatedQuizData, quizTitleSuggestion, finalConfig } = initialData;
       quizToLoad = {
-        id: `new-quiz-${Date.now()}`, // Temporary ID for new quiz
+        id: `new-quiz-${Date.now()}`,
         title: quizTitleSuggestion || generatedQuizData.title || t('untitledQuiz'),
         questions: generatedQuizData.questions,
         config: finalConfig,
         sourceContentSnippet: generatedQuizData.sourceContentSnippet,
         createdAt: new Date().toISOString(),
       };
+      logger.info("Initializing review page with newly generated quiz data.", "QuizReviewPage", { title: quizToLoad.title });
     }
 
     if (quizToLoad) {
       dispatch({ type: 'INIT_QUIZ_DATA', payload: { quiz: quizToLoad, language } });
-    } else if (!existingQuizIdFromParams) { // Only set error if it's not an attempt to load existing by URL and it failed
+    } else if (!existingQuizIdFromParams) { 
+      logger.warn("No quiz data provided to review page.", "QuizReviewPage");
       dispatch({ type: 'SET_ERROR', payload: t('reviewErrorNoQuizData') });
       dispatch({ type: 'SET_LOADING', payload: false });
     }
-    // SET_LOADING(false) is handled by INIT_QUIZ_DATA
   }, [location.state, existingQuizIdFromParams, quizzes, t, language, dispatch]);
 
 
@@ -334,11 +338,13 @@ const QuizReviewPage: React.FC = () => {
 
   const handleAddNewQuestion = () => {
     dispatch({ type: 'ADD_QUESTION', payload: { language } });
+    logger.info("Added new question to quiz being reviewed.", "QuizReviewPage");
   };
 
   const handleSaveQuiz = () => {
     if (!editableQuiz || editableQuiz.questions.length === 0) {
       dispatch({ type: 'SET_ERROR', payload: t('reviewCannotSaveNoQuestions') });
+      logger.warn("Attempted to save quiz with no questions.", "QuizReviewPage", { quizId: editableQuiz?.id });
       return;
     }
     for (const q of editableQuiz.questions) {
@@ -349,6 +355,7 @@ const QuizReviewPage: React.FC = () => {
     }
     dispatch({ type: 'SET_ERROR', payload: null });
     dispatch({ type: 'SET_SAVING', payload: true });
+    logger.info("Saving quiz...", "QuizReviewPage", { quizId: editableQuiz.id, title: editableQuiz.title, questionCount: editableQuiz.questions.length });
 
     const quizToSave: Quiz = {
       ...editableQuiz,
@@ -362,6 +369,7 @@ const QuizReviewPage: React.FC = () => {
       if (existingQuizIdFromParams) updateQuiz(quizToSave);
       else addQuiz(quizToSave);
       dispatch({ type: 'SET_SAVING', payload: false });
+      logger.info("Quiz saved successfully. Navigating to dashboard.", "QuizReviewPage", { quizId: quizToSave.id });
       navigate('/dashboard');
     }, 700);
   };
@@ -420,7 +428,7 @@ const QuizReviewPage: React.FC = () => {
         <div className="space-y-6 sm:space-y-8">
           {editableQuiz.questions.map((q, idx) => (
             <QuestionItem
-              key={q.id} // Ensure Question object has a unique id
+              key={q.id} 
               question={q}
               index={idx}
               dispatch={dispatch}

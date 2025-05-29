@@ -1,15 +1,14 @@
 
-
-
-
 import React, { useState, useCallback, useEffect, createContext, useContext, ReactNode, useMemo, useRef } from 'react';
 import { HashRouter, Routes, Route, useNavigate, useLocation, NavLink as RouterNavLink } from 'react-router-dom';
 import { GoogleOAuthProvider, googleLogout } from '@react-oauth/google';
 import { Quiz, AppContextType, Language, QuizResult, UserProfile } from './types';
 import { APP_NAME, UserCircleIcon, KeyIcon, LogoutIcon, HomeIcon, PlusCircleIcon, ChartBarIcon, SettingsIcon, InformationCircleIcon, XCircleIcon } from './constants'; 
 import { Button, LoadingSpinner, Tooltip } from './components/ui';
+import ErrorBoundary from './components/ErrorBoundary'; // Import ErrorBoundary
 import { getTranslator, translations } from './i18n';
 import useIntersectionObserver from './hooks/useIntersectionObserver';
+import { logger } from './services/logService'; // Import logger
 
 import HomePage from './features/quiz/HomePage';
 import DashboardPage from './features/quiz/DashboardPage';
@@ -19,8 +18,9 @@ import ResultsPage from './features/quiz/ResultsPage';
 import QuizReviewPage from './features/quiz/QuizReviewPage';
 import SignInPage from './features/auth/SignInPage';
 import QuizPracticePage from './features/quiz/QuizPracticePage';
-import SyncSettingsPage from './features/settings/SyncSettingsPage'; // New import
-import { loadQuizDataFromDrive, saveQuizDataToDrive } from './services/driveService'; // New import
+import SyncSettingsPage from './features/settings/SyncSettingsPage';
+import { loadQuizDataFromDrive, saveQuizDataToDrive } from './services/driveService';
+import { quizStorage } from './services/storageService'; 
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
@@ -41,8 +41,7 @@ export const useTranslation = () => {
 };
 
 const GOOGLE_CLIENT_ID = "486123633428-14f8o50husb82sho688e0qvc962ucr4n.apps.googleusercontent.com"; 
-const LOCALSTORAGE_QUIZZES_KEY = 'quizzes';
-const LOCALSTORAGE_USER_KEY = 'currentUser'; // Holds UserProfile including accessToken
+const LOCALSTORAGE_USER_KEY = 'currentUser'; 
 const LOCALSTORAGE_LANGUAGE_KEY = 'appLanguage';
 const LOCALSTORAGE_DRIVE_SYNC_KEY = 'driveLastSyncTimestamp';
 const LOCALSTORAGE_QUIZ_RESULT_KEY = 'quizResult';
@@ -53,7 +52,7 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
   const [activeQuiz, setActiveQuiz] = useState<Quiz | null>(null);
   const [quizResult, setQuizResult] = useState<QuizResult | null>(null);
   const [language, setLanguageState] = useState<Language>('en');
-  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+  const [currentUser, setCurrentUserInternal] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true); 
   const [isGeminiKeyAvailable, setIsGeminiKeyAvailable] = useState(false);
   const [appInitialized, setAppInitialized] = useState(false);
@@ -65,21 +64,37 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
   
   const tForProvider = useMemo(() => getTranslator(language), [language]);
 
+  const setCurrentUser = useCallback((user: UserProfile | null) => {
+    setCurrentUserInternal(user);
+    logger.setUserId(user ? user.id : null);
+    if (user) {
+      logger.info('User logged in', 'AuthContext', { userId: user.id, email: user.email });
+    } else {
+      logger.info('User logged out', 'AuthContext');
+    }
+  }, []);
+
   const setDriveSyncError = useCallback((errorKey: string | null) => {
     if (errorKey === null) {
         setDriveSyncErrorState(null);
     } else {
-        // errorKey is assumed to be a valid translation key from driveService or a generic one
-        setDriveSyncErrorState(tForProvider(errorKey as keyof typeof translations.en) || tForProvider('driveErrorGeneric'));
+        const errorMessage = tForProvider(errorKey as keyof typeof translations.en) || tForProvider('driveErrorGeneric');
+        setDriveSyncErrorState(errorMessage);
+        logger.warn(`Drive Sync Error set: ${errorMessage}`, 'DriveContext', { errorKey });
     }
   }, [tForProvider]);
 
 
   // Load initial data from localStorage and check API keys
   useEffect(() => {
+    logger.info('App initializing: Loading initial data', 'AppInit');
     const hardcodedKey = 'AIzaSyDDcYcb1JB-NKFRDC28KK0yVH_Z3GX9lU0';
     const apiKeyFromEnv = (typeof process !== 'undefined' && process.env) ? process.env.GEMINI_API_KEY : undefined;
-    setIsGeminiKeyAvailable(!!(apiKeyFromEnv || hardcodedKey));
+    const geminiKeyStatus = !!(apiKeyFromEnv || hardcodedKey);
+    setIsGeminiKeyAvailable(geminiKeyStatus);
+    if (!geminiKeyStatus) {
+        logger.warn('Gemini API key not available.', 'AppInit');
+    }
 
     const savedLanguage = localStorage.getItem(LOCALSTORAGE_LANGUAGE_KEY) as Language | null;
     if (savedLanguage && translations[savedLanguage]) {
@@ -93,8 +108,11 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     if (savedUserJson) {
       try {
         const user = JSON.parse(savedUserJson) as UserProfile;
-        setCurrentUser(user); 
-      } catch (e) { console.error("Failed to parse current user from localStorage", e); localStorage.removeItem(LOCALSTORAGE_USER_KEY); }
+        setCurrentUser(user); // Uses the new setCurrentUser with logging
+      } catch (e) { 
+        logger.error("Failed to parse current user from localStorage", 'AppInit', undefined, e as Error);
+        localStorage.removeItem(LOCALSTORAGE_USER_KEY); 
+      }
     }
 
     const savedResultJson = localStorage.getItem(LOCALSTORAGE_QUIZ_RESULT_KEY);
@@ -102,7 +120,7 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
       try {
         setQuizResult(JSON.parse(savedResultJson) as QuizResult);
       } catch (e) {
-        console.error("Failed to parse quiz result from localStorage", e);
+        logger.error("Failed to parse quiz result from localStorage", 'AppInit', undefined, e as Error);
         localStorage.removeItem(LOCALSTORAGE_QUIZ_RESULT_KEY);
       }
     }
@@ -110,57 +128,59 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     const lastSyncTimestamp = localStorage.getItem(LOCALSTORAGE_DRIVE_SYNC_KEY);
     if (lastSyncTimestamp) setLastDriveSync(new Date(lastSyncTimestamp));
 
-    setAppInitialized(true); // Basic app init done
-  }, []);
+    setAppInitialized(true); 
+    logger.info('App initialization complete.', 'AppInit');
+  }, [setCurrentUser]); // Added setCurrentUser to dependency array
 
   // Effect for loading quizzes based on user state and app initialization
   useEffect(() => {
     if (!appInitialized) return;
 
     const loadInitialQuizzes = async () => {
+      logger.info('Loading initial quizzes.', 'QuizLoading', { isLoggedIn: !!currentUser?.accessToken });
       setIsLoading(true);
       setDriveSyncError(null);
 
       if (currentUser?.accessToken) {
         setIsDriveLoading(true);
         try {
-          console.log("Attempting to load from Google Drive...");
+          logger.info("Attempting to load from Google Drive...", 'QuizLoading');
           const driveQuizzes = await loadQuizDataFromDrive(currentUser.accessToken);
           if (driveQuizzes !== null) { 
             setAllQuizzes(driveQuizzes);
-            localStorage.setItem(LOCALSTORAGE_QUIZZES_KEY, JSON.stringify(driveQuizzes));
+            await quizStorage.saveQuizzes(driveQuizzes); 
             setLastDriveSync(new Date());
             localStorage.setItem(LOCALSTORAGE_DRIVE_SYNC_KEY, new Date().toISOString());
-            console.log("Successfully loaded quizzes from Google Drive.");
+            logger.info("Successfully loaded quizzes from Google Drive and saved locally.", 'QuizLoading', { count: driveQuizzes.length });
             setDriveSyncError(null);
           } else { 
-            console.log("No quiz data file found on Google Drive. Checking local storage.");
-            const localQuizzesJson = localStorage.getItem(LOCALSTORAGE_QUIZZES_KEY);
-            const localQuizzes = localQuizzesJson ? JSON.parse(localQuizzesJson) : [];
+            logger.info("No quiz data file found on Google Drive. Checking local storage (via quizStorage).", 'QuizLoading');
+            const localQuizzes = await quizStorage.getAllQuizzes();
             setAllQuizzes(localQuizzes);
             if (localQuizzes.length > 0) { 
-                console.log("Local data found, attempting to save to new Drive file.");
+                logger.info("Local data found, attempting to save to new Drive file.", 'QuizLoading', { count: localQuizzes.length });
                 await saveQuizDataToDrive(currentUser.accessToken, localQuizzes);
                 setLastDriveSync(new Date());
                 localStorage.setItem(LOCALSTORAGE_DRIVE_SYNC_KEY, new Date().toISOString());
-                console.log("Successfully saved initial local data to Google Drive.");
+                logger.info("Successfully saved initial local data to Google Drive.", 'QuizLoading');
             }
             setDriveSyncError(null); 
           }
         } catch (error: any) {
-          console.error("Failed to load or init quizzes from Google Drive:", error);
+          logger.error("Failed to load or init quizzes from Google Drive.", 'QuizLoading', { errorMsg: error.message }, error);
           setDriveSyncError(error.message as keyof typeof translations.en || 'driveErrorLoading');
-          const localQuizzesJson = localStorage.getItem(LOCALSTORAGE_QUIZZES_KEY);
-          setAllQuizzes(localQuizzesJson ? JSON.parse(localQuizzesJson) : []);
+          const localQuizzes = await quizStorage.getAllQuizzes(); 
+          setAllQuizzes(localQuizzes);
         } finally {
           setIsDriveLoading(false);
         }
       } else { 
-        const localQuizzesJson = localStorage.getItem(LOCALSTORAGE_QUIZZES_KEY);
-        setAllQuizzes(localQuizzesJson ? JSON.parse(localQuizzesJson) : []);
-        console.log("User not logged in or no access token, loaded from local storage.");
+        const localQuizzes = await quizStorage.getAllQuizzes();
+        setAllQuizzes(localQuizzes);
+        logger.info("User not logged in or no access token, loaded from local storage (via quizStorage).", 'QuizLoading', { count: localQuizzes.length });
       }
       setIsLoading(false);
+      logger.info('Initial quiz loading finished.', 'QuizLoading');
     };
 
     loadInitialQuizzes();
@@ -176,14 +196,14 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
       if (currentUser?.accessToken) {
         setIsDriveLoading(true);
         setDriveSyncError(null);
-        console.log("Attempting to save to Google Drive...");
+        logger.info("Debounced: Attempting to save to Google Drive...", 'DriveSync', { quizCount: quizzesToSave.length });
         try {
           await saveQuizDataToDrive(currentUser.accessToken, quizzesToSave);
           setLastDriveSync(new Date());
           localStorage.setItem(LOCALSTORAGE_DRIVE_SYNC_KEY, new Date().toISOString());
-          console.log("Successfully saved quizzes to Google Drive.");
+          logger.info("Debounced: Successfully saved quizzes to Google Drive.", 'DriveSync');
         } catch (error: any) {
-          console.error("Failed to save quizzes to Google Drive:", error);
+          logger.error("Debounced: Failed to save quizzes to Google Drive.", 'DriveSync', { errorMsg: error.message }, error);
           setDriveSyncError(error.message as keyof typeof translations.en || 'driveErrorSaving');
         } finally {
           setIsDriveLoading(false);
@@ -193,10 +213,10 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
   }, [currentUser?.accessToken, setDriveSyncError]);
 
 
-  // Persist quizzes to localStorage and trigger Drive save
+  // Persist quizzes to localforage/localStorage and trigger Drive save
   useEffect(() => {
     if (appInitialized && !isLoading) { 
-      localStorage.setItem(LOCALSTORAGE_QUIZZES_KEY, JSON.stringify(allQuizzes));
+      quizStorage.saveQuizzes(allQuizzes); 
       if (currentUser?.accessToken) {
         triggerSaveToDrive(allQuizzes);
       }
@@ -231,6 +251,7 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     setLanguageState(lang);
     localStorage.setItem(LOCALSTORAGE_LANGUAGE_KEY, lang);
     document.documentElement.lang = lang; 
+    logger.info(`Language changed to ${lang}`, 'AppContext');
   }, []);
   
   useEffect(() => {
@@ -246,14 +267,17 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
   const addQuiz = useCallback((quiz: Quiz) => {
     const quizWithOwner = currentUser ? { ...quiz, userId: currentUser.id } : quiz;
     setAllQuizzes(prev => [quizWithOwner, ...prev]);
+    logger.info('Quiz added', 'AppContext', { quizId: quiz.id, title: quiz.title });
   }, [currentUser]);
 
   const deleteQuiz = useCallback((quizId: string) => {
     setAllQuizzes(prev => prev.filter(q => q.id !== quizId));
+    logger.info('Quiz deleted', 'AppContext', { quizId });
   }, []);
 
   const updateQuiz = useCallback((updatedQuiz: Quiz) => {
     setAllQuizzes(prev => prev.map(q => q.id === updatedQuiz.id ? updatedQuiz : q));
+    logger.info('Quiz updated', 'AppContext', { quizId: updatedQuiz.id, title: updatedQuiz.title });
   }, []);
 
   const getQuizByIdFromAll = useCallback((id: string): Quiz | null => {
@@ -266,58 +290,60 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
 
   const login = useCallback((user: UserProfile, token?: string) => {
     const userWithToken = token ? { ...user, accessToken: token } : user;
-    setCurrentUser(userWithToken);
+    setCurrentUser(userWithToken); // Uses the new setCurrentUser with logging
     setDriveSyncError(null); 
-  }, [setDriveSyncError]);
+  }, [setCurrentUser, setDriveSyncError]); // Added setCurrentUser
 
-  const handleLogout = useCallback(() => { 
+  const handleLogout = useCallback(async () => { 
+    logger.info('Logout initiated', 'AuthContext');
     googleLogout();
     if (saveToDriveTimeoutRef.current) {
       clearTimeout(saveToDriveTimeoutRef.current); 
     }
-    setCurrentUser(null);
+    setCurrentUser(null); // Uses the new setCurrentUser with logging
     setActiveQuiz(null); 
     setQuizResult(null);
     setAllQuizzes([]); 
-    localStorage.removeItem(LOCALSTORAGE_QUIZZES_KEY); 
+    await quizStorage.saveQuizzes([]); 
     localStorage.removeItem(LOCALSTORAGE_QUIZ_RESULT_KEY);
     setDriveSyncError(null);
     navigate('/'); 
-  }, [navigate, setDriveSyncError]);
+    logger.info('Logout complete', 'AuthContext');
+  }, [navigate, setCurrentUser, setDriveSyncError]); // Added setCurrentUser
   
   const syncWithGoogleDrive = useCallback(async () => {
     if (!currentUser?.accessToken) {
       setDriveSyncError('driveErrorNoToken');
+      logger.warn('Manual sync: No access token.', 'DriveSync');
       return;
     }
     setIsLoading(true); 
     setIsDriveLoading(true);
     setDriveSyncError(null);
-    console.log("Manual sync: Attempting to load from Google Drive...");
+    logger.info("Manual sync: Attempting to load from Google Drive...", 'DriveSync');
     try {
       const driveQuizzes = await loadQuizDataFromDrive(currentUser.accessToken);
       let quizzesToSaveToDrive: Quiz[];
 
       if (driveQuizzes !== null) { 
-        console.log("Manual sync: Data found on Drive. Merging strategy: Drive is source of truth.");
+        logger.info("Manual sync: Data found on Drive. Merging strategy: Drive is source of truth.", 'DriveSync', { count: driveQuizzes.length});
         setAllQuizzes(driveQuizzes); 
-        localStorage.setItem(LOCALSTORAGE_QUIZZES_KEY, JSON.stringify(driveQuizzes));
+        await quizStorage.saveQuizzes(driveQuizzes); 
         quizzesToSaveToDrive = driveQuizzes; 
       } else { 
-        console.log("Manual sync: No data file on Drive. Using current local data.");
-        const localQuizzesJson = localStorage.getItem(LOCALSTORAGE_QUIZZES_KEY);
-        const localQuizzes = localQuizzesJson ? JSON.parse(localQuizzesJson) : [];
+        logger.info("Manual sync: No data file on Drive. Using current local data (via quizStorage).", 'DriveSync');
+        const localQuizzes = await quizStorage.getAllQuizzes();
         setAllQuizzes(localQuizzes); 
         quizzesToSaveToDrive = localQuizzes; 
       }
       
-      console.log("Manual sync: Saving current state to Google Drive...");
+      logger.info("Manual sync: Saving current state to Google Drive...", 'DriveSync', { quizCount: quizzesToSaveToDrive.length});
       await saveQuizDataToDrive(currentUser.accessToken, quizzesToSaveToDrive);
       setLastDriveSync(new Date());
       localStorage.setItem(LOCALSTORAGE_DRIVE_SYNC_KEY, new Date().toISOString());
-      console.log("Manual sync: Successfully synced with Google Drive.");
+      logger.info("Manual sync: Successfully synced with Google Drive.", 'DriveSync');
     } catch (error: any) {
-      console.error("Manual sync: Failed to sync with Google Drive:", error);
+      logger.error("Manual sync: Failed to sync with Google Drive:", 'DriveSync', { errorMsg: error.message }, error);
       const potentialKey = error.message as keyof typeof translations.en;
       if (translations.en[potentialKey]) { 
         setDriveSyncError(potentialKey);
@@ -337,12 +363,6 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     return allQuizzes.filter(q => !q.userId);
   }, [allQuizzes, currentUser]);
   
-  // Determine combined loading state for global spinner
-  // Show spinner if:
-  // 1. App is generally loading (initial data load, manual sync)
-  // 2. Or, app is initialized, user is logged in, but Drive sync is happening for the first time (no lastDriveSync)
-  //    and Drive loading indicator is active.
-  // This aims to cover initial load and the first Drive sync post-login more gracefully.
   const combinedIsLoading = isLoading || (appInitialized && currentUser && !lastDriveSync && isDriveLoading);
 
 
@@ -665,7 +685,9 @@ const App: React.FC = () => {
     <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
       <HashRouter>
         <AppProvider>
-          <AppLayout />
+          <ErrorBoundary>
+            <AppLayout />
+          </ErrorBoundary>
         </AppProvider>
       </HashRouter>
     </GoogleOAuthProvider>

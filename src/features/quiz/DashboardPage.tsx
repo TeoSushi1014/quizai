@@ -1,15 +1,19 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { FixedSizeList } from 'react-window';
 import { useAppContext, useTranslation } from '../../App';
 import { Quiz } from '../../types';
-import { Button, Card, Tooltip } from '../../components/ui';
+import { Button, Card, Tooltip, LoadingSpinner } from '../../components/ui';
 import { PlusCircleIcon } from '../../constants';
 import QuizCard from './components/QuizCard';
 import useIntersectionObserver from '../../hooks/useIntersectionObserver';
 
+const ITEM_HEIGHT = 360; // Estimated height for a QuizCard + vertical padding for the list item
+const LIST_PADDING_VERTICAL = 8; // 4px top, 4px bottom for each item for spacing
+
 const DashboardPage: React.FC = () => {
-  const { quizzes, deleteQuiz, setActiveQuiz, setCurrentView, currentUser, isLoading } = useAppContext();
+  const { quizzes, deleteQuiz, setCurrentView, currentUser, isLoading } = useAppContext();
   const { t } = useTranslation();
   const navigate = useNavigate();
 
@@ -27,6 +31,66 @@ const DashboardPage: React.FC = () => {
   const sortedQuizzes = React.useMemo(() =>
     [...quizzes].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
   [quizzes]);
+
+  // Row component for FixedSizeList
+  const Row = ({ index, style }: { index: number; style: React.CSSProperties }) => {
+    const quiz = sortedQuizzes[index];
+    if (!quiz) return null;
+
+    // Adjust style to account for padding
+    const itemStyle = {
+      ...style,
+      top: `${parseFloat(style.top as string) + LIST_PADDING_VERTICAL}px`,
+      height: `${parseFloat(style.height as string) - (2 * LIST_PADDING_VERTICAL)}px`,
+      paddingLeft: '4px', // Add some horizontal padding if needed
+      paddingRight: '4px',
+    };
+
+    return (
+      <div style={itemStyle}>
+        <QuizCard
+          quiz={quiz}
+          onDelete={deleteQuiz}
+          onEditQuiz={handleEditQuiz}
+          // animationDelay is less impactful with virtualization but kept for consistency if card animates internally
+          animationDelay={0} 
+        />
+      </div>
+    );
+  };
+  Row.displayName = "QuizListRow";
+
+  const [listHeight, setListHeight] = useState(600); // Default height
+  const listContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const updateHeight = () => {
+      if (listContainerRef.current) {
+        // Attempt to set height based on available space below the header
+        const containerTop = listContainerRef.current.getBoundingClientRect().top;
+        const windowHeight = window.innerHeight;
+        // Consider some padding at the bottom or footer height if applicable
+        // Subtracting header height (approx 72px for md, 64px for sm) and footer (approx 150px for md)
+        // and some margin (py-10 for main content, so 40px top)
+        const mainContentPaddingAndHeaderFooter = 72 + 150 + 40 + 20; // Header + Footer + MainTopPadding + BottomBuffer
+        const calculatedHeight = windowHeight - containerTop - 20; // A simpler approach based on list container's top pos
+        
+        // More robust: try to calculate from window height minus known elements
+        // const headerHeight = document.querySelector('header')?.offsetHeight || 72;
+        // const footerHeight = document.querySelector('footer')?.offsetHeight || 180; // Estimate footer and its margin
+        // const mainPaddingY = 80; // py-10 from main means 40px top + 40px bottom roughly
+        // const availableHeight = window.innerHeight - headerHeight - footerHeight - mainPaddingY - (headerRef.current?.offsetHeight || 72);
+        
+        setListHeight(Math.max(300, calculatedHeight)); // Min height of 300px
+      }
+    };
+    updateHeight(); // Initial call
+    window.addEventListener('resize', updateHeight);
+    
+    // Re-calculate if the number of quizzes changes significantly or loading state changes,
+    // as this might affect layout (e.g., presence of "no quizzes" message).
+    // Also, when isLoading becomes false, the layout stabilizes.
+  }, [isLoading, sortedQuizzes.length]); 
 
   return (
     <div className="space-y-10 md:space-y-12">
@@ -47,7 +111,7 @@ const DashboardPage: React.FC = () => {
 
       {isLoading ? (
          <div className="text-center py-24 sm:py-28">
-            <p className="text-slate-300">{t('loading')}</p>
+            <LoadingSpinner text={t('loading')} size="lg" />
          </div>
       ) : sortedQuizzes.length === 0 ? (
         <div
@@ -67,16 +131,18 @@ const DashboardPage: React.FC = () => {
           </Button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 xl:gap-8">
-          {sortedQuizzes.map((quiz, index) => (
-            <QuizCard
-              key={quiz.id}
-              quiz={quiz}
-              onDelete={deleteQuiz}
-              onEditQuiz={handleEditQuiz}
-              animationDelay={index * 0.1} 
-            />
-          ))}
+        <div ref={listContainerRef} className="quiz-list-container"> {/* Container for height calculation */}
+          {listHeight > 0 && ( // Only render FixedSizeList if height is calculated
+            <FixedSizeList
+              height={listHeight}
+              itemCount={sortedQuizzes.length}
+              itemSize={ITEM_HEIGHT} // Total height for one item slot including desired padding
+              width="100%"
+              className="thin-scrollbar-horizontal" // If you have custom scrollbar styles
+            >
+              {Row}
+            </FixedSizeList>
+          )}
         </div>
       )}
     </div>

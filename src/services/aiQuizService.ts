@@ -2,17 +2,24 @@
 import { Quiz, QuizConfig } from "../types";
 import { generateQuizWithGemini } from "./geminiService";
 import { GEMINI_MODEL_ID } from "../constants"; 
+import { logger } from './logService';
 
 export const generateQuizWithSelectedModel = async (
   content: string | { base64Data: string; mimeType: string },
   config: QuizConfig,
   titleSuggestion?: string
 ): Promise<Omit<Quiz, 'id' | 'createdAt'>> => {
-  // Since only Gemini is supported, we can call it directly.
-  // The config.selectedModel will always be 'gemini'.
+  
   if (config.selectedModel !== GEMINI_MODEL_ID) {
-    // This case should ideally not happen if QuizCreatePage defaults correctly
-    console.warn(`Unsupported model selected: ${config.selectedModel}. Defaulting to Gemini.`);
+    logger.warn(`Unsupported model selected: ${config.selectedModel}. Defaulting to Gemini.`, 'aiQuizService', { selectedModel: config.selectedModel });
   }
-  return generateQuizWithGemini(content, config, titleSuggestion);
+  logger.info(`Generating quiz with model: ${GEMINI_MODEL_ID}`, 'aiQuizService', { titleSuggestion, config });
+  try {
+    const quizData = await generateQuizWithGemini(content, config, titleSuggestion);
+    logger.info(`Quiz generated successfully by ${GEMINI_MODEL_ID}`, 'aiQuizService', { title: quizData.title, questionCount: quizData.questions.length });
+    return quizData;
+  } catch (error) {
+    logger.error(`Error in generateQuizWithSelectedModel using ${GEMINI_MODEL_ID}`, 'aiQuizService', { config }, error as Error);
+    throw error; // Re-throw to be handled by the caller
+  }
 };

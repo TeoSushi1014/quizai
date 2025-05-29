@@ -1,94 +1,69 @@
 
+import localforage from 'localforage';
 import { Quiz } from '../types';
-import { loadQuizDataFromDrive, saveQuizDataToDrive } from './driveService';
+import { logger } from './logService';
 
-export const QUIZAI_LOCALSTORAGE_QUIZZES_KEY = 'quizai-quizzes';
-export const QUIZAI_LOCALSTORAGE_DRIVE_SYNC_KEY = 'quizai-drive-last-sync';
-
-// --- Local Storage Functions ---
-
-export const getLocalQuizzes = (): Quiz[] => {
-  const localQuizzesJson = localStorage.getItem(QUIZAI_LOCALSTORAGE_QUIZZES_KEY);
-  try {
-    return localQuizzesJson ? JSON.parse(localQuizzesJson) : [];
-  } catch (e) {
-    console.error("Error parsing local quizzes from localStorage", e);
-    localStorage.removeItem(QUIZAI_LOCALSTORAGE_QUIZZES_KEY); // Clear corrupted data
-    return [];
-  }
+// --- Configuration for LocalForage ---
+const LOCALFORAGE_CONFIG = {
+  name: 'QuizAI',
+  storeName: 'quiz_data_store', 
+  description: 'Stores QuizAI quizzes and related data'
 };
+localforage.config(LOCALFORAGE_CONFIG);
 
-export const saveLocalQuizzes = (quizzes: Quiz[]): void => {
-  try {
-    localStorage.setItem(QUIZAI_LOCALSTORAGE_QUIZZES_KEY, JSON.stringify(quizzes));
-  } catch (e) {
-    console.error("Error saving quizzes to localStorage", e);
-    // Consider handling quota exceeded errors or other specific storage errors if necessary
-  }
-};
+const QUIZAI_LOCALFORAGE_KEY_QUIZZES = 'quizai-lf-quizzes';
+const QUIZAI_LEGACY_LOCALSTORAGE_KEY_QUIZZES = 'quizzes';
 
-export const getLastDriveSyncTimestamp = (): Date | null => {
-  const lastSyncTimeStr = localStorage.getItem(QUIZAI_LOCALSTORAGE_DRIVE_SYNC_KEY);
-  return lastSyncTimeStr ? new Date(lastSyncTimeStr) : null;
-};
 
-export const updateLastDriveSyncTimestamp = (timestamp?: Date): void => {
-  localStorage.setItem(QUIZAI_LOCALSTORAGE_DRIVE_SYNC_KEY, (timestamp || new Date()).toISOString());
-};
+export const quizStorage = {
+  async getAllQuizzes(): Promise<Quiz[]> {
+    try {
+      const quizzesLF = await localforage.getItem<Quiz[]>(QUIZAI_LOCALFORAGE_KEY_QUIZZES);
+      if (quizzesLF !== null && quizzesLF !== undefined) {
+        logger.info('Quizzes loaded from LocalForage.', 'StorageService', { count: quizzesLF.length });
+        return quizzesLF;
+      }
+      
+      logger.info('No quizzes in LocalForage, trying legacy localStorage.', 'StorageService');
+      const localQuizzesJson = localStorage.getItem(QUIZAI_LEGACY_LOCALSTORAGE_KEY_QUIZZES);
+      if (localQuizzesJson) {
+        const parsedQuizzes = JSON.parse(localQuizzesJson);
+        logger.info('Quizzes loaded from legacy localStorage.', 'StorageService', { count: parsedQuizzes.length });
+        // Optionally, migrate to LocalForage here: await localforage.setItem(QUIZAI_LOCALFORAGE_KEY_QUIZZES, parsedQuizzes);
+        return parsedQuizzes;
+      }
+      logger.info('No quizzes found in any local storage.', 'StorageService');
+      return [];
 
-// --- Google Drive Synchronization Function ---
-
-interface DriveSyncResult {
-  success: boolean;
-  quizzes?: Quiz[];    // The quizzes array that should be used by the app after sync
-  errorKey?: string;   // Translation key for any error encountered
-  newSyncTime?: Date;  // Timestamp of this sync operation
-}
-
-/**
- * Performs a full synchronization with Google Drive.
- * 1. Loads data from Drive.
- * 2. If Drive has data, that data is considered authoritative.
- * 3. If Drive has no data, the provided 'localQuizzesSnapshot' is used.
- * 4. The determined authoritative data is then saved back to Drive to ensure consistency.
- * This function is intended for manual sync operations or initial load scenarios
- * where a full reconciliation is needed.
- */
-export const syncWithGoogleDrive = async (
-  accessToken: string,
-  localQuizzesSnapshot: Quiz[] // A snapshot of quizzes currently in local state/storage
-): Promise<DriveSyncResult> => {
-  try {
-    const driveQuizzes = await loadQuizDataFromDrive(accessToken);
-    let quizzesToUseAsAuthoritative: Quiz[];
-    const now = new Date();
-
-    if (driveQuizzes !== null) {
-      // Data found on Drive, it's authoritative for this sync.
-      quizzesToUseAsAuthoritative = driveQuizzes;
-    } else {
-      // No data file on Drive. Use the local snapshot.
-      // If local data exists, it will be uploaded to create the file on Drive.
-      // If local data is empty, an empty array might be saved.
-      quizzesToUseAsAuthoritative = localQuizzesSnapshot;
+    } catch (error) {
+      logger.error('Error reading quizzes from LocalForage.', 'StorageService', undefined, error as Error);
+      try {
+        const localQuizzesJson = localStorage.getItem(QUIZAI_LEGACY_LOCALSTORAGE_KEY_QUIZZES);
+        if (localQuizzesJson) {
+          const parsedFallback = JSON.parse(localQuizzesJson);
+          logger.warn('Fell back to localStorage for reading quizzes.', 'StorageService', { count: parsedFallback.length });
+          return parsedFallback;
+        }
+        return [];
+      } catch (lsError) {
+        logger.error('Error reading quizzes from localStorage after LocalForage failure.', 'StorageService', undefined, lsError as Error);
+        return []; 
+      }
     }
-    
-    // Save the determined authoritative data back to Google Drive.
-    // This ensures Drive reflects the state the app will now use,
-    // and creates the file if it didn't exist (and local data was provided).
-    await saveQuizDataToDrive(accessToken, quizzesToUseAsAuthoritative);
+  },
 
-    return {
-      success: true,
-      quizzes: quizzesToUseAsAuthoritative,
-      newSyncTime: now,
-    };
-  } catch (error: any) {
-    console.error("Error during Google Drive sync:", error);
-    return {
-      success: false,
-      quizzes: localQuizzesSnapshot, // Fallback to the passed local snapshot on error
-      errorKey: error.message || 'driveErrorGeneric', // error.message from driveService is expected to be a key
-    };
+  async saveQuizzes(quizzes: Quiz[]): Promise<void> {
+    try {
+      await localforage.setItem(QUIZAI_LOCALFORAGE_KEY_QUIZZES, quizzes);
+      logger.info('Quizzes saved to LocalForage.', 'StorageService', { count: quizzes.length });
+    } catch (error) {
+      logger.error('Error saving quizzes to LocalForage.', 'StorageService', { count: quizzes.length }, error as Error);
+      try {
+        localStorage.setItem(QUIZAI_LEGACY_LOCALSTORAGE_KEY_QUIZZES, JSON.stringify(quizzes));
+        logger.warn('Saved quizzes to localStorage as a fallback due to LocalForage error.', 'StorageService', { count: quizzes.length });
+      } catch (lsError) {
+        logger.error('Error saving quizzes to localStorage after LocalForage failure.', 'StorageService', { count: quizzes.length }, lsError as Error);
+      }
+    }
   }
 };

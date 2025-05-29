@@ -2,6 +2,7 @@
 import { GoogleGenAI, GenerateContentResponse, Part, Content } from "@google/genai";
 import { Question, QuizConfig, Quiz, AIModelType } from "../types";
 import { GEMINI_TEXT_MODEL, GEMINI_MODEL_ID } from "../constants";
+import { logger } from './logService';
 
 let geminiAI: GoogleGenAI | null = null;
 
@@ -10,37 +11,24 @@ const HARDCODED_API_KEY = 'AIzaSyDDcYcb1JB-NKFRDC28KK0yVH_Z3GX9lU0';
 
 const initializeGeminiAI = (): GoogleGenAI => {
   if (!geminiAI) {
-    // Try to get API key from different sources
-    let apiKey: string | undefined = HARDCODED_API_KEY; // Use hardcoded key first
+    let apiKey: string | undefined = HARDCODED_API_KEY; 
     
-    // If hardcoded key is not available, try other sources
     if (!apiKey) {
-      // First try import.meta.env (Vite's way to access env vars at build time)
       try {
-        // @ts-ignore - TypeScript might not recognize import.meta.env in all contexts
-        apiKey = import.meta?.env?.VITE_GEMINI_API_KEY;
-        if (!apiKey) {
-          // @ts-ignore
-          apiKey = import.meta?.env?.GEMINI_API_KEY;
-        }
+        // @ts-ignore 
+        apiKey = import.meta?.env?.VITE_GEMINI_API_KEY || import.meta?.env?.GEMINI_API_KEY;
       } catch (e) {
-        console.log("Unable to access import.meta.env");
+        logger.debug("Unable to access import.meta.env for Gemini API Key", "GeminiServiceInit", { error: e as Error });
       }
-      
-      // Then try window.__ENV__ if you're using runtime injection
       if (!apiKey && typeof window !== 'undefined') {
-        try {
-          // @ts-ignore
-          if (window.__ENV__) {
-            // @ts-ignore
+        try { // @ts-ignore
+          if (window.__ENV__) { // @ts-ignore
             apiKey = window.__ENV__.GEMINI_API_KEY || window.__ENV__.VITE_GEMINI_API_KEY;
           }
-        } catch (e) {
-          console.log("Unable to access window.__ENV__");
+        } catch (e) { 
+          logger.debug("Unable to access window.__ENV__ for Gemini API Key", "GeminiServiceInit", { error: e as Error });
         }
       }
-      
-      // Then try process.env (Node.js environment variables)
       if (!apiKey && typeof process !== 'undefined' && process.env) {
         apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
       }
@@ -48,167 +36,83 @@ const initializeGeminiAI = (): GoogleGenAI => {
     
     if (typeof apiKey !== 'string' || !apiKey) {
       const errorMessage = "Google Gemini API Key environment variable not set. Quiz generation may fail.";
-      console.warn(errorMessage);
+      logger.error(errorMessage, "GeminiServiceInit");
       
-      if (typeof window !== 'undefined') {
-        const alertElement = document.createElement('div');
-        alertElement.style.position = 'fixed';
-        alertElement.style.top = '10px';
-        alertElement.style.left = '50%';
-        alertElement.style.transform = 'translateX(-50%)';
-        alertElement.style.backgroundColor = '#ff4444';
-        alertElement.style.color = 'white';
-        alertElement.style.padding = '10px 20px';
-        alertElement.style.borderRadius = '5px';
-        alertElement.style.zIndex = '9999';
-        alertElement.style.boxShadow = '0 2px 10px rgba(0,0,0,0.2)';
-        alertElement.textContent = errorMessage;
-        document.body.appendChild(alertElement);
-        
-        setTimeout(() => {
-          alertElement.remove();
-        }, 10000);
-      }
-      
+      // Visual alert is in App.tsx now based on isGeminiKeyAvailable context value
       throw new Error(errorMessage);
     }
-    
+    logger.info("Gemini AI SDK Initializing with API Key.", "GeminiServiceInit");
     geminiAI = new GoogleGenAI({ apiKey });
   }
   return geminiAI;
 };
 
-/**
- * Parses a JSON string that might be wrapped in markdown code fences or contain common AI-induced malformations.
- * This function attempts various cleaning steps and fallback parsing strategies.
- * @param text The raw text response from the AI, expected to contain JSON.
- * @returns Parsed JSON object of type T, or null if parsing fails.
- */
 const parseJsonFromMarkdown = <T,>(text: string): T | null => {
   let jsonStr = text.trim();
-
-  // Step 1: Remove markdown code fences (e.g., ```json ... ``` or ``` ... ```)
   const fenceRegex = /^```(?:json)?\s*\n?(.*?)\n?\s*```$/s;
   const match = fenceRegex.exec(jsonStr);
   if (match && match[1]) {
     jsonStr = match[1].trim();
   }
-
-  // Step 2: Remove specific problematic Unicode characters.
   jsonStr = jsonStr.replace(/侬/g, ''); 
   jsonStr = jsonStr.replace(/ܘ/g, ''); 
   jsonStr = jsonStr.replace(/对着/g, ''); 
-
-  // Step 3: Clean up potential markdown fences *inside* strings or malformed JSON from AI.
   jsonStr = jsonStr.replace(/"\s*```\s*([\]\},])/g, '"$1');
   jsonStr = jsonStr.replace(/"\s*```\s*(,"[^"]+")/g, '"$1');
-
-  // Step 4: Attempt to fix strings broken across newlines with missing internal quotes.
   try {
     const patternString = "(\"[^\"\\\\]*(?:\\\\.[^\"\\\\]*)*\")\\s*\\n\\s*([a-zA-Z_][a-zA-Z0-9_]*(?:\\s+[a-zA-Z_][a-zA-Z0-9_]*)*\\s*)\"";
     const brokenStringRegex = new RegExp(patternString, "g");
-    
-    jsonStr = jsonStr.replace(
-      brokenStringRegex,
-      (_match, g1CompleteQuotedString, g2UnquotedTextPart) => { 
-        const string1WithoutClosingQuote = g1CompleteQuotedString.slice(0, -1); 
-        return `${string1WithoutClosingQuote} ${g2UnquotedTextPart.trim()}"`; 
-      }
-    );
+    jsonStr = jsonStr.replace(brokenStringRegex, (_match, g1, g2) => `${g1.slice(0, -1)} ${g2.trim()}"`);
   } catch(e) {
-    console.warn("Error during string newline fixing regex replacement. Skipping this step.", e);
+    logger.warn("Error during string newline fixing regex replacement.", "GeminiServiceParse", undefined, e as Error);
   }
-
-  // Step 5: Remove trailing commas from objects and arrays.
   jsonStr = jsonStr.replace(/,\s*([\}\]])/g, '$1');
-
-  // Step 5.1: Attempt to fix common bad escapes like `\` followed by a character that isn't a valid escape sequence component.
-  // This replaces such `\` with `\\` to represent a literal backslash.
-  // Example: `\ ` becomes `\\ `, `\M` becomes `\\M`.
-  // Valid escapes: \b, \f, \n, \r, \t, \v, \", \\, \/, \uXXXX, \xXX.
-  // The regex negative lookahead (?!) ensures we don't double-escape valid sequences.
   try {
     jsonStr = jsonStr.replace(/\\(?![bfnrtv"\\/]|u[0-9a-fA-F]{4}|x[0-9a-fA-F]{2})/g, '\\\\');
   } catch (e) {
-    console.warn("Error during bad escape fixing regex replacement. Skipping this step.", e);
+    logger.warn("Error during bad escape fixing regex replacement.", "GeminiServiceParse", undefined, e as Error);
   }
 
-
   try {
-    // Step 6: Primary attempt to parse the cleaned JSON string.
     return JSON.parse(jsonStr) as T;
   } catch (e: any) {
-    console.error(
-      `Primary JSON.parse failed for Gemini response. Error: ${e.message}. Attempting fallback parsing.`,
-      `Cleaned jsonStr (up to 1000 chars) before primary parse attempt:`, jsonStr.substring(0, 1000),
-      `Original raw text (up to 1000 chars) received from AI:`, text.substring(0, 1000)
+    logger.error(
+      `Primary JSON.parse failed for Gemini response.`, "GeminiServiceParse", 
+      { errorMsg: e.message, 
+        cleanedJsonPreview: jsonStr.substring(0, 200), 
+        originalTextPreview: text.substring(0,200) 
+      }, e
     );
-
-    // Step 7: Fallback parsing strategy.
+    // Fallback parsing
     const jsonStartBracket = jsonStr.indexOf('[');
     const jsonStartBrace = jsonStr.indexOf('{');
     let actualJsonStart = -1;
-
-    if (jsonStartBracket !== -1 && (jsonStartBrace === -1 || jsonStartBracket < jsonStartBrace)) {
-      actualJsonStart = jsonStartBracket;
-    } else if (jsonStartBrace !== -1) {
-      actualJsonStart = jsonStartBrace;
-    }
+    if (jsonStartBracket !== -1 && (jsonStartBrace === -1 || jsonStartBracket < jsonStartBrace)) actualJsonStart = jsonStartBracket;
+    else if (jsonStartBrace !== -1) actualJsonStart = jsonStartBrace;
 
     if (actualJsonStart !== -1) {
-        let openBrackets = 0;
-        let openBraces = 0;
-        let actualJsonEnd = -1;
-        let inString = false; 
-        
+        let openBrackets = 0, openBraces = 0, actualJsonEnd = -1, inString = false;
         const startingCharType = jsonStr[actualJsonStart];
-
         for (let i = actualJsonStart; i < jsonStr.length; i++) {
             const char = jsonStr[i];
-            
-            if (char === '"') {
-                if (i === 0 || jsonStr[i-1] !== '\\') { 
-                    inString = !inString;
-                } else if (jsonStr[i-1] === '\\' && i > 1 && jsonStr[i-2] === '\\') { 
-                    inString = !inString; 
-                }
-            }
-            
+            if (char === '"') { if (i === 0 || jsonStr[i-1] !== '\\' || (jsonStr[i-1] === '\\' && i > 1 && jsonStr[i-2] === '\\')) inString = !inString; }
             if (inString) continue; 
-
-            if (char === '{') openBraces++;
-            else if (char === '}') openBraces--;
-            else if (char === '[') openBrackets++;
-            else if (char === ']') openBrackets--;
-
-            if (startingCharType === '{' && openBraces === 0 && openBrackets === 0 && i >= actualJsonStart) {
-                actualJsonEnd = i;
-                break;
-            }
-            if (startingCharType === '[' && openBrackets === 0 && openBraces === 0 && i >= actualJsonStart) {
-                actualJsonEnd = i;
-                break;
-            }
+            if (char === '{') openBraces++; else if (char === '}') openBraces--;
+            else if (char === '[') openBrackets++; else if (char === ']') openBrackets--;
+            if (startingCharType === '{' && openBraces === 0 && openBrackets === 0 && i >= actualJsonStart) { actualJsonEnd = i; break; }
+            if (startingCharType === '[' && openBrackets === 0 && openBraces === 0 && i >= actualJsonStart) { actualJsonEnd = i; break; }
         }
-
         if (actualJsonEnd !== -1) {
             try {
                 let potentialJson = jsonStr.substring(actualJsonStart, actualJsonEnd + 1);
                 potentialJson = potentialJson.replace(/,\s*([\}\]])/g, '$1');
-                console.log("Fallback parsing attempting with substring:", potentialJson.substring(0,500) + (potentialJson.length > 500 ? "..." : ""));
+                logger.info("Fallback parsing attempting with substring.", "GeminiServiceParse", { substringPreview: potentialJson.substring(0,200) });
                 return JSON.parse(potentialJson) as T;
             } catch (e2: any) {
-                console.error(
-                    "Fallback JSON.parse also failed (Gemini). Error: ", e2.message,
-                    "Substring attempted:", jsonStr.substring(actualJsonStart, actualJsonEnd + 1).substring(0,500)
-                );
+                logger.error("Fallback JSON.parse also failed (Gemini).", "GeminiServiceParse", { errorMsg: e2.message, substringAttempted: jsonStr.substring(actualJsonStart, actualJsonEnd + 1).substring(0,200) }, e2);
             }
-        } else {
-            console.warn("Fallback parsing: Could not determine a valid JSON substring (Gemini). This might be due to severe truncation or malformation.");
-        }
-    } else {
-        console.warn("Fallback parsing: No JSON start characters ([ or {) found in the response (Gemini).");
-    }
+        } else logger.warn("Fallback parsing: Could not determine a valid JSON substring (Gemini).", "GeminiServiceParse");
+    } else logger.warn("Fallback parsing: No JSON start characters ([ or {) found in the response (Gemini).", "GeminiServiceParse");
     return null;
   }
 };
@@ -229,16 +133,13 @@ const JSON_OUTPUT_SCHEMA_INSTRUCTION = (language: string) => `
         }
 `;
 
-
 const buildGeminiPrompt = (
     content: string | { base64Data: string; mimeType: string },
     config: QuizConfig,
     titleSuggestion?: string
 ): { requestContents: Content; sourceContentSnippet: string; systemInstructionString: string } => {
-
     let sourceContentSnippet = "";
     const parts: Part[] = [];
-
     let systemInstructionString = `You are a rigorous educational AI agent whose mission is to generate quizzes that fully and exhaustively reflect the original input content provided by the user (such as a 50-question test file).
 
 Your task is non-negotiable:
@@ -281,7 +182,7 @@ END USER-PROVIDED INSTRUCTIONS
 
 Regardless of custom instructions, always ensure the output JSON format is strictly correct and complete, and all questions are multiple-choice.
 Ensure there is NO extraneous text or characters between JSON properties or after string values before the expected comma or closing brace/bracket.
-Each string value, especially within arrays like 'options', must be complete, correctly quoted, and escaped. Pay EXTREME attention to not truncating strings or omitting closing quotes/brackets.
+Each string value, especially within arrays like 'options', must be a COMPLETE, valid JSON string, properly quoted, and escaped. Pay EXTREME attention to not truncating strings or omitting closing quotes/brackets.
 Every part of the JSON response, especially strings, must be correctly formatted and escaped. Check for and remove any accidental truncation or data leakage between fields.
 Strictly follow JSON formatting, especially for strings, arrays, and preventing truncation. All detailed JSON schema and quality guidelines are provided in the main prompt (the part that includes the source content and specific output requirements).`;
 
@@ -289,10 +190,8 @@ Strictly follow JSON formatting, especially for strings, arrays, and preventing 
     const aiModeInstruction = config.difficulty === 'AI-Determined' ?
         `Determine the optimal number of multiple-choice questions (aim for ${config.numQuestions > 0 ? config.numQuestions : 'between 5 and 10, but adjust based on content length/complexity'}) and their difficulty levels based on the provided content. Strive for a balanced mix of difficulties if appropriate.` :
         `The quiz should have exactly ${config.numQuestions} multiple-choice questions. The difficulty for all questions should be ${config.difficulty}. `;
-
     const hasCustomPrompt = !!(config.customUserPrompt && config.customUserPrompt.trim());
     let mainInstructionsPreamble: string;
-
     if (hasCustomPrompt) {
         mainInstructionsPreamble = `
 IMPORTANT: Your primary guide for quiz *content, style, tone, and focus* is the 'USER-PROVIDED INSTRUCTIONS' block found in the System Instructions for this task. You MUST meticulously follow them.
@@ -311,11 +210,9 @@ ${aiModeInstruction}
 ALL questions MUST be multiple-choice.
 `;
     }
-    
     const mainContentInstructions = `
         ${mainInstructionsPreamble}
         ${JSON_OUTPUT_SCHEMA_INSTRUCTION(config.language || 'English')}
-
         Key Quality Guidelines (Always Apply for JSON Structure and Validity):
         1.  Questions: Clear and unambiguous multiple-choice questions. Each question must have 3-5 distinct, plausible options.
         2.  Options Array: The "options" field MUST be a valid JSON array of strings. Each string option within the 'options' array must be a COMPLETE, valid JSON string, properly quoted, and NOT TRUNCATED. All string content must be correctly escaped (e.g., internal quotes as \\"). Ensure each option is correctly terminated by a quote, followed by a comma (if not the last item) or the closing square bracket (']'). Incomplete or truncated strings, or strings with unescaped internal quotes, will break the JSON. Do NOT leave strings unterminated or malformed. ABSOLUTELY NO unquoted text or non-JSON characters should be inserted between elements of this array, or between the last element and the closing ']'."
@@ -331,10 +228,7 @@ ALL questions MUST be multiple-choice.
             b. Ensure the shortened content is still a valid, properly quoted JSON string (e.g., "A shorter but complete explanation.").
             c. Never allow an unterminated string or an incomplete JSON object/array. If you must cut content, do it within the text of a field and ensure that field is still correctly formatted as a JSON string with a closing quote.
     `;
-
     const effectiveMainContentInstructions = mainContentInstructions;
-
-
     if (typeof content === 'string') {
         sourceContentSnippet = content.substring(0, 500) + (content.length > 500 ? "..." : "");
         parts.push({ text: `Source Text: """${content}"""\n\nInstructions for multiple-choice quiz generation: """${effectiveMainContentInstructions}"""` });
@@ -346,14 +240,13 @@ ALL questions MUST be multiple-choice.
     return { requestContents: { parts }, sourceContentSnippet, systemInstructionString };
 };
 
-
 export const generateQuizWithGemini = async (
   content: string | { base64Data: string; mimeType: string },
   config: QuizConfig,
   titleSuggestion?: string
 ): Promise<Omit<Quiz, 'id' | 'createdAt'>> => {
-  const genAIInstance = initializeGeminiAI(); // This will throw if API key is missing
-
+  logger.info("Attempting to generate quiz with Gemini", "GeminiService", { model: GEMINI_TEXT_MODEL, lang: config.language });
+  const genAIInstance = initializeGeminiAI(); 
   const { requestContents, sourceContentSnippet, systemInstructionString } = buildGeminiPrompt(content, config, titleSuggestion);
 
   try {
@@ -365,52 +258,38 @@ export const generateQuizWithGemini = async (
         systemInstruction: systemInstructionString,
       }
     });
-
     const textResponse = response.text || '';
+    logger.info("Received response from Gemini", "GeminiService", { responsePreview: textResponse.substring(0, 200) });
     const parsedQuizData = parseJsonFromMarkdown<Omit<Quiz, 'id' | 'createdAt' | 'sourceContentSnippet'>>(textResponse);
 
     if (!parsedQuizData || !parsedQuizData.questions || !parsedQuizData.title || !Array.isArray(parsedQuizData.questions) || parsedQuizData.questions.length === 0) {
-      console.error("Failed to parse quiz data or data is incomplete/invalid structure (Gemini).", "Parsed Data (if any):", parsedQuizData); 
+      logger.error("Failed to parse quiz data or data is incomplete/invalid structure (Gemini).", "GeminiService", { parsedDataPreview: JSON.stringify(parsedQuizData)?.substring(0,200) }); 
       throw new Error("Gemini AI failed to generate quiz in the expected format or returned an empty/invalid quiz. Please check the console for the raw AI response and parsing attempts.");
     }
-
     const validatedQuestions = parsedQuizData.questions.map((q, index) => {
         const questionId = q.id || `gq${index + 1}-${Date.now()}`;
         let options = q.options;
-
         if (!Array.isArray(q.options) || q.options.length < 2) {
-            console.warn(`Question ${questionId} has invalid options, providing defaults. Original options:`, q.options);
+            logger.warn(`Question ${questionId} has invalid options, providing defaults.`, "GeminiServiceValidation", { originalOptions: q.options });
             options = [`Generated Option A for ${questionId}`, `Generated Option B for ${questionId}`, `Generated Option C for ${questionId}`];
         }
-
         let correctAnswer = typeof q.correctAnswer === 'string' ? q.correctAnswer : '';
         if (!options.includes(correctAnswer) && options.length > 0) {
-            console.warn(`Correct answer for ${questionId} ('${q.correctAnswer}') not in options. Defaulting to first option. Options:`, options);
+            logger.warn(`Correct answer for ${questionId} ('${q.correctAnswer}') not in options. Defaulting to first option.`, "GeminiServiceValidation", { options });
             correctAnswer = options[0];
         } else if (options.length === 0) {
             correctAnswer = "A model answer should be provided here.";
         }
-
-        return {
-            ...q,
-            id: questionId,
-            options,
-            correctAnswer,
-            explanation: q.explanation || "No explanation provided by AI. Consider regenerating or editing."
-        };
+        return { ...q, id: questionId, options, correctAnswer, explanation: q.explanation || "No explanation provided by AI. Consider regenerating or editing." };
     });
-
+    logger.info("Successfully generated and validated quiz from Gemini.", "GeminiService", { title: parsedQuizData.title, questionCount: validatedQuestions.length });
     return { ...parsedQuizData, questions: validatedQuestions, sourceContentSnippet };
-
   } catch (error) {
-    console.error("Error generating quiz with Gemini:", error);
-    
+    logger.error("Error generating quiz with Gemini", "GeminiService", undefined, error as Error);
     let detailedMessage = `Failed to generate quiz with Gemini. An unexpected error occurred. Please try again later.`;
-    
     if (error instanceof Error) {
         const errorMessage = error.message; 
         const lowerErrorMessage = errorMessage.toLowerCase();
-
         if (lowerErrorMessage.includes("api key not valid") || lowerErrorMessage.includes("api_key_invalid") || lowerErrorMessage.includes("api_key is not configured") || lowerErrorMessage.includes("process.env.gemini_api_key")) {
             detailedMessage = "Invalid or Missing Gemini API Key (process.env.GEMINI_API_KEY). Please ensure the environment variable is correctly configured and accessible.";
         } else if (lowerErrorMessage.includes("deadline exceeded")) {
@@ -423,7 +302,6 @@ export const generateQuizWithGemini = async (
             detailedMessage = errorMessage; 
         }
     }
-    
     throw new Error(detailedMessage);
   }
 };
@@ -431,18 +309,10 @@ export const generateQuizWithGemini = async (
 export const extractTextFromImageWithGemini = async (
   imageData: { base64Data: string; mimeType: string }
 ): Promise<string | null> => {
-  const genAIInstance = initializeGeminiAI(); // This will throw if API key is missing
-
-  const imagePart: Part = {
-    inlineData: {
-      data: imageData.base64Data,
-      mimeType: imageData.mimeType,
-    },
-  };
-  const textPart: Part = {
-    text: "Extract all visible text from this image. Respond with only the extracted text, without any additional commentary, formatting, or markdown. Just return the raw text content found in the image."
-  };
-
+  logger.info("Attempting to extract text from image with Gemini", "GeminiServiceImage", { mimeType: imageData.mimeType });
+  const genAIInstance = initializeGeminiAI();
+  const imagePart: Part = { inlineData: { data: imageData.base64Data, mimeType: imageData.mimeType } };
+  const textPart: Part = { text: "Extract all visible text from this image. Respond with only the extracted text, without any additional commentary, formatting, or markdown. Just return the raw text content found in the image." };
   const contents: Content = { parts: [imagePart, textPart] };
 
   try {
@@ -450,11 +320,11 @@ export const extractTextFromImageWithGemini = async (
       model: GEMINI_TEXT_MODEL,
       contents: contents,
     });
-
     const textResponse = response.text || '';
+    logger.info("Successfully extracted text from image.", "GeminiServiceImage", { textLength: textResponse.trim().length });
     return textResponse.trim();
   } catch (error) {
-    console.error("Error extracting text from image with Gemini:", error);
+    logger.error("Error extracting text from image with Gemini", "GeminiServiceImage", undefined, error as Error);
     if (error instanceof Error) {
         const lowerErrorMessage = error.message.toLowerCase();
         if (lowerErrorMessage.includes("api key not valid") || lowerErrorMessage.includes("api_key_invalid") || lowerErrorMessage.includes("api_key is not configured") || lowerErrorMessage.includes("process.env.gemini_api_key")) {
@@ -463,6 +333,6 @@ export const extractTextFromImageWithGemini = async (
             throw new Error("Failed to extract text from image due to a server or network error. Please try again.");
         }
     }
-    return null; // Ensure null is returned in case of other errors
+    return null; 
   }
 };

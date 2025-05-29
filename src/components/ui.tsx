@@ -212,11 +212,11 @@ interface CardProps {
 }
 
 export const Card: React.FC<CardProps> = ({ children, className = '', onClick, useGlassEffect = false, style }) => {
-  const baseClasses = `rounded-xl p-6 md:p-8 ${onClick ? 'card-float-hover' : ''}`;
+  const baseClasses = `rounded-xl p-6 md:p-8`; // Removed card-float-hover from here
   const themeClasses = useGlassEffect
     ? "glass-effect" 
     : "bg-slate-800 shadow-slate-950/50 border border-slate-700/70 transition-all var(--duration-normal) var(--ease-ios)";
-  const interactivityClasses = onClick ? "cursor-pointer" : "";
+  const interactivityClasses = onClick ? "cursor-pointer card-float-hover" : ""; // Add card-float-hover here if onClick
 
   const combinedClassName = `${baseClasses} ${themeClasses} ${interactivityClasses} ${className}`.trim().replace(/\s+/g, ' ');
   
@@ -385,7 +385,7 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, 
   
   const modalTitleId = typeof title === 'string' && title ? 'modal-title' : undefined;
 
-  let modalContainerClasses = `bg-slate-800/90 backdrop-blur-md rounded-2xl shadow-2xl w-full ${sizeClasses[size]} flex flex-col max-h-[90vh] !border-slate-700/50 overflow-hidden m-4 border`;
+  let modalContainerClasses = `modal-container-base bg-slate-800/90 backdrop-blur-md rounded-2xl shadow-2xl w-full ${sizeClasses[size]} flex flex-col max-h-[90vh] !border-slate-700/50 overflow-hidden m-4 border`;
   if (animationState === 'entering') {
     modalContainerClasses += ' modal-container-animate-enter-active';
   } else if (animationState === 'exiting') {
@@ -516,7 +516,7 @@ export const Accordion: React.FC<AccordionProps> = ({ title, children, initially
   const contentRef = useRef<HTMLDivElement>(null);
 
   return (
-    <div className={`border border-slate-700/70 rounded-xl overflow-hidden bg-slate-800 shadow-lg transition-shadow var(--duration-fast) var(--ease-ios) ${containerClassName || ''}`}>
+    <div className={`accordion-item-container border border-slate-700/70 rounded-xl overflow-hidden bg-slate-800 shadow-lg transition-shadow var(--duration-fast) var(--ease-ios) ${containerClassName || ''}`}>
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={`w-full flex justify-between items-center p-4 sm:p-5 hover:bg-slate-700/50 text-left focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-inset
