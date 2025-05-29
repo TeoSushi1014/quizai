@@ -137,20 +137,19 @@ export const loadQuizDataFromDrive = async (accessToken: string): Promise<Quiz[]
     return null; // File not found, which is a valid scenario for new users
   } catch (error) {
     console.error('Failed to load quiz data from Drive:', error);
-    // Depending on the error type, you might want to throw specific errors
     if (error instanceof Error && error.message.includes("401")) {
-        throw new Error("DriveErrorNoToken"); // Or a more specific "Unauthorized" error
+        throw new Error("driveErrorUnauthorized"); 
     }
     if (error instanceof Error && error.message.includes("Failed to find file")) {
-        throw new Error("DriveErrorFindingFile");
+        throw new Error("driveErrorFindingFile");
     }
     if (error instanceof Error && error.message.includes("Failed to read file content")) {
-        throw new Error("DriveErrorReadingFile");
+        throw new Error("driveErrorReadingFile");
     }
      if (error instanceof Error && error.message.includes("Failed to parse JSON")) {
-        throw new Error("DriveErrorParsingFile");
+        throw new Error("driveErrorParsingFile");
     }
-    throw new Error('DriveErrorLoading'); // Generic loading error
+    throw new Error('driveErrorLoading'); 
   }
 };
 
@@ -165,15 +164,14 @@ export const saveQuizDataToDrive = async (accessToken: string, quizzes: Quiz[]):
   } catch (error) {
     console.error('Failed to save quiz data to Drive:', error);
      if (error instanceof Error && error.message.includes("401")) {
-        throw new Error("DriveErrorNoToken");
+        throw new Error("driveErrorUnauthorized");
     }
-    // Distinguish between create/update errors if necessary
     if (error instanceof Error && error.message.includes("Failed to create file")) {
-        throw new Error("DriveErrorCreatingFile");
+        throw new Error("driveErrorCreatingFile");
     }
     if (error instanceof Error && error.message.includes("Failed to update file")) {
-        throw new Error("DriveErrorUpdatingFile");
+        throw new Error("driveErrorUpdatingFile");
     }
-    throw new Error('DriveErrorSaving'); // Generic saving error
+    throw new Error('driveErrorSaving'); 
   }
 };

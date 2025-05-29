@@ -1,4 +1,5 @@
 
+
 // Removed QuestionType enum
 // export enum QuestionType {
 //   MultipleChoice = 'multiple-choice',
@@ -75,10 +76,11 @@ export interface AppContextType {
   language: Language;
   setLanguage: (lang: Language) => void;
 
-  quizzes: Quiz[];
+  quizzes: Quiz[]; // This is quizzesForContext (filtered)
   addQuiz: (quiz: Quiz) => void;
   deleteQuiz: (quizId: string) => void;
   updateQuiz: (updatedQuiz: Quiz) => void;
+  getQuizByIdFromAll: (quizId: string) => Quiz | null; // New: to get from allQuizzes
   
   activeQuiz: Quiz | null;
   setActiveQuiz: (quiz: Quiz | null) => void;

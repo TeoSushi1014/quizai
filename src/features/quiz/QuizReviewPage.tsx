@@ -251,9 +251,6 @@ const QuizReviewPage: React.FC = () => {
   const [isAzotaExportModalOpen, setIsAzotaExportModalOpen] = useState(false);
   const [focusOptionInput, setFocusOptionInput] = useState<{ questionId: string; optionIndex: number } | null>(null);
 
-  const titleCardRef = useRef<HTMLDivElement>(null);
-  const isTitleCardVisible = useIntersectionObserver(titleCardRef, { threshold: 0.2, freezeOnceVisible: true });
-
   const { quizId: existingQuizIdFromParams } = useParams<{ quizId?: string }>();
 
   useEffect(() => {
@@ -366,30 +363,9 @@ const QuizReviewPage: React.FC = () => {
       </div>
 
       <div className="pt-6 sm:pt-8">
-        <div ref={titleCardRef} className={`${isTitleCardVisible ? 'animate-fadeInUp' : 'opacity-0'}`}> 
-          <Card useGlassEffect className="shadow-2xl !rounded-2xl">
-            <p className="text-sm text-slate-300/90 mb-6">{isEditingExisting ? t('reviewEditQuizDesc') : t('reviewFinalizeQuizDesc')}</p>
-            <Input label={<span className="text-base font-semibold text-slate-100">{t('reviewQuizTitleLabel')}</span>} value={editableQuiz.title} onChange={(e) => setEditableQuiz(prev => prev ? { ...prev, title: e.target.value } : null)} className="text-xl mb-3" placeholder={t('step2QuizTitlePlaceholder')} inputClassName="!text-xl !font-semibold !py-3.5 !rounded-xl" />
-             {editableQuiz.config && (
-                <details className="mt-5 text-xs text-slate-400">
-                    <summary className="cursor-pointer hover:text-sky-300 flex items-center font-medium group transition-colors">
-                        <InformationCircleIcon className="w-4 h-4 mr-2 text-slate-500 group-hover:text-sky-400 transition-colors"/>
-                        View Generation Config
-                    </summary>
-                    <div className="mt-2.5 p-3.5 bg-slate-700/60 border border-slate-600/60 rounded-lg shadow-inner space-y-1.5">
-                        <p><strong>Mode:</strong> {editableQuiz.config.difficulty === 'AI-Determined' ? "AI Optimized" : "Manual"}</p>
-                        <p><strong>Questions:</strong> {editableQuiz.config.difficulty === 'AI-Determined' && editableQuiz.config.numQuestions === 0 ? "AI Choice" : editableQuiz.config.numQuestions}</p>
-                        <p><strong>Difficulty:</strong> {editableQuiz.config.difficulty === 'AI-Determined' ? "AI Determined" : editableQuiz.config.difficulty}</p>
-                        <p><strong>Language:</strong> {editableQuiz.config.language}</p>
-                        <p><strong>Model:</strong> {editableQuiz.config.selectedModel}</p>
-                        {editableQuiz.config.customUserPrompt && <p><strong>Custom Prompt:</strong> <MathText text={editableQuiz.config.customUserPrompt} /></p>}
-                    </div>
-                </details>
-            )}
-          </Card>
-        </div>
+        {/* The Quiz Details Card has been removed as per user request */}
         
-        <div className="space-y-6 sm:space-y-8 mt-6 sm:mt-8">
+        <div className="space-y-6 sm:space-y-8">
           {editableQuiz.questions.map((q, idx) => {
             return <QuestionItem
                       key={q.id}
