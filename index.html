@@ -69,8 +69,10 @@
       background-color: rgba(30, 41, 59, 0.75); 
       backdrop-filter: blur(12px); 
       -webkit-backdrop-filter: blur(12px); 
-      border: 1px solid rgba(51, 65, 85, 0.6); 
-      box-shadow: 0 4px 12px rgba(0,0,0,0.2), 0 0 0 1px rgba(128, 128, 128, 0.1); 
+      border: 1px solid rgba(100, 116, 139, 0.25); /* Softer border (slate-500 at 25%) */
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.1); /* Softer, more diffuse shadow */
+      border-bottom-left-radius: 0.75rem; 
+      border-bottom-right-radius: 0.75rem;
     }
 
     
@@ -120,11 +122,13 @@
 
     
     .mobile-nav-style {
-      background-color: rgba(22, 32, 53, 0.9); 
+      background-color: rgba(22, 32, 53, 0.88); 
       backdrop-filter: blur(10px);
       -webkit-backdrop-filter: blur(10px);
-      border-top: 1px solid rgba(51, 65, 85, 0.7); 
-      box-shadow: 0 -4px 15px rgba(0,0,0,0.25); 
+      border-top: 1px solid rgba(100, 116, 139, 0.25); /* Softer border (slate-500 at 25%) */
+      box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.05), 0 -1px 3px rgba(0, 0, 0, 0.1); /* Softer, more diffuse shadow from bottom */
+      border-top-left-radius: 0.75rem;
+      border-top-right-radius: 0.75rem;
     }
 
     
@@ -293,15 +297,14 @@
     "@react-oauth/google": "https://esm.sh/@react-oauth/google@^0.12.1",
     "react-dom": "https://esm.sh/react-dom@^19.1.0",
     "katex": "https://esm.sh/katex@^0.16.22",
-    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@^2.49.8",
-    "framer-motion": "https://esm.sh/framer-motion@^11.3.1"
+    "framer-motion": "https://esm.sh/framer-motion@^11.3.1",
+    "lucide-react": "https://esm.sh/lucide-react@^0.400.0"
   }
 }
 </script>
-  <script type="module" crossorigin src="/quizai/assets/index-IGurIm0e.js"></script>
+  <script type="module" crossorigin src="/quizai/assets/index-BkMakS0e.js"></script>
 </head>
 <body>
   <div id="root"></div>
 </body>
-</html><link rel="stylesheet" href="index.css">
-<link rel="stylesheet" href="index.css">
+</html><link rel="stylesheet" href="index.css"><link rel="stylesheet" href="index.css">
