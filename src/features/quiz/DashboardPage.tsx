@@ -1,6 +1,4 @@
 
-
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FixedSizeList } from 'react-window';
@@ -9,13 +7,14 @@ import { Quiz } from '../../types.ts';
 import { Button, LoadingSpinner } from '../../components/ui';
 import { PlusCircleIcon } from '../../constants';
 import QuizCard from './components/QuizCard';
+import QuizCardSkeleton from './components/QuizCardSkeleton'; // Import skeleton
 import useIntersectionObserver from '../../hooks/useIntersectionObserver';
 
 const ITEM_HEIGHT = 360; 
 const LIST_PADDING_VERTICAL = 8; 
 
 const DashboardPage: React.FC = () => {
-  const { quizzes, deleteQuiz, currentUser, isLoading } = useAppContext();
+  const { quizzes, deleteQuiz, currentUser, isLoading } = useAppContext(); // isLoading from AppContext
   const { t } = useTranslation();
   const navigate = useNavigate();
 
@@ -74,6 +73,7 @@ const DashboardPage: React.FC = () => {
     };
     
     const handleResize = () => {
+        // Check AppContext's isLoading here as well.
         if (!isLoading && sortedQuizzes.length > 0) {
             if (animationFrameId) cancelAnimationFrame(animationFrameId);
             animationFrameId = requestAnimationFrame(() => {
@@ -87,6 +87,7 @@ const DashboardPage: React.FC = () => {
     if (animationFrameId) cancelAnimationFrame(animationFrameId);
     if (visibilityTimerId) clearTimeout(visibilityTimerId);
 
+    // useEffect dependency on `isLoading` will re-trigger this logic.
     if (!isLoading && sortedQuizzes.length > 0) {
         animationFrameId = requestAnimationFrame(() => {
             updateAndAttemptShowList();
@@ -94,7 +95,7 @@ const DashboardPage: React.FC = () => {
         window.addEventListener('resize', handleResize);
         resizeListenerAdded = true;
     } else {
-        setShowList(false);
+        setShowList(false); // Ensure list is hidden if loading or no quizzes
     }
 
     return () => {
@@ -136,15 +137,22 @@ const DashboardPage: React.FC = () => {
   const getItemKey = (index: number) => sortedQuizzes[index].id;
 
   const renderContent = () => {
-    if (isLoading) {
+    // If AppContext.isLoading is true and it's an initial load (no quizzes yet), show skeletons.
+    // AppLayout's global spinner might cover this; this component-level skeleton is for flexibility.
+    if (isLoading && sortedQuizzes.length === 0) {
       return (
-        <div className="text-center py-24 sm:py-28">
-          <LoadingSpinner text={t('loading')} size="lg" />
+        <div className="space-y-4"> {/* Consistent spacing for skeletons */}
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="h-[344px] px-1"> {/* Height of card, horizontal padding */}
+              <QuizCardSkeleton />
+            </div>
+          ))}
         </div>
       );
     }
 
-    if (sortedQuizzes.length === 0) {
+    // If loading is finished, and there are still no quizzes.
+    if (!isLoading && sortedQuizzes.length === 0) {
       return (
         <div ref={noQuizzesRef} className={`text-center py-24 sm:py-28 bg-slate-800 rounded-3xl shadow-2xl border border-slate-700/70 glass-effect ${isNoQuizzesVisible ? 'animate-page-slide-fade-in' : 'opacity-0'}`}>
           <h3 className="mt-2 text-2xl sm:text-3xl font-semibold text-slate-100 mb-4 pt-10">
@@ -166,6 +174,9 @@ const DashboardPage: React.FC = () => {
       );
     }
 
+    // If we have quizzes (sortedQuizzes.length > 0).
+    // AppContext.isLoading might be true here for background syncs, but we show the list.
+    // Skeletons are shown if the list component itself isn't ready (showList is false).
     return (
       <div ref={listContainerRef} className="quiz-list-container" style={{ height: listHeight > 0 ? `${listHeight}px` : 'auto', minHeight: '300px' }}>
         {showList && listHeight > 0 && sortedQuizzes.length > 0 ? (
@@ -180,12 +191,27 @@ const DashboardPage: React.FC = () => {
             {Row}
           </FixedSizeList>
         ) : (
-           (sortedQuizzes.length > 0 && !showList) && (
-              <div className="flex justify-center items-center" style={{ height: listHeight > 0 ? `${listHeight}px` : '300px' }}>
-                  <LoadingSpinner text={t('loading')} size="lg" />
-              </div>
-           )
+           // Show skeletons if data is available but list component isn't ready
+           // or if sortedQuizzes got populated but showList/listHeight effect hasn't run/finished.
+           (sortedQuizzes.length > 0 && !showList && !isLoading) && // Added !isLoading here to ensure skeletons don't flash if global spinner was very brief
+            <div className="space-y-4">
+              {[...Array(Math.min(3, sortedQuizzes.length))].map((_, i) => (
+                <div key={i} className="h-[344px] px-1">
+                  <QuizCardSkeleton />
+                </div>
+              ))}
+            </div>
         )}
+         {/* Fallback for when showList is false but data is still technically loading - covered by first condition now */}
+         {isLoading && sortedQuizzes.length > 0 && !showList && (
+             <div className="space-y-4">
+                {[...Array(Math.min(3, sortedQuizzes.length))].map((_, i) => (
+                    <div key={`loading-${i}`} className="h-[344px] px-1">
+                        <QuizCardSkeleton />
+                    </div>
+                ))}
+            </div>
+         )}
       </div>
     );
   };
@@ -214,11 +240,24 @@ const DashboardPage: React.FC = () => {
         </div>
       </div>
       
+      {/* Only show "Recent Quizzes" title if not initial-loading AND quizzes exist */}
       {!isLoading && sortedQuizzes.length > 0 && (
          <h2 ref={recentQuizzesTitleRef} className={`text-2xl sm:text-3xl font-semibold text-slate-100 ${isRecentQuizzesTitleVisible ? 'animate-fadeInUp' : 'opacity-0'}`}>
             {t('recentQuizzesSectionTitle')}
           </h2>
       )}
+      {/* Show general loading spinner if isLoading is true AND there are quizzes (implies background sync/refresh)
+          AND list is not ready to be shown. This condition is a bit tricky with skeletons.
+          The main skeleton logic now handles initial load (isLoading && sortedQuizzes.length === 0).
+          If list is not ready (showList=false) but data is available, it also shows skeletons.
+          A generic spinner might be redundant here if skeletons cover the placeholder states well.
+      */}
+      {isLoading && sortedQuizzes.length > 0 && !showList && (
+        <div className="flex justify-center items-center" style={{ height: listHeight > 0 ? `${listHeight}px` : '300px' }}>
+            <LoadingSpinner text={t('loading')} size="lg" />
+        </div>
+      )}
+
 
       {renderContent()}
     </div>
