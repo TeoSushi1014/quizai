@@ -1,10 +1,8 @@
 
-
-
-import React, { useState, useRef, ReactNode } from 'react';
+import React, { useState, useRef, ReactNode, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Button, Card, Textarea, Tooltip } from '../../components/ui';
+import { Button, Card, Textarea, Tooltip, LoadingSpinner } from '../../components/ui';
 import { useAppContext, useTranslation } from '../../App';
 import { Quiz } from '../../types';
 import { PlusIcon, UserCircleIcon, ChevronRightIcon } from '../../constants';
@@ -148,161 +146,161 @@ const FeedbackSection: React.FC = () => {
 FeedbackSection.displayName = "FeedbackSection";
 
 const HomePage: React.FC = () => {
-  const { quizzes, currentUser, setCurrentView, deleteQuiz } = useAppContext();
+  const { quizzes: contextQuizzes, currentUser, setCurrentView, deleteQuiz, isLoading: contextIsLoading } = useAppContext();
   const { t } = useTranslation();
   const navigate = useNavigate();
 
+  const [currentStableQuizzes, setCurrentStableQuizzes] = useState<Quiz[]>([]);
+
+  useEffect(() => {
+    if (!contextIsLoading) {
+      setCurrentStableQuizzes([...contextQuizzes]);
+    }
+    // If contextIsLoading is true, currentStableQuizzes remains unchanged,
+    // preserving the last stable UI state.
+  }, [contextQuizzes, contextIsLoading]);
+
+  const recentQuizzesForDisplay = useMemo(() => {
+    return [...currentStableQuizzes]
+        .sort((a, b) => new Date(b.lastModified || b.createdAt).getTime() - new Date(a.lastModified || a.createdAt).getTime())
+        .slice(0, MAX_RECENT_QUIZZES_HOME);
+  }, [currentStableQuizzes]);
+
+  const quizCountForDisplay = useMemo(() => currentStableQuizzes.length, [currentStableQuizzes]);
+
   const heroRef = useRef<HTMLElement>(null);
-  const isHeroVisible = useIntersectionObserver(heroRef, { threshold: 0.1, freezeOnceVisible: true });
+  // Removed dashboardInfoCardRef and isDashboardInfoCardVisible
+  // Removed recentQuizzesSectionRef and isRecentQuizzesSectionVisible
 
-  const dashboardInfoCardRef = useRef<HTMLDivElement>(null);
-  const isDashboardInfoCardVisible = useIntersectionObserver(dashboardInfoCardRef, { threshold: 0.2, freezeOnceVisible: true });
-
-  const recentQuizzesSectionRef = useRef<HTMLElement>(null);
-  const isRecentQuizzesSectionVisible = useIntersectionObserver(recentQuizzesSectionRef, { threshold: 0.05, freezeOnceVisible: true });
-
-  const heroButtonTextKey = quizzes.length > 0 ? 'heroCTACreateAnother' : 'heroCTA';
+  const heroButtonTextKey = quizCountForDisplay > 0 ? 'heroCTACreateAnother' : 'heroCTA';
   const heroButtonText = t(heroButtonTextKey);
 
   const handleDeleteQuiz = (quizId: string) => { deleteQuiz(quizId); };
   const handleEditQuiz = (quiz: Quiz) => { navigate(`/review/${quiz.id}`, { state: { existingQuiz: quiz } }); };
 
-  
-
-
-  if (quizzes.length === 0) {
-    return (
-      <div className="space-y-12 md:space-y-16">
-        <section
-          ref={heroRef}
-          className={`relative text-center py-20 md:py-28 rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl
-          bg-gradient-to-br from-sky-600/20 via-slate-800/50 to-purple-600/20
-          border border-slate-700/40`}
-        >
-          <motion.div
-            className="relative z-10 container mx-auto px-4"
-            initial="hidden"
-            animate={isHeroVisible ? "visible" : "hidden"}
-            variants={heroContainerVariants}
+  const renderContent = () => {
+    // Case 1: Big Hero section if no quizzes and not loading
+    if (quizCountForDisplay === 0 && !contextIsLoading) {
+      return (
+        <div className="space-y-12 md:space-y-16">
+          <section
+            ref={heroRef}
+            className={`relative text-center py-20 md:py-28 rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl
+            bg-gradient-to-br from-sky-600/20 via-slate-800/50 to-purple-600/20
+            border border-slate-700/40`}
           >
-            <motion.h1
-              variants={heroItemVariants}
-              className={`text-3xl sm:text-4xl md:text-5xl xl:text-6xl font-extrabold text-slate-50 leading-tight mb-6 sm:mb-8`}
-            >
-              {t('heroTitle').split(': ')[0]}: <br className="sm:hidden" /> <span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-400 via-indigo-400 to-purple-400">{t('heroTitle').split(': ')[1]}</span>
-            </motion.h1>
-            <motion.p
-              variants={heroItemVariants}
-              className={`text-sm sm:text-base md:text-lg text-slate-300/80 max-w-xl md:max-w-2xl xl:max-w-3xl mx-auto mb-10 sm:mb-12`}
-            >
-              {t('heroSubtitle')}
-            </motion.p>
             <motion.div
-              variants={heroItemVariants}
+              className="relative z-10 container mx-auto px-4"
+              initial="hidden"
+              animate="visible" 
+              variants={heroContainerVariants}
             >
-              <Button
-                size="md"
-                variant="primary"
-                onClick={() => setCurrentView('/create')}
-                leftIcon={<PlusIcon className="w-5 h-5" strokeWidth={2.5}/>}
-                className="shadow-2xl hover:shadow-sky-400/50 focus:ring-offset-transparent py-3 px-8 sm:py-3.5 sm:px-10 text-sm sm:text-base rounded-xl"
+              <motion.h1
+                variants={heroItemVariants}
+                className={`text-3xl sm:text-4xl md:text-5xl xl:text-6xl font-extrabold text-slate-50 leading-tight mb-6 sm:mb-8`}
               >
-                {heroButtonText}
-              </Button>
+                {t('heroTitle').split(': ')[0]}: <br className="sm:hidden" /> <span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-400 via-indigo-400 to-purple-400">{t('heroTitle').split(': ')[1]}</span>
+              </motion.h1>
+              <motion.p
+                variants={heroItemVariants}
+                className={`text-sm sm:text-base md:text-lg text-slate-300/80 max-w-xl md:max-w-2xl xl:max-w-3xl mx-auto mb-10 sm:mb-12`}
+              >
+                {t('heroSubtitle')}
+              </motion.p>
+              <motion.div variants={heroItemVariants}>
+                <Button
+                  size="md"
+                  variant="primary"
+                  onClick={() => setCurrentView('/create')}
+                  leftIcon={<PlusIcon className="w-5 h-5" strokeWidth={2.5}/>}
+                  className="shadow-2xl hover:shadow-sky-400/50 focus:ring-offset-transparent py-3 px-8 sm:py-3.5 sm:px-10 text-sm sm:text-base rounded-xl"
+                >
+                  {heroButtonText}
+                </Button>
+              </motion.div>
             </motion.div>
-          </motion.div>
-        </section>
+          </section>
+          <FeedbackSection />
+        </div>
+      );
+    }
 
-        
+    // Case 2: Dashboard-like view (with potential loading overlay)
+    return (
+      <div className="relative space-y-12 md:space-y-16">
+        {contextIsLoading && quizCountForDisplay > 0 && (
+          <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm rounded-xl z-10 flex items-center justify-center">
+            <LoadingSpinner text={t('homeSyncingQuizzesMessage')} size="lg" />
+          </div>
+        )}
+        <div className={contextIsLoading && quizCountForDisplay > 0 ? 'opacity-50' : ''}>
+          {quizCountForDisplay > 0 && (
+            <section className="animate-fadeInUp"> {/* Always animate */}
+              <Card useGlassEffect className={`!p-6 sm:!p-8 text-center sm:text-left !rounded-2xl shadow-2xl !border-slate-700/40`}>
+                <div className="flex flex-col sm:flex-row justify-between items-center gap-6">
+                  <div>
+                    <h1 className="text-2xl sm:text-3xl font-bold text-slate-50 mb-2">
+                      {currentUser ? t('homeDashboardUserTitle', { name: currentUser.name || t('user') }) : t('homeDashboardTitle')}
+                    </h1>
+                    <p className="text-slate-300 text-sm sm:text-base">
+                      {t('homeStatsQuizzes', { count: quizCountForDisplay })}
+                    </p>
+                  </div>
+                  <div>
+                    <Button
+                      variant="primary"
+                      size="lg"
+                      onClick={() => navigate('/create')}
+                      leftIcon={<PlusIcon className="w-5 h-5" strokeWidth={2.5} />}
+                      className="shadow-xl hover:shadow-sky-400/50 py-3 px-7 rounded-xl w-full sm:w-auto flex-shrink-0"
+                    >
+                      {t('dashboardCreateNew')}
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            </section>
+          )}
 
-        <FeedbackSection />
+          {recentQuizzesForDisplay.length > 0 && (
+            <section className="animate-fadeInUp"> {/* Always animate */}
+              <div className={`flex flex-wrap justify-between items-center mb-6 sm:mb-8 gap-4`}>
+                <h2 className="text-2xl sm:text-3xl font-semibold text-slate-100">
+                  {t('homeRecentQuizzesTitle')}
+                </h2>
+                {quizCountForDisplay > MAX_RECENT_QUIZZES_HOME && (
+                  <Button variant="link" onClick={() => navigate('/dashboard')} className="text-sm text-sky-300 hover:text-sky-200" rightIcon={<ChevronRightIcon className="w-4 h-4" />}>
+                    {t('homeViewAllQuizzes')}
+                  </Button>
+                )}
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 xl:gap-8">
+                {recentQuizzesForDisplay.map((quiz, index) => (
+                  <QuizCard key={quiz.id} quiz={quiz} onDelete={handleDeleteQuiz} onEditQuiz={handleEditQuiz} animationDelay={index * 0.1} />
+                ))}
+              </div>
+              {quizCountForDisplay > 0 && quizCountForDisplay <= MAX_RECENT_QUIZZES_HOME && (
+                <div className={`mt-8 sm:mt-10 text-center`}>
+                  <Button variant="secondary" onClick={() => navigate('/dashboard')} size="md" className="py-2.5 px-6 rounded-lg shadow-lg hover:shadow-slate-900/50" rightIcon={<ChevronRightIcon className="w-4 h-4" />}>
+                    {t('homeViewAllQuizzes')}
+                  </Button>
+                </div>
+              )}
+            </section>
+          )}
+           {(quizCountForDisplay === 0 && contextIsLoading) && ( // Case where buffer is empty and we are loading
+              <div className="flex flex-col items-center justify-center min-h-[300px] text-center">
+                <LoadingSpinner text={t('loading')} size="xl" />
+                <p className="mt-4 text-slate-400">{t('homeInitialLoadMessage')}</p>
+              </div>
+            )}
+          <FeedbackSection />
+        </div>
       </div>
     );
-  }
-
-  const recentQuizzesToShow = quizzes.slice(0, MAX_RECENT_QUIZZES_HOME);
-
-  return (
-    <div className="space-y-12 md:space-y-16">
-      <section ref={dashboardInfoCardRef} className={`${isDashboardInfoCardVisible ? 'animate-fadeInUp' : 'opacity-0'}`}>
-        <Card
-            useGlassEffect
-            className={`!p-6 sm:!p-8 text-center sm:text-left !rounded-2xl shadow-2xl !border-slate-700/40`}
-        >
-          <div className="flex flex-col sm:flex-row justify-between items-center gap-6">
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-slate-50 mb-2">
-                {currentUser ? t('homeDashboardUserTitle', { name: currentUser.name || t('user') }) : t('homeDashboardTitle')}
-              </h1>
-              <p className="text-slate-300 text-sm sm:text-base">
-                {t('homeStatsQuizzes', { count: quizzes.length })}
-              </p>
-            </div>
-            <div>
-              <Button
-                variant="primary"
-                size="lg"
-                onClick={() => navigate('/create')}
-                leftIcon={<PlusIcon className="w-5 h-5" strokeWidth={2.5} />}
-                className="shadow-xl hover:shadow-sky-400/50 py-3 px-7 rounded-xl w-full sm:w-auto flex-shrink-0"
-              >
-                {t('dashboardCreateNew')}
-              </Button>
-            </div>
-          </div>
-        </Card>
-      </section>
-
-      {recentQuizzesToShow.length > 0 && (
-        <section ref={recentQuizzesSectionRef} className={`${isRecentQuizzesSectionVisible ? 'animate-fadeInUp' : 'opacity-0'}`}>
-          <div
-            className={`flex flex-wrap justify-between items-center mb-6 sm:mb-8 gap-4`}
-          >
-            <h2 className="text-2xl sm:text-3xl font-semibold text-slate-100">
-              {t('homeRecentQuizzesTitle')}
-            </h2>
-            {quizzes.length > MAX_RECENT_QUIZZES_HOME && (
-              <Button
-                variant="link"
-                onClick={() => navigate('/dashboard')}
-                className="text-sm text-sky-300 hover:text-sky-200"
-                rightIcon={<ChevronRightIcon className="w-4 h-4" />}
-              >
-                {t('homeViewAllQuizzes')}
-              </Button>
-            )}
-          </div>
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-6 xl:gap-8">
-            {recentQuizzesToShow.map((quiz, index) => (
-              <QuizCard
-                key={quiz.id}
-                quiz={quiz}
-                onDelete={handleDeleteQuiz}
-                onEditQuiz={handleEditQuiz}
-                animationDelay={index * 0.1} 
-              />
-            ))}
-          </div>
-           {quizzes.length > 0 && quizzes.length <= MAX_RECENT_QUIZZES_HOME && (
-              <div
-                className={`mt-8 sm:mt-10 text-center`}
-              >
-                  <Button
-                    variant="secondary"
-                    onClick={() => navigate('/dashboard')}
-                    size="md"
-                    className="py-2.5 px-6 rounded-lg shadow-lg hover:shadow-slate-900/50"
-                    rightIcon={<ChevronRightIcon className="w-4 h-4" />}
-                  >
-                      {t('homeViewAllQuizzes')}
-                  </Button>
-              </div>
-          )}
-        </section>
-      )}
-      <FeedbackSection />
-    </div>
-  );
+  };
+  
+  return renderContent();
 };
 HomePage.displayName = "HomePage";
 

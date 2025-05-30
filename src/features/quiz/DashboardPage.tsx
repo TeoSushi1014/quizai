@@ -1,16 +1,18 @@
 
+
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FixedSizeList } from 'react-window';
 import { useAppContext, useTranslation } from '../../App';
-import { Quiz } from '../../types';
+import { Quiz } from '../../types.ts';
 import { Button, LoadingSpinner } from '../../components/ui';
 import { PlusCircleIcon } from '../../constants';
 import QuizCard from './components/QuizCard';
 import useIntersectionObserver from '../../hooks/useIntersectionObserver';
 
-const ITEM_HEIGHT = 360; // Estimated height for a QuizCard + vertical padding for the list item
-const LIST_PADDING_VERTICAL = 8; // 4px top, 4px bottom for each item for spacing
+const ITEM_HEIGHT = 360; 
+const LIST_PADDING_VERTICAL = 8; 
 
 const DashboardPage: React.FC = () => {
   const { quizzes, deleteQuiz, currentUser, isLoading } = useAppContext();
@@ -22,9 +24,13 @@ const DashboardPage: React.FC = () => {
 
   const noQuizzesRef = useRef<HTMLDivElement>(null);
   const isNoQuizzesVisible = useIntersectionObserver(noQuizzesRef, { threshold: 0.1, freezeOnceVisible: true });
+  
+  const recentQuizzesTitleRef = useRef<HTMLHeadingElement>(null);
+  const isRecentQuizzesTitleVisible = useIntersectionObserver(recentQuizzesTitleRef, { threshold: 0.5, freezeOnceVisible: true });
+
 
   const [showList, setShowList] = useState(false);
-  const [listHeight, setListHeight] = useState(300); // Start with a minimum sensible default
+  const [listHeight, setListHeight] = useState(300); 
   const listContainerRef = useRef<HTMLDivElement>(null);
 
   const handleEditQuiz = (quiz: Quiz) => {
@@ -32,7 +38,11 @@ const DashboardPage: React.FC = () => {
   };
 
   const sortedQuizzes = React.useMemo(() =>
-    [...quizzes].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
+    [...quizzes].sort((a, b) => {
+      const dateA = new Date(a.lastModified || a.createdAt).getTime();
+      const dateB = new Date(b.lastModified || b.createdAt).getTime();
+      return dateB - dateA;
+    }),
   [quizzes]);
 
   useEffect(() => {
@@ -44,23 +54,19 @@ const DashboardPage: React.FC = () => {
       if (listContainerRef.current) {
         const containerRect = listContainerRef.current.getBoundingClientRect();
         
-        // Ensure the container is actually in the viewport and has dimensions
         if (containerRect.top > 0 && containerRect.height > 0 && window.innerHeight > containerRect.top) {
-            const calculatedHeight = window.innerHeight - containerRect.top - 20; // 20px bottom buffer
+            const calculatedHeight = window.innerHeight - containerRect.top - 20; 
             const newHeight = Math.max(300, calculatedHeight);
 
-            if (newHeight !== listHeight) { // Only update if height actually changes or needs init
+            if (newHeight !== listHeight) { 
               setListHeight(newHeight);
             }
-
-            // Defer showing the list slightly
             if (visibilityTimerId) clearTimeout(visibilityTimerId);
             visibilityTimerId = setTimeout(() => {
                 setShowList(true);
             }, 50); 
         } else {
             setShowList(false); 
-            // setListHeight(prev => Math.max(300, prev)); // Keep previous or default height
         }
       } else {
          setShowList(false);
@@ -78,7 +84,6 @@ const DashboardPage: React.FC = () => {
         }
     };
     
-    // Clear previous timers on re-run
     if (animationFrameId) cancelAnimationFrame(animationFrameId);
     if (visibilityTimerId) clearTimeout(visibilityTimerId);
 
@@ -90,10 +95,6 @@ const DashboardPage: React.FC = () => {
         resizeListenerAdded = true;
     } else {
         setShowList(false);
-        if (sortedQuizzes.length === 0 && !isLoading) {
-            // If "No quizzes" message is shown, no need for a dynamic list height for the list itself
-            // setListHeight(300); // Or some other appropriate default when list isn't there
-        }
     }
 
     return () => {
@@ -103,9 +104,8 @@ const DashboardPage: React.FC = () => {
         window.removeEventListener('resize', handleResize);
       }
     };
-  }, [isLoading, sortedQuizzes.length, listHeight]); // Added listHeight to deps carefully
+  }, [isLoading, sortedQuizzes.length, listHeight]); 
 
-  // Row component for FixedSizeList
   const Row = ({ index, style }: { index: number; style: React.CSSProperties }) => {
     const quiz = sortedQuizzes[index];
     if (!quiz) return null;
@@ -116,7 +116,7 @@ const DashboardPage: React.FC = () => {
       height: `${parseFloat(style.height as string) - (2 * LIST_PADDING_VERTICAL)}px`,
       paddingLeft: '4px', 
       paddingRight: '4px',
-      width: 'calc(100% - 8px)', // Account for padding if width="100%"
+      width: 'calc(100% - 8px)', 
       boxSizing: 'border-box',
     };
 
@@ -135,31 +135,17 @@ const DashboardPage: React.FC = () => {
   
   const getItemKey = (index: number) => sortedQuizzes[index].id;
 
-
-  return (
-    <div className="space-y-10 md:space-y-12">
-      <div ref={headerRef} className={`flex flex-col sm:flex-row justify-between items-center gap-5 border-b border-slate-700/50 pb-8 sm:pb-10 ${isHeaderVisible ? 'animate-page-slide-fade-in' : 'opacity-0'}`}>
-        <h1 className="text-3xl sm:text-4xl font-bold text-slate-50 tracking-tight">
-          {t('dashboardTitle')}
-        </h1>
-        <div className="flex flex-wrap gap-3 sm:gap-4">
-          <Button
-            variant="primary"
-            size="md"
-            leftIcon={<PlusCircleIcon className="w-5 h-5" strokeWidth={2.5} />}
-            onClick={() => navigate('/create')}
-            className="shadow-xl hover:shadow-sky-400/50 py-3 px-6 rounded-xl"
-          >
-            {t('dashboardCreateNew')}
-          </Button>
-        </div>
-      </div>
-
-      {isLoading && sortedQuizzes.length === 0 ? (
+  const renderContent = () => {
+    if (isLoading) {
+      return (
         <div className="text-center py-24 sm:py-28">
           <LoadingSpinner text={t('loading')} size="lg" />
         </div>
-      ) : !isLoading && sortedQuizzes.length === 0 ? (
+      );
+    }
+
+    if (sortedQuizzes.length === 0) {
+      return (
         <div ref={noQuizzesRef} className={`text-center py-24 sm:py-28 bg-slate-800 rounded-3xl shadow-2xl border border-slate-700/70 glass-effect ${isNoQuizzesVisible ? 'animate-page-slide-fade-in' : 'opacity-0'}`}>
           <h3 className="mt-2 text-2xl sm:text-3xl font-semibold text-slate-100 mb-4 pt-10">
             {t('dashboardNoQuizzes')}
@@ -177,29 +163,64 @@ const DashboardPage: React.FC = () => {
             {t('createQuiz')}
           </Button>
         </div>
-      ) : (
-        <div ref={listContainerRef} className="quiz-list-container" style={{ height: listHeight > 0 ? `${listHeight}px` : 'auto', minHeight: '300px' }}>
-          {showList && listHeight > 0 && sortedQuizzes.length > 0 ? (
-            <FixedSizeList
-              height={listHeight}
-              itemCount={sortedQuizzes.length}
-              itemSize={ITEM_HEIGHT}
-              width="100%"
-              className="thin-scrollbar-horizontal"
-              itemKey={getItemKey}
-            >
-              {Row}
-            </FixedSizeList>
-          ) : (
-            // Placeholder: Show loader if app is loading, or if list is hidden but content is expected
-             (isLoading || (sortedQuizzes.length > 0 && !showList)) && (
-                <div className="flex justify-center items-center" style={{ height: listHeight > 0 ? `${listHeight}px` : '300px' }}>
-                    <LoadingSpinner text={t('loading')} size="lg" />
-                </div>
-             )
-          )}
+      );
+    }
+
+    return (
+      <div ref={listContainerRef} className="quiz-list-container" style={{ height: listHeight > 0 ? `${listHeight}px` : 'auto', minHeight: '300px' }}>
+        {showList && listHeight > 0 && sortedQuizzes.length > 0 ? (
+          <FixedSizeList
+            height={listHeight}
+            itemCount={sortedQuizzes.length}
+            itemSize={ITEM_HEIGHT}
+            width="100%"
+            className="thin-scrollbar-horizontal"
+            itemKey={getItemKey}
+          >
+            {Row}
+          </FixedSizeList>
+        ) : (
+           (sortedQuizzes.length > 0 && !showList) && (
+              <div className="flex justify-center items-center" style={{ height: listHeight > 0 ? `${listHeight}px` : '300px' }}>
+                  <LoadingSpinner text={t('loading')} size="lg" />
+              </div>
+           )
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div className="space-y-10 md:space-y-12">
+      <div ref={headerRef} className={`flex flex-col sm:flex-row justify-between items-start sm:items-center gap-5 border-b border-slate-700/50 pb-8 sm:pb-10 ${isHeaderVisible ? 'animate-page-slide-fade-in' : 'opacity-0'}`}>
+        <div>
+          <h1 className="text-3xl sm:text-4xl font-bold text-slate-50 tracking-tight">
+            {t('myQuizzesTitle')}
+          </h1>
+          <p className="mt-1.5 text-sm text-slate-400 max-w-xl">
+            {t('manageBrowseQuizzes')}
+          </p>
         </div>
+        <div className="flex flex-wrap gap-3 sm:gap-4 mt-4 sm:mt-0">
+          <Button
+            variant="primary"
+            size="md"
+            leftIcon={<PlusCircleIcon className="w-5 h-5" strokeWidth={2.5} />}
+            onClick={() => navigate('/create')}
+            className="shadow-xl hover:shadow-sky-400/50 py-3 px-6 rounded-xl"
+          >
+            {t('dashboardCreateNew')}
+          </Button>
+        </div>
+      </div>
+      
+      {!isLoading && sortedQuizzes.length > 0 && (
+         <h2 ref={recentQuizzesTitleRef} className={`text-2xl sm:text-3xl font-semibold text-slate-100 ${isRecentQuizzesTitleVisible ? 'animate-fadeInUp' : 'opacity-0'}`}>
+            {t('recentQuizzesSectionTitle')}
+          </h2>
       )}
+
+      {renderContent()}
     </div>
   );
 };

@@ -1,10 +1,11 @@
 
+
 import React, { useState, useEffect, useCallback, useRef, ReactNode, useReducer } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAppContext, useTranslation } from '../../App';
 import { Quiz, Question, QuizConfig } from '../../types';
-import { Button, Card, Input, Textarea, Select, Modal, LoadingSpinner, Tooltip } from '../../components/ui';
+import { Button, Card, Input, Textarea, Select, Modal, LoadingSpinner, Tooltip, NotificationDisplay } from '../../components/ui'; // Added NotificationDisplay
 import MathText from '../../components/MathText';
 import { PlusIcon, DeleteIcon, SaveIcon, ArrowUturnLeftIcon, HomeIcon, PlusCircleIcon, EditIcon, ExportIcon, CopyIcon, DownloadIcon, InformationCircleIcon, GEMINI_MODEL_ID, DocumentTextIcon } from '../../constants';
 import { formatQuizToAzotaStyle1, formatQuizToAzotaStyle2, formatQuizToAzotaStyle4 } from '../../services/azotaExportService';
@@ -12,6 +13,7 @@ import useIntersectionObserver from '../../hooks/useIntersectionObserver';
 import { quizReducer, initialQuizReviewState, QuizReviewAction } from './quizReducer';
 import { translations } from '../../i18n';
 import { logger } from '../../services/logService'; // Import logger
+import { useNotification } from '../../hooks/useNotification'; // Import useNotification
 
 
 type AzotaFormat = 'style1' | 'style2' | 'style4';
@@ -159,9 +161,11 @@ const QuestionItem: React.FC<QuestionItemProps> = ({
     dispatch({ type: 'UPDATE_QUESTION', payload: { index: questionIndex, question: { ...question, options: newOptions, correctAnswer: newCorrectAnswer } } });
   };
 
-  const handleDeleteQuestion = () => {
-    dispatch({ type: 'REMOVE_QUESTION', payload: { index: questionIndex } });
+  const handleDeleteQuestionRequest = () => {
+    // This function will be passed to the QuizCard/QuestionItem and should trigger the new handleDeleteQuestion in QuizReviewPage
+    dispatch({ type: 'REMOVE_QUESTION_REQUEST', payload: { index: questionIndex, questionId: question.id } });
   };
+
 
   return (
     <motion.div
@@ -180,7 +184,7 @@ const QuestionItem: React.FC<QuestionItemProps> = ({
             <Button
               variant="danger"
               size="sm"
-              onClick={handleDeleteQuestion}
+              onClick={handleDeleteQuestionRequest} // Changed to request
               className="!p-2.5 rounded-lg shadow-md hover:shadow-red-500/50"
               aria-label={t('reviewDeleteQuestionLabel')}
             >
@@ -270,12 +274,15 @@ const QuizReviewPage: React.FC = () => {
   const navigate = useNavigate();
   const { t, language } = useTranslation();
   const { addQuiz, updateQuiz, quizzes } = useAppContext();
+  const { notification, showSuccess, showError, clearNotification } = useNotification();
 
   const [state, dispatch] = useReducer(quizReducer, initialQuizReviewState);
-  const { editableQuiz, isLoading, isSaving, error } = state;
+  const { editableQuiz, isLoading, isSaving, error, questionToDelete } = state; // Added questionToDelete
 
   const [isAzotaExportModalOpen, setIsAzotaExportModalOpen] = useState(false);
   const [focusOptionInput, setFocusOptionInput] = useState<{ questionId: string; optionIndex: number } | null>(null); 
+  const [confirmDeleteQuestionModal, setConfirmDeleteQuestionModal] = useState<{ isOpen: boolean; questionIndex: number | null; questionId: string | null }>({ isOpen: false, questionIndex: null, questionId: null });
+
 
   const { quizId: existingQuizIdFromParams } = useParams<{ quizId?: string }>();
 
@@ -298,13 +305,15 @@ const QuizReviewPage: React.FC = () => {
       logger.info("Loading existing quiz for review/edit.", "QuizReviewPage", { quizId: quizToLoad.id });
     } else if (initialData?.generatedQuizData && initialData.finalConfig) {
       const { generatedQuizData, quizTitleSuggestion, finalConfig } = initialData;
+      const now = new Date().toISOString();
       quizToLoad = {
         id: `new-quiz-${Date.now()}`,
         title: quizTitleSuggestion || generatedQuizData.title || t('untitledQuiz'),
         questions: generatedQuizData.questions,
         config: finalConfig,
         sourceContentSnippet: generatedQuizData.sourceContentSnippet,
-        createdAt: new Date().toISOString(),
+        createdAt: now,
+        lastModified: now,
       };
       logger.info("Initializing review page with newly generated quiz data.", "QuizReviewPage", { title: quizToLoad.title });
     }
@@ -331,6 +340,12 @@ const QuizReviewPage: React.FC = () => {
     }
   }, [focusOptionInput, editableQuiz]);
 
+  // Effect to handle question deletion confirmation
+  useEffect(() => {
+    if (questionToDelete) {
+      setConfirmDeleteQuestionModal({ isOpen: true, questionIndex: questionToDelete.index, questionId: questionToDelete.questionId });
+    }
+  }, [questionToDelete]);
 
   const handleQuizTitleChange = (newTitle: string) => {
     dispatch({ type: 'UPDATE_QUIZ_TITLE', payload: newTitle });
@@ -340,6 +355,54 @@ const QuizReviewPage: React.FC = () => {
     dispatch({ type: 'ADD_QUESTION', payload: { language } });
     logger.info("Added new question to quiz being reviewed.", "QuizReviewPage");
   };
+
+  const handleDeleteQuestion = async () => {
+    if (!editableQuiz || confirmDeleteQuestionModal.questionIndex === null || confirmDeleteQuestionModal.questionId === null) return;
+
+    const questionIndexToDelete = confirmDeleteQuestionModal.questionIndex;
+    setConfirmDeleteQuestionModal({ isOpen: false, questionIndex: null, questionId: null }); // Close modal first
+
+    const updatedQuizData = {
+      ...editableQuiz,
+      questions: editableQuiz.questions.filter((_, index) => index !== questionIndexToDelete),
+      lastModified: new Date().toISOString()
+    };
+    
+    // Dispatch local state update first for UI responsiveness
+    dispatch({ type: 'REMOVE_QUESTION_CONFIRMED', payload: { index: questionIndexToDelete }});
+
+    try {
+      if (existingQuizIdFromParams) {
+        await updateQuiz(updatedQuizData);
+      } else {
+        // This case implies deleting a question from a quiz that hasn't been saved yet.
+        // addQuiz would typically be for a brand new quiz. If it's an unsaved quiz being edited,
+        // the 'editableQuiz' in the reducer is the source of truth. The final save will use addQuiz.
+        // For now, the local state update is primary. The main 'Save Quiz' button will handle persistence.
+        // However, to ensure Drive sync is aware of changes even before full save for new quizzes:
+        // We can consider `addQuiz` here too, but it means potentially creating quiz records earlier than desired.
+        // Let's ensure `updateQuiz` handles a quiz that might not yet be in `allQuizzes` gracefully,
+        // or `addQuiz` is smart enough to replace if ID matches.
+        // For simplicity and aligning with main save, if it's not an existing quiz, this deletion is only local until final save.
+        // BUT, to trigger sync, we must call updateQuiz or addQuiz from context.
+        // If it's a new quiz being edited, addQuiz would create it.
+        // If it's an existing quiz, updateQuiz updates it.
+        // Let's assume any quiz being edited to this point has an ID and can be 'updated'.
+        // If not `existingQuizIdFromParams`, it means it's a new quiz from generation.
+        // We still need to save it if any interaction happens that needs persistence.
+        await updateQuiz(updatedQuizData); // Assuming updateQuiz can handle "upsert" or add if not found (or AppContext handles it)
+                                         // More robustly, one might need specific context function `updateEditableQuizInLocalStore`
+      }
+      logger.info("Question deleted and quiz updated", "QuizReviewPage", { quizId: updatedQuizData.id, questionId: confirmDeleteQuestionModal.questionId, remainingQuestions: updatedQuizData.questions.length });
+      showSuccess(t('questionDeletedSuccessfully'), 3000);
+    } catch (error) {
+      logger.error("Error saving quiz after question deletion", "QuizReviewPage", { quizId: updatedQuizData.id, questionId: confirmDeleteQuestionModal.questionId }, error as Error);
+      showError(t('reviewErrorSaving'), 5000);
+      // Optionally, revert local state change or re-fetch if save fails critically
+      dispatch({ type: 'INIT_QUIZ_DATA', payload: { quiz: editableQuiz, language } }); // Revert to pre-delete state
+    }
+  };
+
 
   const handleSaveQuiz = async () => {
     if (!editableQuiz || editableQuiz.questions.length === 0) {
@@ -357,11 +420,13 @@ const QuizReviewPage: React.FC = () => {
     dispatch({ type: 'SET_SAVING', payload: true });
     
     try {
+      const now = new Date().toISOString();
       const quizToSave: Quiz = {
         ...editableQuiz,
         id: existingQuizIdFromParams || editableQuiz.id || `quiz-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         title: editableQuiz.title.trim() || t('untitledQuiz'),
-        createdAt: existingQuizIdFromParams ? editableQuiz.createdAt || new Date().toISOString() : new Date().toISOString(),
+        createdAt: editableQuiz.createdAt || now, 
+        lastModified: now, 
         config: editableQuiz.config || { 
           numQuestions: editableQuiz.questions.length, 
           difficulty: 'Medium', 
@@ -400,6 +465,7 @@ const QuizReviewPage: React.FC = () => {
 
   return (
     <div className="pb-16">
+      <NotificationDisplay notification={notification} onClose={clearNotification} />
       <div className={`sticky-review-actions bg-slate-800 shadow-xl py-4 -mx-4 sm:-mx-6 lg:-mx-8 rounded-b-2xl border-b border-slate-700 animate-fadeInUp`}>
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
@@ -466,6 +532,29 @@ const QuizReviewPage: React.FC = () => {
           onClose={handleCloseAzotaExportModal}
           quiz={editableQuiz}
         />
+      )}
+
+      {confirmDeleteQuestionModal.isOpen && (
+        <Modal
+          isOpen={confirmDeleteQuestionModal.isOpen}
+          onClose={() => setConfirmDeleteQuestionModal({ isOpen: false, questionIndex: null, questionId: null })}
+          title={t('confirmDeletionTitle')}
+          size="md"
+          footerContent={
+            <div className="flex justify-end gap-3.5">
+              <Button variant="secondary" onClick={() => setConfirmDeleteQuestionModal({ isOpen: false, questionIndex: null, questionId: null })} size="md">
+                {t('cancel')}
+              </Button>
+              <Button variant="danger" onClick={handleDeleteQuestion} size="md">
+                {t('confirmDeleteButton')}
+              </Button>
+            </div>
+          }
+        >
+          <p className="text-slate-200 text-base leading-relaxed">
+            {t('reviewDeleteQuestionConfirmationMessage', { questionIndex: (confirmDeleteQuestionModal.questionIndex ?? 0) + 1 })}
+          </p>
+        </Modal>
       )}
     </div>
   );

@@ -1,4 +1,5 @@
 
+
 import { Quiz } from '../types';
 import { logger } from './logService';
 import { getCircuitBreaker } from './circuitBreaker';
@@ -8,9 +9,9 @@ const DRIVE_UPLOAD_URL = 'https://www.googleapis.com/upload/drive/v3/files';
 const QUIZ_DATA_FILENAME = 'quizai_user_data.json';
 
 const driveCircuitBreaker = getCircuitBreaker('googleDrive', {
-  failureThreshold: 3, // Open circuit after 3 consecutive failures
-  resetTimeout: 60000, // Stay open for 60 seconds before trying half-open
-  halfOpenSuccessThreshold: 1 // One success in half-open to close circuit
+  failureThreshold: 3, 
+  resetTimeout: 60000, 
+  halfOpenSuccessThreshold: 1 
 });
 
 interface DriveFile {
@@ -26,30 +27,55 @@ async function fetchWithRetry(
   maxRetries = 3
 ): Promise<Response> {
   let retries = 0;
-  let lastError: Error = new Error("Fetch failed after all retries"); 
+  let lastError: Error = new Error("driveErrorGeneric"); // Default to generic error key
 
   while (retries <= maxRetries) {
     try {
       const response = await fetch(input, init);
-      if (response.status === 429 || (response.status >= 500 && response.status < 600)) {
-        await response.text(); 
-        throw new Error(`Server error: ${response.status}`);
+      if (!response.ok) {
+        let errorKey = 'driveErrorGeneric';
+        const status = response.status;
+        let responseBodyText = "Could not read error response body";
+        try {
+            responseBodyText = await response.text(); // Try to get body for logging
+        } catch (e) { /* ignore */ }
+
+        if (status === 401) errorKey = 'driveErrorUnauthorized';
+        else if (status === 403) errorKey = 'driveErrorForbidden'; // For permission issues
+        else if (status === 404) errorKey = 'driveErrorNotFound'; // For file not found on specific operations
+        else if (status === 429) errorKey = 'driveErrorRateLimit';
+        else if (status >= 500 && status < 600) errorKey = 'driveErrorServer';
+        
+        lastError = new Error(errorKey); // Use the key as the message
+        logger.warn(`Drive API request failed (attempt ${retries + 1}/${maxRetries + 1})`, 'fetchWithRetry', { url: String(input), status, errorKey, responseBodyPreview: responseBodyText.substring(0,100) });
+
+        if (status === 401 || status === 403 || status === 404) { // Non-retryable errors
+            throw lastError;
+        }
+        // For retryable errors (429, 5xx)
+        if (retries >= maxRetries) break;
+        const delay = Math.min(1000 * Math.pow(2, retries) + Math.random() * 1000, 10000); // Max 10s
+        await new Promise(resolve => setTimeout(resolve, delay));
+        retries++;
+        continue;
       }
-      return response;
-    } catch (error) {
-      lastError = error as Error;
-      retries++;
-      if (retries > maxRetries) {
-        logger.error(`Fetch failed after ${maxRetries} retries.`, 'fetchWithRetry', { url: String(input) }, lastError);
-        break; 
+      return response; // Successful response
+    } catch (error) { // Catches network errors or errors thrown from !response.ok block
+      lastError = error instanceof Error ? error : new Error('driveErrorNetwork');
+      logger.warn(`Fetch attempt ${retries + 1} failed`, 'fetchWithRetry', { url: String(input), error: lastError.message });
+      if (retries >= maxRetries || (lastError.message !== 'driveErrorRateLimit' && lastError.message !== 'driveErrorServer' && lastError.message !== 'driveErrorNetwork')) {
+          // If max retries reached, or it's an error type we decided not to retry (like 401 thrown from above)
+          break;
       }
-      const delay = Math.min(1000 * Math.pow(2, retries -1) + Math.random() * 1000, 8000);
-      logger.warn(`Drive API request failed (attempt ${retries}/${maxRetries}), retrying in ${Math.round(delay/1000)}s.`, 'fetchWithRetry', { url: String(input), error: lastError.message });
+      const delay = Math.min(1000 * Math.pow(2, retries) + Math.random() * 1000, 10000);
       await new Promise(resolve => setTimeout(resolve, delay));
+      retries++;
     }
   }
-  throw lastError;
+  logger.error(`Fetch failed after ${retries} retries.`, 'fetchWithRetry', { url: String(input) }, lastError);
+  throw lastError; // Throw the specific error key or network error
 }
+
 
 const findQuizDataFile = async (accessToken: string): Promise<DriveFile | null> => {
   return driveCircuitBreaker.execute(async () => {
@@ -59,11 +85,7 @@ const findQuizDataFile = async (accessToken: string): Promise<DriveFile | null> 
     logger.debug('Finding quiz data file', 'driveService', { url });
     try {
       const response = await fetchWithRetry(url, { headers: { 'Authorization': `Bearer ${accessToken}` } });
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        logger.error('Drive API error (findFile)', 'driveService', { status: response.status, errorData, url });
-        throw new Error(`Google Drive API error ${response.status}: ${errorData.error?.message || 'Failed to find file'}`);
-      }
+      // fetchWithRetry throws on !response.ok with an error key already
       const data = await response.json();
       const file = data.files && data.files.length > 0 ? data.files[0] : null;
       logger.info(`Quiz data file ${file ? 'found' : 'not found'}`, 'driveService', { fileId: file?.id });
@@ -81,11 +103,7 @@ const readFileContent = async (accessToken: string, fileId: string): Promise<Qui
     logger.debug('Reading file content', 'driveService', { fileId, url });
     try {
       const response = await fetchWithRetry(url, { headers: { 'Authorization': `Bearer ${accessToken}` } });
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        logger.error('Drive API error (readFile)', 'driveService', { status: response.status, errorData, fileId });
-        throw new Error(`Google Drive API error ${response.status}: ${errorData.error?.message || 'Failed to read file content'}`);
-      }
+      // fetchWithRetry throws on !response.ok
       const textContent = await response.text();
       if (!textContent) {
         logger.info('Drive file content is empty.', 'driveService', { fileId });
@@ -98,8 +116,9 @@ const readFileContent = async (accessToken: string, fileId: string): Promise<Qui
       logger.error('Error in readFileContent execution', 'driveService', { fileId }, error as Error);
       if (error instanceof SyntaxError) { 
           logger.error('Failed to parse JSON from Drive file content.', 'driveService', { fileId }, error);
+          throw new Error('driveErrorParsingFile'); // Throw specific key
       }
-      throw error; 
+      throw error; // Re-throw error key from fetchWithRetry or circuit breaker error
     }
   });
 };
@@ -115,11 +134,7 @@ const createFile = async (accessToken: string, content: Quiz[]): Promise<DriveFi
     logger.debug('Creating new file on Drive', 'driveService', { filename: QUIZ_DATA_FILENAME });
     try {
       const response = await fetchWithRetry(url, { method: 'POST', headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': `multipart/related; boundary=${boundary}` }, body: body });
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        logger.error('Drive API error (createFile)', 'driveService', { status: response.status, errorData });
-        throw new Error(`Google Drive API error ${response.status}: ${errorData.error?.message || 'Failed to create file'}`);
-      }
+      // fetchWithRetry throws on !response.ok
       const newFile = await response.json() as DriveFile;
       logger.info('Successfully created new file on Drive.', 'driveService', { fileId: newFile.id });
       return newFile;
@@ -135,12 +150,8 @@ const updateFileContent = async (accessToken: string, fileId: string, content: Q
     const url = `${DRIVE_UPLOAD_URL}/${fileId}?uploadType=media`;
     logger.debug('Updating file content on Drive', 'driveService', { fileId });
     try {
-      const response = await fetchWithRetry(url, { method: 'PATCH', headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' }, body: JSON.stringify(content) });
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        logger.error('Drive API error (updateFile)', 'driveService', { status: response.status, errorData, fileId });
-        throw new Error(`Google Drive API error ${response.status}: ${errorData.error?.message || 'Failed to update file content'}`);
-      }
+      await fetchWithRetry(url, { method: 'PATCH', headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' }, body: JSON.stringify(content) });
+      // fetchWithRetry throws on !response.ok
       logger.info('Successfully updated file content on Drive.', 'driveService', { fileId });
     } catch (error) {
       logger.error('Error in updateFileContent execution', 'driveService', { fileId }, error as Error);
@@ -157,26 +168,11 @@ export const loadQuizDataFromDrive = async (accessToken: string): Promise<Quiz[]
     }
     return null; 
   } catch (error) {
-    // Error already logged by findQuizDataFile or readFileContent, CircuitBreaker
-    // Here we just re-map to a user-friendly error key if needed.
-    if (error instanceof Error) {
-        if (error.message.includes("401") || error.message.includes("driveErrorUnauthorized") || error.message.includes("token has been expired or revoked")) {
-            throw new Error("driveErrorUnauthorized"); 
-        }
-        if (error.message.includes("Failed to find file") || error.message.includes("driveErrorFindingFile")) {
-            throw new Error("driveErrorFindingFile");
-        }
-        if (error.message.includes("Failed to read file content") || error.message.includes("driveErrorReadingFile")) {
-            throw new Error("driveErrorReadingFile");
-        }
-        if (error.message.includes("Failed to parse JSON") || error.message.includes("driveErrorParsingFile")) {
-            throw new Error("driveErrorParsingFile");
-        }
-        if (error.message.includes("Circuit for googleDrive is open")) {
-           throw new Error('driveErrorGeneric'); // Or a more specific "service temporarily unavailable"
-        }
+    logger.error('loadQuizDataFromDrive failed overall', 'driveService', undefined, error as Error);
+    if (error instanceof Error && error.message.startsWith('driveError')) {
+      throw error; // Re-throw specific error key
     }
-    throw new Error('driveErrorLoading'); 
+    throw new Error('driveErrorLoading'); // Generic fallback key
   }
 };
 
@@ -189,21 +185,10 @@ export const saveQuizDataToDrive = async (accessToken: string, quizzes: Quiz[]):
       await createFile(accessToken, quizzes);
     }
   } catch (error) {
-    // Error already logged. Re-map to user-friendly key.
-    if (error instanceof Error) {
-        if (error.message.includes("401") || error.message.includes("driveErrorUnauthorized") || error.message.includes("token has been expired or revoked")) {
-            throw new Error("driveErrorUnauthorized");
-        }
-        if (error.message.includes("Failed to create file") || error.message.includes("driveErrorCreatingFile")) {
-            throw new Error("driveErrorCreatingFile");
-        }
-        if (error.message.includes("Failed to update file") || error.message.includes("driveErrorUpdatingFile")) {
-            throw new Error("driveErrorUpdatingFile");
-        }
-         if (error.message.includes("Circuit for googleDrive is open")) {
-           throw new Error('driveErrorSaving'); // Or a more specific "service temporarily unavailable"
-        }
+    logger.error('saveQuizDataToDrive failed overall', 'driveService', undefined, error as Error);
+     if (error instanceof Error && error.message.startsWith('driveError')) {
+      throw error; // Re-throw specific error key
     }
-    throw new Error('driveErrorSaving'); 
+    throw new Error('driveErrorSaving'); // Generic fallback key
   }
 };

@@ -22,6 +22,7 @@ export interface Quiz {
   title: string;
   questions: Question[];
   createdAt: string; // ISO date string
+  lastModified: string; // ISO date string, added for merge logic
   sourceContentSnippet?: string; // Snippet of source for context
   config?: QuizConfig; // Configuration used for generating this quiz
   userId?: string; // Optional: for associating with a logged-in user (frontend simulation)
@@ -69,6 +70,8 @@ export interface UserProfile {
   accessToken?: string; // Added to store Google Access Token
 }
 
+export type SyncState = 'idle' | 'syncing' | 'success' | 'error';
+
 export interface AppContextType {
   currentView: AppView; 
   setCurrentView: (viewPath: string, params?: Record<string, string | number>) => void; 
@@ -99,4 +102,6 @@ export interface AppContextType {
   lastDriveSync: Date | null; // Timestamp of last successful sync
   syncWithGoogleDrive: () => Promise<void>; // Manual sync function
   setDriveSyncError: (error: string | null) => void; // Function to set Drive sync error
+  syncState: SyncState; // Added for UI feedback on sync status
+  currentSyncActivityMessage: string | null; // New: For detailed sync messages
 }

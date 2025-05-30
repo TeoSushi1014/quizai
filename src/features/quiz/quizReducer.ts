@@ -13,6 +13,7 @@ export interface QuizReviewState {
   isSaving: boolean;
   error: string | null;
   isDirty: boolean;
+  questionToDelete: { index: number; questionId: string } | null; // For managing deletion confirmation
 }
 
 export type QuizReviewAction =
@@ -23,7 +24,9 @@ export type QuizReviewAction =
   | { type: 'UPDATE_QUIZ_TITLE'; payload: string }
   | { type: 'UPDATE_QUESTION'; payload: { index: number; question: Question } }
   | { type: 'ADD_QUESTION'; payload: { language: keyof typeof translations } }
-  | { type: 'REMOVE_QUESTION'; payload: { index: number } }
+  | { type: 'REMOVE_QUESTION_REQUEST'; payload: { index: number; questionId: string } } // Renamed from REMOVE_QUESTION
+  | { type: 'REMOVE_QUESTION_CONFIRMED'; payload: { index: number } } // New action for actual deletion post-confirm
+  | { type: 'CLEAR_QUESTION_TO_DELETE_REQUEST' } // New action to clear request
   | { type: 'RESET_QUIZ_STATE' };
 
 export const initialQuizReviewState: QuizReviewState = {
@@ -33,6 +36,7 @@ export const initialQuizReviewState: QuizReviewState = {
   isSaving: false,
   error: null,
   isDirty: false,
+  questionToDelete: null,
 };
 
 export function quizReducer(state: QuizReviewState, action: QuizReviewAction): QuizReviewState {
@@ -91,12 +95,14 @@ export function quizReducer(state: QuizReviewState, action: QuizReviewAction): Q
         },
         isDirty: true,
       };
+    
+    case 'REMOVE_QUESTION_REQUEST':
+      return { ...state, questionToDelete: { index: action.payload.index, questionId: action.payload.questionId } };
 
-    case 'REMOVE_QUESTION':
+    case 'REMOVE_QUESTION_CONFIRMED':
       if (!state.editableQuiz || state.editableQuiz.questions.length <= 1) {
-        // Prevent removing the last question from reducer to avoid empty questions array directly
-        // The component should handle the alert/error message for this case.
-        return { ...state, error: getTranslator(state.editableQuiz?.config?.language === "Vietnamese" ? 'vi' : 'en')('reviewCannotSaveNoQuestions') };
+        const langForError = state.editableQuiz?.config?.language === "Vietnamese" ? 'vi' : 'en';
+        return { ...state, error: getTranslator(langForError)('reviewCannotSaveNoQuestions'), questionToDelete: null };
       }
       const filteredQuestions = state.editableQuiz.questions.filter(
         (_, index) => index !== action.payload.index
@@ -106,7 +112,11 @@ export function quizReducer(state: QuizReviewState, action: QuizReviewAction): Q
         editableQuiz: { ...state.editableQuiz, questions: filteredQuestions },
         error: null, // Clear error if successfully removed
         isDirty: true,
+        questionToDelete: null,
       };
+    
+    case 'CLEAR_QUESTION_TO_DELETE_REQUEST':
+      return { ...state, questionToDelete: null };
 
     case 'RESET_QUIZ_STATE':
       if (!state.originalQuiz) return state;
@@ -115,6 +125,7 @@ export function quizReducer(state: QuizReviewState, action: QuizReviewAction): Q
         editableQuiz: JSON.parse(JSON.stringify(state.originalQuiz)), // Reset to deep copy of original
         isDirty: false,
         error: null,
+        questionToDelete: null,
       };
 
     default:

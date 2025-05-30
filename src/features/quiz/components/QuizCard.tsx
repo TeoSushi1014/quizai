@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -56,7 +57,10 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onDelete, onEditQuiz, animati
     difficultyTextKey = 'dashboardQuizCardDifficulty';
   }
   const difficultyText = t(difficultyTextKey);
-  const dateFormatted = new Date(quiz.createdAt).toLocaleDateString(language, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  const dateToFormat = new Date(quiz.lastModified || quiz.createdAt);
+  const dateFormatted = dateToFormat.toLocaleDateString(language, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  const dateLabel = quiz.lastModified ? t('dashboardQuizCardLastModified', { date: dateFormatted }) : t('dashboardQuizCardCreated', { date: dateFormatted });
+
 
   const getStoredAttemptSettings = (quizId: string): AttemptSettings => {
     const storedSettings = localStorage.getItem(`attemptSettings_${quizId}`);
@@ -157,8 +161,7 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onDelete, onEditQuiz, animati
       <motion.div
         className="h-full" 
         initial={{ opacity: 0, y: 20 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, amount: 0.1 }} 
+        animate={{ opacity: 1, y: 0 }}
         transition={{
           duration: durationNormal,
           ease: easeIOS,
@@ -191,7 +194,7 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onDelete, onEditQuiz, animati
                        {t('dashboardQuizCardSource', { snippet: '' })}<MathText text={quiz.sourceContentSnippet} />
                     </p>
                 )}
-                <p className="text-sm sm:text-xs text-slate-300 opacity-80 pt-1">{t('dashboardQuizCardCreated', { date: dateFormatted })}</p>
+                 <p className="text-sm sm:text-xs text-slate-300 opacity-80 pt-1">{dateLabel}</p>
             </div>
           </div>
 

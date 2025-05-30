@@ -71,6 +71,9 @@ export const en = {
   reviewQuizTitleLabel: "Quiz Title",
   reviewQuestionLabel: "Question {index}",
   reviewDeleteQuestionLabel: "Delete question",
+  reviewDeleteQuestionConfirmationMessage: "Are you sure you want to delete Question {questionIndex}?",
+  questionDeletedSuccessfully: "Question deleted successfully.",
+  reviewQuestionAddedSuccessfully: "Question {index} added successfully.", // New key
   reviewQuestionTextLabel: "Question Text",
   reviewQuestionTextPlaceholder: "Enter the question text...",
   reviewOptionsLabel: "Options & Correct Answer",
@@ -196,6 +199,9 @@ export const vi = {
   reviewQuizTitleLabel: "Tiêu đề Quiz",
   reviewQuestionLabel: "Câu hỏi {index}",
   reviewDeleteQuestionLabel: "Xóa câu hỏi",
+  reviewDeleteQuestionConfirmationMessage: "Bạn có chắc chắn muốn xóa Câu hỏi {questionIndex} không?",
+  questionDeletedSuccessfully: "Đã xóa câu hỏi thành công.",
+  reviewQuestionAddedSuccessfully: "Câu hỏi {index} đã được thêm thành công.", // New key
   reviewQuestionTextLabel: "Nội dung câu hỏi",
   reviewQuestionTextPlaceholder: "Nhập nội dung câu hỏi...",
   reviewOptionsLabel: "Lựa chọn & Đáp án đúng",
