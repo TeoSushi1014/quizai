@@ -57,6 +57,11 @@ export const en = {
   rateLimitInfoAuthenticated: "Google-authenticated users: unlimited quiz creation.",
   refresh: "Refresh",
   refreshing: "Refreshing...",
+  profile: "Profile",
+  account: "Account", // New
+  new: "New", // New (for badge)
+  appVersion: "App Version", // New
+
 
   // Header & Navigation
   navHome: "Home",
@@ -168,6 +173,11 @@ export const vi = {
   rateLimitInfoAuthenticated: "Người dùng đã xác thực qua Google: tạo quiz không giới hạn.",
   refresh: "Làm mới",
   refreshing: "Đang làm mới...",
+  profile: "Hồ sơ",
+  account: "Tài khoản", // New
+  new: "Mới", // New (for badge)
+  appVersion: "Phiên bản ứng dụng", // New
+
 
   // Header & Navigation
   navHome: "Trang chủ",

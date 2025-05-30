@@ -2,10 +2,11 @@
 import React, { useState, useCallback, useEffect, createContext, useContext, ReactNode, useMemo, useRef, lazy, Suspense } from 'react';
 import { HashRouter, Routes, Route, useNavigate, useLocation, NavLink as RouterNavLink } from 'react-router-dom';
 import { GoogleOAuthProvider, googleLogout } from '@react-oauth/google';
+import { useSwipeable } from 'react-swipeable';
 import { Quiz, AppContextType, Language, QuizResult, UserProfile, SyncState } from './types';
-import { APP_NAME, KeyIcon, LogoutIcon, HomeIcon, PlusCircleIcon, ChartBarIcon, SettingsIcon, InformationCircleIcon, XCircleIcon, RefreshIcon, CheckCircleIcon } from './constants'; 
-import { Button, LoadingSpinner, Tooltip } from './components/ui';
-import { UserAvatar } from './components/UserAvatar'; // Added UserAvatar import
+import { APP_NAME, KeyIcon, LogoutIcon, HomeIcon, PlusCircleIcon, ChartBarIcon, SettingsIcon, SettingsIconMobileNav, InformationCircleIcon, XCircleIcon, RefreshIcon, CheckCircleIcon, ChevronDownIcon, UserCircleIcon } from './constants'; 
+import { Button, LoadingSpinner, Tooltip, Toggle } from './components/ui';
+import { UserAvatar } from './components/UserAvatar'; 
 import ErrorBoundary from './components/ErrorBoundary'; 
 import { getTranslator, translations } from './i18n';
 import useIntersectionObserver from './hooks/useIntersectionObserver';
@@ -557,7 +558,7 @@ const NavLink: React.FC<{ to: string; children: ReactNode; end?: boolean; classN
   const activeDesktopStyle = "bg-sky-400/20 text-sky-300 font-semibold";
   const inactiveDesktopStyle = "text-slate-300 hover:text-sky-300";
 
-  const baseMobileStyle = "flex flex-col items-center justify-center h-full w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-800 rounded-lg hover:bg-slate-500/10 transition-colors var(--duration-fast) var(--ease-ios)";
+  const baseMobileStyle = `flex flex-col items-center justify-center h-full w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-800 rounded-lg hover:bg-slate-700/60 active:bg-slate-700 transition-colors var(--duration-fast) var(--ease-ios) ${isMobile ? 'mobile-nav-item' : ''}`; // Added active:bg-slate-700 and mobile-nav-item
   const activeMobileStyle = "text-sky-300 font-semibold bg-sky-400/15";
   const inactiveMobileStyle = "text-slate-400 hover:text-sky-300";
 
@@ -583,6 +584,15 @@ const UserDropdownMenu: React.FC = () => {
     const { t } = useTranslation();
     const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
     const userDropdownRef = useRef<HTMLDivElement>(null);
+    const location = useLocation();
+
+    // Placeholder for dark mode state and toggle function
+    const [isDarkModePlaceholder, setIsDarkModePlaceholder] = useState(document.documentElement.classList.contains('dark'));
+    const toggleDarkModePlaceholder = () => {
+        setIsDarkModePlaceholder(p => !p);
+        console.log("Dark mode toggle clicked. Actual theme switching not implemented in this update.");
+        // In a real app: document.documentElement.classList.toggle('dark'); localStorage.setItem('theme', ...);
+    };
 
     useEffect(() => {
         if (!isUserDropdownOpen) return;
@@ -591,51 +601,105 @@ const UserDropdownMenu: React.FC = () => {
                 setIsUserDropdownOpen(false);
             }
         };
+        const handleEscKey = (event: KeyboardEvent) => {
+          if (event.key === 'Escape') {
+            setIsUserDropdownOpen(false);
+          }
+        };
         document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
+        document.addEventListener('keydown', handleEscKey);
+        return () => {
+          document.removeEventListener('mousedown', handleClickOutside);
+          document.removeEventListener('keydown', handleEscKey);
+        };
     }, [isUserDropdownOpen]);
 
     if (!currentUser) return null;
+
+    const isSettingsActive = location.pathname === '/settings';
+    const isProfileActive = location.pathname === '/profile';
+
 
     return (
         <div className="relative" ref={userDropdownRef}>
             <button
                 onClick={() => setIsUserDropdownOpen(prev => !prev)}
-                className="flex items-center p-1 rounded-full focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-800 group"
+                className={`flex items-center p-1.5 sm:p-2 rounded-full focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-800 group
+                            ${isUserDropdownOpen ? 'bg-sky-400/10 ring-2 ring-sky-400 ring-offset-2 ring-offset-slate-800' : ''}`}
                 aria-label="User menu"
                 aria-expanded={isUserDropdownOpen}
                 aria-haspopup="true"
+                aria-controls="user-dropdown-menu"
             >
                 <UserAvatar
                   photoUrl={currentUser.imageUrl}
                   userName={currentUser.name}
-                  size="sm" // Corresponds to w-8 h-8, sm:w-9 sm:h-9 is slightly different, but sm is closest UserAvatar size
-                  className="border-2 border-slate-600 group-hover:border-sky-300 transition-colors var(--duration-fast) var(--ease-ios)"
+                  size="sm" 
+                  className={`border-2 ${isUserDropdownOpen ? 'border-sky-400' : 'border-slate-600 group-hover:border-sky-300'} transition-colors var(--duration-fast) var(--ease-ios)`}
                 />
+                <ChevronDownIcon className={`w-4 h-4 ml-1 text-slate-400 transition-transform var(--duration-fast) var(--ease-ios) ${isUserDropdownOpen ? 'rotate-180' : ''}`} />
             </button>
             <div
-                className={`absolute right-0 mt-2.5 w-60 sm:w-64 glass-effect rounded-xl shadow-2xl py-2 z-50 origin-top-right
-                            transition-all var(--duration-fast) var(--ease-ios)
-                            ${isUserDropdownOpen ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-95 pointer-events-none'}`}
+                id="user-dropdown-menu"
+                role="menu"
+                className={`absolute right-0 mt-3 w-64 sm:w-72 bg-slate-800 border border-slate-700/70 rounded-xl shadow-2xl py-2 z-50 origin-top-right
+                            ${isUserDropdownOpen ? 'dropdown-animation-active pointer-events-auto' : 'opacity-0 scale-95 pointer-events-none'}`}
             >
-                <div className="px-4 py-3 border-b border-slate-700/70">
-                    <p className="text-sm font-semibold text-slate-100 truncate" title={currentUser.name || undefined}>{currentUser.name || t('untitledQuiz')}</p>
-                    <p className="text-xs text-slate-400 truncate" title={currentUser.email || undefined}>{currentUser.email}</p>
+                <div className="px-5 py-4 border-b border-slate-700/30">
+                    <div className="flex items-center gap-3">
+                        <UserAvatar
+                          photoUrl={currentUser.imageUrl}
+                          userName={currentUser.name}
+                          size="md" 
+                          className="border-2 border-slate-600"
+                        />
+                        <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-white truncate mb-0.5" title={currentUser.name || undefined}>{currentUser.name || t('user')}</p>
+                            <p className="text-xs text-slate-300 truncate" title={currentUser.email || undefined}>{currentUser.email}</p>
+                        </div>
+                    </div>
                 </div>
-                <button
-                    onClick={() => { setCurrentView('/settings'); setIsUserDropdownOpen(false); }}
-                    className="w-full text-left px-4 py-3 text-sm text-slate-200 hover:bg-slate-700/60 flex items-center hover:text-sky-300 transition-colors var(--duration-fast) var(--ease-ios)"
-                >
-                    <SettingsIcon className="w-4 h-4 mr-2.5 flex-shrink-0" strokeWidth={2}/>
-                    {t('navSettings')}
-                </button>
-                <button
-                    onClick={() => { logout(); setIsUserDropdownOpen(false); }}
-                    className="w-full text-left px-4 py-3 text-sm text-red-400 hover:bg-red-400/15 flex items-center hover:text-red-300 transition-colors var(--duration-fast) var(--ease-ios)"
-                >
-                    <LogoutIcon className="w-4 h-4 mr-2.5 flex-shrink-0" />
-                    {t('logout')}
-                </button>
+                <div className="py-2">
+                    <button
+                        onClick={() => { setCurrentView('/profile'); setIsUserDropdownOpen(false); }}
+                        className={`w-full text-left px-5 py-3.5 text-sm hover:bg-slate-700/60 active:bg-slate-600 flex items-center transition-colors var(--duration-fast) var(--ease-ios)
+                                    ${isProfileActive ? 'bg-sky-400/20 text-sky-300' : 'text-slate-200 hover:text-sky-300'}`}
+                        role="menuitem"
+                    >
+                        <UserCircleIcon className="w-4 h-4 mr-3 flex-shrink-0" strokeWidth={2}/>
+                        {t('profile')}
+                    </button>
+                    <button
+                        onClick={() => { setCurrentView('/settings'); setIsUserDropdownOpen(false); }}
+                        className={`w-full text-left px-5 py-3.5 text-sm hover:bg-slate-700/60 active:bg-slate-600 flex items-center transition-colors var(--duration-fast) var(--ease-ios) group
+                                    ${isSettingsActive ? 'bg-sky-400/20 text-sky-300' : 'text-slate-200 hover:text-sky-300'}`}
+                        role="menuitem"
+                    >
+                        <SettingsIcon className="w-4 h-4 mr-3 flex-shrink-0 group-hover:rotate-45 transition-transform var(--duration-normal) var(--ease-ios)" strokeWidth={2}/>
+                        {t('navSettings')}
+                    </button>
+                    <button
+                        onClick={() => { toggleDarkModePlaceholder(); /* setIsUserDropdownOpen(false); */ }}
+                        className="w-full text-left px-5 py-3.5 text-sm text-slate-200 hover:bg-slate-700/60 active:bg-slate-600 flex items-center justify-between hover:text-sky-300 transition-colors var(--duration-fast) var(--ease-ios)"
+                        role="menuitemcheckbox"
+                        aria-checked={isDarkModePlaceholder}
+                    >
+                      <div className="flex items-center">
+                        <span className="w-4 h-4 mr-3 flex-shrink-0">🌓</span> {/* Placeholder icon */}
+                        {isDarkModePlaceholder ? t('switchToLightTheme') : t('switchToDarkTheme')}
+                      </div>
+                      <Toggle checked={isDarkModePlaceholder} onChange={toggleDarkModePlaceholder} label="" />
+                    </button>
+                    <div className="h-px bg-slate-700/30 my-2 mx-5"></div>
+                    <button
+                        onClick={() => { logout(); setIsUserDropdownOpen(false); }}
+                        className="w-full text-left px-5 py-3.5 text-sm text-red-400 hover:bg-red-400/15 active:bg-red-400/25 flex items-center hover:text-red-300 transition-colors var(--duration-fast) var(--ease-ios)"
+                        role="menuitem"
+                    >
+                        <LogoutIcon className="w-4 h-4 mr-3 flex-shrink-0" />
+                        {t('logout')}
+                    </button>
+                </div>
             </div>
         </div>
     );
@@ -658,17 +722,24 @@ const AnimatedApiKeyWarning: React.FC<{children: ReactNode}> = ({ children }) =>
 AnimatedApiKeyWarning.displayName = "AnimatedApiKeyWarning";
 
 const RouteLoadingFallback: React.FC = () => (
-  <div className="flex items-center justify-center h-[calc(100vh-200px)]"> {/* Adjust height as needed */}
-    <LoadingSpinner size="lg" text={translations.en.loading} /> {/* Default to English for fallback text */}
+  <div className="flex items-center justify-center h-[calc(100vh-200px)]"> 
+    <LoadingSpinner size="lg" text={translations.en.loading} /> 
   </div>
 );
 RouteLoadingFallback.displayName = "RouteLoadingFallback";
 
+
 const AppLayout: React.FC = () => {
-  const { language, setLanguage, currentUser, isGeminiKeyAvailable, isLoading: globalIsLoading, isDriveLoading, driveSyncError, lastDriveSync, setDriveSyncError, syncState, currentSyncActivityMessage } = useAppContext(); 
+  const { 
+    language, setLanguage, currentUser, isGeminiKeyAvailable, 
+    isLoading: globalIsLoading, isDriveLoading, driveSyncError, 
+    lastDriveSync, setDriveSyncError, syncState, currentSyncActivityMessage,
+    logout, setCurrentView
+  } = useAppContext(); 
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
+  const [isMobileProfileOpen, setIsMobileProfileOpen] = useState(false);
   
   const apiKeyWarnings = [];
   if (!isGeminiKeyAvailable) {
@@ -752,6 +823,109 @@ const AppLayout: React.FC = () => {
         </Tooltip>
     );
   };
+
+  const MobileProfileSheet: React.FC = () => {
+    if (!currentUser || !isMobileProfileOpen) return null;
+
+    const [isDarkModePlaceholder, setIsDarkModePlaceholder] = useState(document.documentElement.classList.contains('dark'));
+    const toggleDarkModePlaceholder = () => {
+        setIsDarkModePlaceholder(p => !p);
+        console.log("Dark mode toggle clicked. Actual theme switching not implemented in this update.");
+    };
+    
+    const swipeHandlers = useSwipeable({
+      onSwipedDown: () => setIsMobileProfileOpen(false),
+      preventScrollOnSwipe: true,
+      trackMouse: false,
+    });
+
+    return (
+      <div 
+        className="fixed inset-0 z-[200] flex items-end justify-center modal-backdrop-enhanced open"
+        onClick={() => setIsMobileProfileOpen(false)}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="mobile-profile-title"
+      >
+        <div 
+          {...swipeHandlers}
+          className="w-full max-w-md bg-slate-800 border-t border-x border-slate-700/70 rounded-t-2xl shadow-2xl animate-slideInUp"
+          onClick={(e) => e.stopPropagation()}
+          style={{maxHeight: '85vh', overflowY: 'auto'}}
+        >
+          <div className="flex justify-center pt-3 pb-2">
+            <div className="w-12 h-1.5 bg-slate-600 rounded-full"></div>
+          </div>
+          <div className="px-5 py-6 flex items-center space-x-4 border-b border-slate-700/70">
+            <UserAvatar
+              photoUrl={currentUser.imageUrl}
+              userName={currentUser.name}
+              size="lg" 
+              className="border-2 border-sky-400"
+            />
+            <div className="flex-1 min-w-0">
+              <h2 id="mobile-profile-title" className="text-xl font-semibold text-slate-50 truncate mb-1">{currentUser.name || t('user')}</h2>
+              <p className="text-sm text-slate-400 truncate" title={currentUser.email || undefined}>{currentUser.email}</p>
+            </div>
+          </div>
+          <div className="py-4 divide-y divide-slate-700/30">
+            <div className="px-5 py-2 space-y-1">
+                <h3 className="text-xs uppercase text-slate-500 font-semibold tracking-wider mb-2">{t('account')}</h3>
+                <button
+                  onClick={() => { setCurrentView('/profile'); setIsMobileProfileOpen(false); }}
+                  className="w-full text-left px-4 py-3.5 text-base text-slate-200 hover:bg-slate-700/60 active:bg-slate-600 flex items-center rounded-lg transition-colors var(--duration-fast) var(--ease-ios)"
+                >
+                  <UserCircleIcon className="w-5 h-5 mr-3.5 flex-shrink-0" strokeWidth={2}/>
+                  {t('profile')}
+                </button>
+                <button
+                  onClick={() => { setCurrentView('/settings'); setIsMobileProfileOpen(false); }}
+                  className="w-full text-left px-4 py-3.5 text-base text-slate-200 hover:bg-slate-700/60 active:bg-slate-600 flex items-center rounded-lg transition-colors var(--duration-fast) var(--ease-ios)"
+                >
+                  <SettingsIcon className="w-5 h-5 mr-3.5 flex-shrink-0" strokeWidth={2}/>
+                  {t('navSettings')}
+                  <div className="ml-auto flex items-center">
+                    <span className="bg-sky-400/20 text-sky-300 text-xs px-2 py-0.5 rounded-full">{t('new')}</span>
+                  </div>
+                </button>
+                 <button
+                    onClick={() => { toggleDarkModePlaceholder(); /* setIsMobileProfileOpen(false); */ }}
+                    className="w-full text-left px-4 py-3.5 text-base text-slate-200 hover:bg-slate-700/60 active:bg-slate-600 flex items-center justify-between rounded-lg transition-colors var(--duration-fast) var(--ease-ios)"
+                >
+                  <div className="flex items-center">
+                    <span className="w-5 h-5 mr-3.5 flex-shrink-0">🌓</span> {/* Placeholder MoonIcon */}
+                    {isDarkModePlaceholder ? t('switchToLightTheme') : t('switchToDarkTheme')}
+                  </div>
+                  <Toggle checked={isDarkModePlaceholder} onChange={toggleDarkModePlaceholder} label="" />
+                </button>
+            </div>
+            <div className="px-5 py-2">
+                <button
+                  onClick={() => { logout(); setIsMobileProfileOpen(false); }}
+                  className="w-full text-left px-4 py-3.5 text-base text-red-400 hover:bg-red-400/15 active:bg-red-400/25 flex items-center rounded-lg transition-colors var(--duration-fast) var(--ease-ios)"
+                >
+                  <LogoutIcon className="w-5 h-5 mr-3.5 flex-shrink-0" />
+                  {t('logout')}
+                </button>
+            </div>
+          </div>
+          <div className="px-5 py-4 border-t border-slate-700/50 mt-2">
+            <div className="flex items-center justify-between mb-4">
+                <p className="text-xs text-slate-500">{t('appVersion')} 1.0.0</p>
+                <p className="text-xs text-slate-500">© {new Date().getFullYear()} {t('appName')}</p>
+            </div>
+            <button
+              onClick={() => setIsMobileProfileOpen(false)}
+              className="w-full py-3.5 rounded-lg bg-slate-700 text-slate-100 text-center font-medium hover:bg-slate-600 active:bg-slate-500 transition-colors var(--duration-fast) var(--ease-ios)"
+            >
+              {t('close')}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+  MobileProfileSheet.displayName = "MobileProfileSheet";
   
   return (
     <div className={`min-h-screen flex flex-col bg-slate-900 selection:bg-sky-500/20 selection:text-sky-300 pb-16 md:pb-0`}>
@@ -815,8 +989,23 @@ const AppLayout: React.FC = () => {
           </NavLink>
            {currentUser && (
             <NavLink to="/settings" isMobile>
-              <SettingsIcon className="w-5 h-5 mb-1" strokeWidth={2}/> <span className="text-xs font-medium">{t('navSettings')}</span>
+              <SettingsIconMobileNav className="w-5 h-5 mb-1"/> <span className="text-xs font-medium">{t('navSettings')}</span>
             </NavLink>
+          )}
+          {currentUser && (
+            <button 
+              onClick={() => setIsMobileProfileOpen(true)}
+              className="flex flex-col items-center justify-center h-full w-full focus-visible:ring-2 focus-visible:ring-sky-400/70 rounded-lg hover:bg-slate-700/60 active:bg-slate-700 text-slate-400 hover:text-sky-300 transition-colors var(--duration-fast) var(--ease-ios) btn-ripple mobile-nav-item"
+              aria-label={t('profile')}
+            >
+              <UserAvatar
+                photoUrl={currentUser.imageUrl}
+                userName={currentUser.name}
+                size="sm" 
+                className="mb-1 border border-slate-600 group-hover:border-sky-400 transition-colors var(--duration-fast) var(--ease-ios)"
+              />
+              <span className="text-xs font-medium">{t('profile')}</span>
+            </button>
           )}
         </nav>
 
@@ -832,7 +1021,8 @@ const AppLayout: React.FC = () => {
             <Route path="/quiz/:quizId" element={<QuizTakingPage />} />
             <Route path="/practice/:quizId" element={<QuizPracticePage />} />
             <Route path="/results/:quizId" element={<ResultsPage />} />
-            <Route path="/settings" element={currentUser ? <SyncSettingsPage /> : <HomePage />} /> 
+            <Route path="/settings" element={currentUser ? <SyncSettingsPage /> : <HomePage />} />
+            <Route path="/profile" element={currentUser ? <SyncSettingsPage /> : <HomePage />} /> 
             <Route path="*" element={<HomePage />} /> 
           </Routes>
         </Suspense>
@@ -898,6 +1088,7 @@ const AppLayout: React.FC = () => {
             </div>
         </AnimatedApiKeyWarning>
       )}
+      <MobileProfileSheet />
     </div>
   );
 };
