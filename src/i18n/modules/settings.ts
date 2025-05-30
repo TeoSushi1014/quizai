@@ -9,8 +9,8 @@ export const en = {
   syncStatusNeverShort: "Never Synced",
   syncStatusLast: "Last synced: {dateTime}",
   syncStatusLastShort: "Synced: {dateTime}",
-  syncStatusInProgress: "Syncing data with Google Drive...", // Generic syncing message
-  syncStatusInProgressShort: "Syncing...", // Short version for limited space
+  syncStatusInProgress: "Syncing data with Google Drive...", 
+  syncStatusInProgressShort: "Syncing...", 
   syncStatusSuccess: "Successfully synced with Google Drive.",
   syncStatusSuccessShort: "Synced",
   syncStatusError: "Error syncing with Google Drive: {error}",
@@ -23,7 +23,7 @@ export const en = {
   uploadingToGoogleDriveMessage: "Uploading data to Google Drive...",
   savingToGoogleDriveMessage: "Saving data to Google Drive...",
   syncCompleteMessage: "Sync complete!",
-  uploadCompleteMessage: "Upload to Google Drive complete!", // Added
+  uploadCompleteMessage: "Upload to Google Drive complete!", 
   autoSyncInProgressMessage: "Auto-saving to Drive...",
   autoSyncCompleteMessage: "Auto-save to Drive complete!",
   
@@ -50,6 +50,22 @@ export const en = {
   enableDriveSync: "Enable Google Drive Sync",
   disableDriveSync: "Disable Google Drive Sync (Uses Local Storage Only)",
   syncConfirmation: "This will attempt to load data from Google Drive, potentially overwriting local changes if Drive has newer data (based on last modified timestamps), and then save current data to Drive. Continue?",
+
+  // Profile Page Translations
+  profileInformation: "Profile Information",
+  profileName: "Name",
+  profileNamePlaceholder: "Enter your name",
+  profileEmail: "Email", // Added as per user's suggestion for Profile Page
+  profileBio: "Bio",
+  profileBioPlaceholder: "Tell us a little about yourself...",
+  profileStats: "Your Statistics",
+  profileQuizzes: "Created Quizzes",
+  profileCompletions: "Quiz Completions",
+  profileAvgScore: "Average Score",
+  profilePreferences: "Preferences", // Kept, might be used later
+  profileLanguage: "Language", // Kept, might be used later
+  profileSaveSuccess: "Profile updated successfully",
+  profileSaveError: "Failed to update profile",
 };
 
 export const vi = {
@@ -61,8 +77,8 @@ export const vi = {
   syncStatusNeverShort: "Chưa Đồng Bộ",
   syncStatusLast: "Đồng bộ lần cuối: {dateTime}",
   syncStatusLastShort: "Đã Đồng Bộ: {dateTime}",
-  syncStatusInProgress: "Đang đồng bộ dữ liệu với Google Drive...", // Generic
-  syncStatusInProgressShort: "Đang Đồng Bộ...", // Short
+  syncStatusInProgress: "Đang đồng bộ dữ liệu với Google Drive...", 
+  syncStatusInProgressShort: "Đang Đồng Bộ...", 
   syncStatusSuccess: "Đồng bộ thành công với Google Drive.",
   syncStatusSuccessShort: "Đã Đồng Bộ",
   syncStatusError: "Lỗi đồng bộ với Google Drive: {error}",
@@ -75,7 +91,7 @@ export const vi = {
   uploadingToGoogleDriveMessage: "Đang tải dữ liệu lên Google Drive...",
   savingToGoogleDriveMessage: "Đang lưu dữ liệu vào Google Drive...",
   syncCompleteMessage: "Đồng bộ hoàn tất!",
-  uploadCompleteMessage: "Tải lên Google Drive hoàn tất!", // Added
+  uploadCompleteMessage: "Tải lên Google Drive hoàn tất!", 
   autoSyncInProgressMessage: "Đang tự động lưu vào Drive...",
   autoSyncCompleteMessage: "Tự động lưu vào Drive hoàn tất!",
 
@@ -102,4 +118,20 @@ export const vi = {
   enableDriveSync: "Bật Đồng bộ Google Drive",
   disableDriveSync: "Tắt Đồng bộ Google Drive (Chỉ dùng Bộ nhớ Cục bộ)",
   syncConfirmation: "Thao tác này sẽ cố gắng tải dữ liệu từ Google Drive, có thể ghi đè các thay đổi cục bộ nếu Drive có dữ liệu mới hơn (dựa trên dấu thời gian sửa đổi cuối cùng), sau đó lưu dữ liệu hiện tại vào Drive. Tiếp tục?",
+
+  // Profile Page Translations
+  profileInformation: "Thông tin Hồ sơ",
+  profileName: "Tên",
+  profileNamePlaceholder: "Nhập tên của bạn",
+  profileEmail: "Email", // Added as per user's suggestion for Profile Page
+  profileBio: "Giới thiệu",
+  profileBioPlaceholder: "Hãy giới thiệu một chút về bản thân...",
+  profileStats: "Thống kê của bạn",
+  profileQuizzes: "Quiz đã tạo",
+  profileCompletions: "Quiz đã hoàn thành",
+  profileAvgScore: "Điểm trung bình",
+  profilePreferences: "Tùy chọn", // Kept
+  profileLanguage: "Ngôn ngữ", // Kept
+  profileSaveSuccess: "Cập nhật hồ sơ thành công",
+  profileSaveError: "Không thể cập nhật hồ sơ",
 };

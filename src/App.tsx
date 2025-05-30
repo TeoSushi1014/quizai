@@ -1,6 +1,7 @@
 
+
 import React, { useState, useCallback, useEffect, createContext, useContext, ReactNode, useMemo, useRef, lazy, Suspense, useId } from 'react';
-import { HashRouter, Routes, Route, useNavigate, useLocation, NavLink as RouterNavLink, Navigate } from 'react-router-dom'; // Added Navigate
+import { HashRouter, Routes, Route, useNavigate, useLocation, NavLink as RouterNavLink, Navigate } from 'react-router-dom'; 
 import { GoogleOAuthProvider, googleLogout } from '@react-oauth/google';
 import { useSwipeable } from 'react-swipeable';
 import { Quiz, AppContextType, Language, QuizResult, UserProfile, SyncState } from './types';
@@ -12,7 +13,8 @@ import { getTranslator, translations } from './i18n';
 import useIntersectionObserver from './hooks/useIntersectionObserver';
 import { logger } from './services/logService'; 
 import { useTheme } from './contexts/ThemeContext'; 
-import { ThemeToggle, ThemeToggleSwitch } from './components/ThemeToggle'; // Import ThemeToggle components
+import { ThemeToggle, ThemeToggleSwitch } from './components/ThemeToggle'; 
+import { useNotification } from './hooks/useNotification';
 
 import HomePage from './features/quiz/HomePage';
 import DashboardPage from './features/quiz/DashboardPage';
@@ -23,6 +25,7 @@ const QuizReviewPage = lazy(() => import('./features/quiz/QuizReviewPage'));
 const SignInPage = lazy(() => import('./features/auth/SignInPage'));
 const QuizPracticePage = lazy(() => import('./features/quiz/QuizPracticePage'));
 const SyncSettingsPage = lazy(() => import('./features/settings/SyncSettingsPage'));
+const ProfilePage = lazy(() => import('./features/user/ProfilePage'));
 
 import { loadQuizDataFromDrive, saveQuizDataToDrive } from './services/driveService';
 import { quizStorage } from './services/storageService'; 
@@ -95,14 +98,25 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
   const manualSyncAttemptLimitRef = useRef({ count: 0, lastWindowStart: 0 }); 
   
   const tForProvider = useMemo(() => getTranslator(language), [language]);
+  const { showSuccess: showSuccessNotification, showError: showErrorNotification } = useNotification();
+
 
   const setCurrentUser = useCallback((user: UserProfile | null) => {
-    setCurrentUserInternal(user);
-    logger.setUserId(user ? user.id : null);
     if (user) {
-      logger.info('User logged in', 'AuthContext', { userId: user.id, email: user.email, hasPhotoUrl: !!user.imageUrl });
+        const userWithDefaults: UserProfile = {
+            ...user,
+            bio: user.bio || null,
+            quizCount: user.quizCount || 0,
+            completionCount: user.completionCount || 0,
+            averageScore: user.averageScore || null,
+        };
+        setCurrentUserInternal(userWithDefaults);
+        logger.setUserId(userWithDefaults.id);
+        logger.info('User logged in or updated', 'AuthContext', { userId: userWithDefaults.id, email: userWithDefaults.email, hasPhotoUrl: !!userWithDefaults.imageUrl });
     } else {
-      logger.info('User logged out', 'AuthContext');
+        setCurrentUserInternal(null);
+        logger.setUserId(null);
+        logger.info('User logged out', 'AuthContext');
     }
   }, []);
 
@@ -159,7 +173,7 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
 
     setAppInitialized(true); 
     logger.info('App initialization complete.', 'AppInit');
-  }, [setCurrentUser]); 
+  }, [setCurrentUser, tForProvider]); 
 
   useEffect(() => {
     if (!appInitialized) return;
@@ -229,7 +243,7 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     };
 
     loadInitialQuizzesAndSync();
-  }, [appInitialized, currentUser?.accessToken, setDriveSyncError, tForProvider, language]);
+  }, [appInitialized, currentUser?.accessToken, setDriveSyncError, tForProvider]);
 
   const triggerSaveToDrive = useCallback((quizzesToSave: Quiz[]) => {
     if (Date.now() - saveToDriveMinIntervalRef.current < 10000) { 
@@ -283,7 +297,7 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
         }
       }
     }, 3000); 
-  }, [currentUser?.accessToken, setDriveSyncError, tForProvider, language, syncState]);
+  }, [currentUser?.accessToken, setDriveSyncError, tForProvider, syncState]);
 
   useEffect(() => {
     if (appInitialized && !isLoading && currentUser?.accessToken && allQuizzes.length >= 0) {
@@ -397,8 +411,15 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
   }, []);
 
   const login = useCallback((user: UserProfile, token?: string) => {
-    const userWithToken = token ? { ...user, accessToken: token } : user;
-    setCurrentUser(userWithToken); 
+    const userWithTokenAndDefaults: UserProfile = {
+        ...user,
+        accessToken: token || user.accessToken,
+        bio: user.bio || null,
+        quizCount: user.quizCount || 0,
+        completionCount: user.completionCount || 0,
+        averageScore: user.averageScore || null,
+    };
+    setCurrentUser(userWithTokenAndDefaults); 
     setDriveSyncError(null); 
     setSyncState('idle'); 
     setCurrentSyncActivityMessage(null);
@@ -423,6 +444,42 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     logger.info('Logout complete', 'AuthContext');
   }, [navigate, setCurrentUser, setDriveSyncError]); 
   
+  const updateUserProfile = useCallback(async (updatedProfileData: Partial<UserProfile>): Promise<boolean> => {
+    if (!currentUser) {
+      showErrorNotification(tForProvider('profileSaveError'), 5000);
+      return false;
+    }
+    
+    const updatedUser: UserProfile = {
+      ...currentUser,
+      name: updatedProfileData.name !== undefined ? updatedProfileData.name : currentUser.name,
+      bio: updatedProfileData.bio !== undefined ? updatedProfileData.bio : currentUser.bio,
+      // Keep existing stats, they are not updated here
+      quizCount: currentUser.quizCount,
+      completionCount: currentUser.completionCount,
+      averageScore: currentUser.averageScore,
+    };
+
+    try {
+      setCurrentUserInternal(updatedUser); // Update state, which triggers localStorage update via useEffect
+      // No Drive sync for profile data implemented yet as per instruction.
+      // If Drive sync were implemented for profile data, it would go here.
+      // For now, local storage is the persistence layer.
+      localStorage.setItem(LOCALSTORAGE_USER_KEY, JSON.stringify(updatedUser));
+
+      showSuccessNotification(tForProvider('profileSaveSuccess'), 3000);
+      logger.info("User profile updated successfully in AppContext.", 'UserProfile', { userId: updatedUser.id });
+      return true;
+    } catch (error) {
+      logger.error('Error updating profile in AppContext:', 'UserProfile', { userId: currentUser.id }, error as Error);
+      showErrorNotification(tForProvider('profileSaveError'), 5000);
+      // Revert to previous state if saving to localStorage fails (though unlikely for localStorage)
+      setCurrentUserInternal(currentUser); 
+      return false;
+    }
+  }, [currentUser, setCurrentUserInternal, showSuccessNotification, showErrorNotification, tForProvider]);
+
+
   const syncWithGoogleDrive = useCallback(async () => {
     const nowMs = Date.now();
     if (nowMs - manualSyncAttemptLimitRef.current.lastWindowStart < 30000) { 
@@ -490,7 +547,7 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
          if (syncState === 'success' || syncState === 'error') setCurrentSyncActivityMessage(null);
       }, 3000);
     }
-  }, [currentUser?.accessToken, setDriveSyncError, tForProvider, language, syncState]);
+  }, [currentUser?.accessToken, setDriveSyncError, tForProvider, syncState]);
 
   const quizzesForContext = useMemo(() => {
     return allQuizzes; 
@@ -515,6 +572,7 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     currentUser,
     login,
     logout: handleLogout, 
+    updateUserProfile,
     isGeminiKeyAvailable,
     isLoading: combinedIsLoading,
     isDriveLoading,
@@ -527,9 +585,9 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
   }), [
     location.pathname, setCurrentView, language, setLanguage, quizzesForContext, 
     addQuiz, deleteQuiz, updateQuiz, getQuizByIdFromAll, activeQuiz, setActiveQuiz, quizResult, 
-    setQuizResultWithPersistence, currentUser, login, handleLogout, isGeminiKeyAvailable, combinedIsLoading,
-    isDriveLoading, driveSyncError, lastDriveSync, syncWithGoogleDrive, setDriveSyncError, appInitialized,
-    syncState, currentSyncActivityMessage
+    setQuizResultWithPersistence, currentUser, login, handleLogout, updateUserProfile, isGeminiKeyAvailable, combinedIsLoading,
+    isDriveLoading, driveSyncError, lastDriveSync, syncWithGoogleDrive, setDriveSyncError, 
+    syncState, currentSyncActivityMessage, appInitialized, 
   ]);
 
   if (!appInitialized) {
@@ -559,12 +617,12 @@ AppProvider.displayName = "AppProvider";
 const NavLink: React.FC<{ to: string; children: ReactNode; end?: boolean; className?: string; activeClassName?: string; inactiveClassName?: string; isMobile?: boolean; }> = 
 ({ to, children, end = false, className = '', activeClassName = '', inactiveClassName = '', isMobile = false }) => {
   const baseDesktopStyle = `px-3.5 py-2 rounded-lg text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-focus-ring-offset)] hover:bg-[var(--color-primary-accent)]/10 transition-colors var(--duration-fast) var(--ease-ios)`;
-  const activeDesktopStyle = `bg-[var(--color-primary-accent)]/20 text-[var(--color-primary-accent)] font-semibold border-b-2 border-[var(--color-primary-accent)]`;
+  const activeDesktopStyle = `text-[var(--color-primary-accent)] font-semibold border-b-2 border-[var(--color-primary-accent)] bg-[var(--color-primary-accent)]/15`; // Added background for active desktop
   const inactiveDesktopStyle = `text-[var(--color-text-secondary)] hover:text-[var(--color-primary-accent)] border-b-2 border-transparent hover:border-[var(--color-primary-accent)]/50`;
 
   const baseMobileStyle = `flex flex-col items-center justify-center h-full w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-bg-surface-2)] rounded-lg hover:bg-[var(--color-bg-surface-3)] active:bg-[var(--color-bg-surface-3)] transition-colors var(--duration-fast) var(--ease-ios) ${isMobile ? 'mobile-nav-item' : ''}`;
-  const activeMobileStyle = `text-[var(--color-primary-accent)] font-semibold bg-[var(--color-mobile-nav-item-active-bg)]`;
-  const inactiveMobileStyle = `text-[var(--color-text-muted)] hover:text-[var(--color-primary-accent)]`;
+  const activeMobileStyle = `text-[var(--color-primary-accent)] font-semibold bg-[var(--color-mobile-nav-item-active-bg)] border-t-2 border-[var(--color-primary-accent)]`;
+  const inactiveMobileStyle = `text-[var(--color-text-muted)] hover:text-[var(--color-primary-accent)] border-t-2 border-transparent`;
 
 
   return (
@@ -590,7 +648,7 @@ const UserDropdownMenu: React.FC = () => {
     const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
     const userDropdownRef = useRef<HTMLDivElement>(null);
     const location = useLocation();
-    const generalSettingsIconUrl = "https://img.icons8.com/?size=256&id=s5NUIabJrb4C&format=png"; // General settings icon
+    const generalSettingsIconUrl = "https://img.icons8.com/?size=256&id=s5NUIabJrb4C&format=png"; 
 
     useEffect(() => {
         if (!isUserDropdownOpen) return;
@@ -735,14 +793,14 @@ const AppLayout: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [isMobileProfileOpen, setIsMobileProfileOpen] = useState(false);
-  const generalSettingsIconUrl = "https://img.icons8.com/?size=256&id=s5NUIabJrb4C&format=png"; // General settings icon
+  const generalSettingsIconUrl = "https://img.icons8.com/?size=256&id=s5NUIabJrb4C&format=png"; 
   
   const apiKeyWarnings = [];
   if (!isGeminiKeyAvailable) {
     apiKeyWarnings.push("Google Gemini API Key (process.env.GEMINI_API_KEY)");
   }
   
-  const appInitialized = true; // Assuming this is true if AppLayout is rendered
+  const appInitialized = true; 
   if (globalIsLoading && !appInitialized) { 
     return (
       <div className="fixed inset-0 bg-[var(--color-bg-body)] flex items-center justify-center z-[200]">
@@ -937,7 +995,6 @@ const AppLayout: React.FC = () => {
                  <NavLink to="/" end>{t('navHome')}</NavLink>
                 <NavLink to="/dashboard">{t('navDashboard')}</NavLink>
                 <NavLink to="/create">{t('navCreateQuiz')}</NavLink>
-                {/* Settings link removed from PC nav */}
               </nav>
               
               {currentUser && <SyncStatusIndicator />}
@@ -988,11 +1045,10 @@ const AppLayout: React.FC = () => {
           </NavLink>
           
            {currentUser && (
-            <NavLink to="/settings" isMobile>
-              <SettingsIconMobileNav className="w-5 h-5 mb-1"/> <span className="text-xs font-medium">{t('navSettings')}</span>
+            <NavLink to="/profile" isMobile>
+              <UserCircleIcon className="w-5 h-5 mb-1"/> <span className="text-xs font-medium">{t('profile')}</span>
             </NavLink>
           )}
-          {/* Profile button (UserAvatar & name) removed from mobile nav */}
         </nav>
 
       <main key={location.pathname} className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 md:py-10 mb-20 md:mb-0"> 
@@ -1008,7 +1064,7 @@ const AppLayout: React.FC = () => {
             <Route path="/practice/:quizId" element={<QuizPracticePage />} />
             <Route path="/results/:quizId" element={<ResultsPage />} />
             <Route path="/settings" element={currentUser ? <SyncSettingsPage /> : <Navigate to="/signin" state={{ from: location }} replace />} />
-            <Route path="/profile" element={currentUser ? <SyncSettingsPage /> : <Navigate to="/signin" state={{ from: location }} replace />} />
+            <Route path="/profile" element={currentUser ? <ProfilePage /> : <Navigate to="/signin" state={{ from: location }} replace />} />
             <Route path="*" element={<HomePage />} /> 
           </Routes>
         </Suspense>
@@ -1074,7 +1130,7 @@ const AppLayout: React.FC = () => {
             </div>
         </AnimatedApiKeyWarning>
       )}
-      {currentUser && isMobileProfileOpen && <MobileProfileSheet /> } {/* Conditional rendering based on isMobileProfileOpen */}
+      {currentUser && isMobileProfileOpen && <MobileProfileSheet /> } 
     </div>
   );
 };

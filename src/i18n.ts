@@ -23,7 +23,7 @@ export const translations = {
   },
 };
 
-type TranslationKey = keyof typeof translations.en;
+export type TranslationKey = keyof typeof translations.en;
 
 export const getTranslator = (lang: Language) => {
   const t = (key: TranslationKey, params?: Record<string, string | number>): string => {

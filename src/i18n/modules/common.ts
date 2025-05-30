@@ -1,3 +1,4 @@
+
 // src/i18n/modules/common.ts
 export const en = {
   appName: "QuizAI",
@@ -65,6 +66,7 @@ export const en = {
   lightMode: "Light Mode", 
   currentlyUsingDarkTheme: "Currently using dark theme.",
   currentlyUsingLightTheme: "Currently using light theme.",
+  savingButton: "Saving...",
 
 
   // Header & Navigation
@@ -186,6 +188,7 @@ export const vi = {
   lightMode: "Chế độ sáng",
   currentlyUsingDarkTheme: "Đang sử dụng giao diện tối.",
   currentlyUsingLightTheme: "Đang sử dụng giao diện sáng.",
+  savingButton: "Đang lưu...",
 
   // Header & Navigation
   navHome: "Trang chủ",
