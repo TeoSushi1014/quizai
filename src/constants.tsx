@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Pencil as LucidePencil } from 'lucide-react';
 
@@ -13,7 +14,7 @@ export const GEMINI_TEXT_MODEL = "gemini-2.5-flash-preview-04-17";
 
 interface IconProps {
   className?: string;
-  strokeWidth?: number;
+  strokeWidth?: number; // Kept for SVG icons, will be ignored by img tags
 }
 
 // Export Pencil from lucide-react as EditIcon for consistent naming if desired,
@@ -148,10 +149,8 @@ export const CircleIcon: React.FC<IconProps & {isFilled?: boolean}> = ({ classNa
 );
 CircleIcon.displayName = "CircleIcon";
 
-export const UserCircleIcon: React.FC<IconProps> = ({ className = "w-6 h-6", strokeWidth = 1.5 }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={strokeWidth} stroke="currentColor" className={className}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M17.982 18.725A7.488 7.488 0 0012 15.75a7.488 7.488 0 00-5.982 2.975m11.963 0a9 9 0 10-11.963 0m11.963 0A8.966 8.966 0 0112 21a8.966 8.966 0 01-5.982-2.275M15 9.75a3 3 0 11-6 0 3 3 0 016 0z" />
-  </svg>
+export const UserCircleIcon: React.FC<IconProps> = ({ className = "w-6 h-6" }) => (
+  <img src="https://img.icons8.com/?size=256&id=kDoeg22e5jUY&format=png" alt="Profile" className={className} />
 );
 UserCircleIcon.displayName = "UserCircleIcon";
 
@@ -162,10 +161,8 @@ export const KeyIcon: React.FC<IconProps> = ({ className = "w-4 h-4", strokeWidt
 );
 KeyIcon.displayName = "KeyIcon";
 
-export const LogoutIcon: React.FC<IconProps> = ({ className = "w-5 h-5", strokeWidth = 1.5 }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={strokeWidth} stroke="currentColor" className={className}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
-  </svg>
+export const LogoutIcon: React.FC<IconProps> = ({ className = "w-5 h-5" }) => (
+   <img src="https://img.icons8.com/?size=256&id=uVA8I3rgWfOs&format=png" alt="Logout" className={className} />
 );
 LogoutIcon.displayName = "LogoutIcon";
 
@@ -196,19 +193,16 @@ export const RefreshIcon: React.FC<{className?: string}> = ({className = "w-5 h-
 );
 RefreshIcon.displayName = "RefreshIcon";
 
-// Original SVG SettingsIcon, renamed to be specific
-export const SettingsIconSvg: React.FC<IconProps> = ({ className = "w-6 h-6", strokeWidth = 1.5 }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={strokeWidth} stroke="currentColor" className={className}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M10.343 3.94c.09-.542.56-.94 1.11-.94h1.093c.55 0 1.02.398 1.11.94l.149.894c.07.424.384.764.78.93.398.164.855.142 1.205-.108l.737-.527a1.125 1.125 0 011.45.12l.773.774c.39.389.44 1.002.12 1.45l-.527.737c-.25.35-.272.806-.108 1.204.165.399.505.71.93.78l.893.15c.543.09.94.56.94 1.11v1.093c0 .55-.397 1.02-.94 1.11l-.893.149c-.425.07-.765.383-.93.78-.165.398-.143.854.107 1.204l.527.738c.32.447.27.96-.12 1.45l-.773.773a1.125 1.125 0 01-1.449.12l-.738-.527c-.35-.25-.806-.272-1.203-.107-.399.165-.71.505-.781.929l-.149.894c-.09.542-.56.94-1.11.94h-1.093c-.55 0-1.02-.398-1.11-.94l-.149-.894c-.07-.424-.384-.764-.78-.93-.398-.164-.855-.142-1.205.108l-.737.527a1.125 1.125 0 01-1.45-.12l-.773-.774a1.125 1.125 0 01-.12-1.45l.527-.737c.25-.35.272-.806.108-1.204-.165-.399-.505-.71-.93-.78l-.894-.15c-.542-.09-.94-.56-.94-1.11v-1.093c0-.55.398-1.02.94-1.11l.894-.149c.424-.07.765-.383.93-.78.165-.398.143-.854-.107-1.204l-.527-.738a1.125 1.125 0 01.12-1.45l.773-.773a1.125 1.125 0 011.45-.12l.737.527c.35.25.807.272 1.204.107.399-.165.71-.505.78-.929l.15-.894z" />
-    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-  </svg>
+// Icon for general settings, including theme settings.
+export const SettingsIconSvg: React.FC<IconProps> = ({ className = "w-6 h-6" }) => (
+  <img src="https://img.icons8.com/?size=256&id=GPMAau8xXPb4&format=png" alt="Settings" className={className} />
 );
 SettingsIconSvg.displayName = "SettingsIconSvg";
 
-// General SettingsIcon (keeps original SVG for desktop/other uses)
+// General SettingsIcon (used for Settings link in dropdown and profile sheet)
 export const SettingsIcon: React.FC<IconProps> = SettingsIconSvg;
 
-// Specific Icon for Mobile Nav using Icons8
+// Specific Settings Icon for Mobile Nav bar
 export const SettingsIconMobileNav: React.FC<IconProps> = ({ className = "w-5 h-5" }) => (
   <img src="https://img.icons8.com/?size=256&id=s5NUIabJrb4C&format=png" alt="Settings" className={className} />
 );
@@ -221,16 +215,12 @@ export const GoogleDriveIcon: React.FC<IconProps> = ({ className = "w-5 h-5" }) 
 GoogleDriveIcon.displayName = "GoogleDriveIcon";
 
 // Theme Icons
-export const SunIcon: React.FC<IconProps> = ({ className = "w-5 h-5", strokeWidth = 1.5 }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={strokeWidth} stroke="currentColor" className={className}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
-  </svg>
+export const SunIcon: React.FC<IconProps> = ({ className = "w-5 h-5" }) => (
+  <img src="https://img.icons8.com/?size=256&id=8EUmYhfLPTCF&format=png" alt="Light Mode" className={className} />
 );
 SunIcon.displayName = "SunIcon";
 
-export const MoonIcon: React.FC<IconProps> = ({ className = "w-5 h-5", strokeWidth = 1.5 }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={strokeWidth} stroke="currentColor" className={className}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" />
-  </svg>
+export const MoonIcon: React.FC<IconProps> = ({ className = "w-5 h-5" }) => (
+  <img src="https://img.icons8.com/?size=256&id=Opvt5B6x4fI4&format=png" alt="Dark Mode" className={className} />
 );
 MoonIcon.displayName = "MoonIcon";

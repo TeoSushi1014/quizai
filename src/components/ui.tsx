@@ -590,81 +590,78 @@ interface ToggleProps {
   checked: boolean;
   onChange: (checked: boolean) => void;
   name?: string;
-  description?: string;
+  // description?: string; // Removed description as per user's latest code snippet
   size?: 'sm' | 'md' | 'lg';
   disabled?: boolean;
   labelClassName?: string;
-  descriptionClassName?: string;
+  // descriptionClassName?: string; // Removed
   containerClassName?: string;
+  labelPosition?: "left" | "right";
 }
 
-export const Toggle: React.FC<ToggleProps> = ({ 
+export const Toggle = React.forwardRef<HTMLButtonElement, ToggleProps>(
+  ({ 
     label, 
-    checked, 
+    checked = false, 
     onChange, 
     name, 
-    description, 
     size = 'md', 
     disabled = false, 
-    labelClassName = '', 
-    descriptionClassName = '',
-    containerClassName = '' 
-}) => {
+    labelClassName = '',
+    containerClassName = '',
+    labelPosition = "right"
+  }, ref) => {
   const id = name || useId();
   
+  const sizeClassesThumb = 
+    size === "sm" ? "h-3 w-3" : 
+    size === "md" ? "h-4 w-4" : 
+    size === "lg" ? "h-5 w-5" : "h-4 w-4";
+  
   const sizeClassesBackground = 
-    size === 'sm' ? 'w-9 h-5' :
-    size === 'lg' ? 'w-12 h-6' : 
-                    'w-10 h-5';
+    size === "sm" ? "w-7 h-4" : 
+    size === "md" ? "w-10 h-5" : 
+    size === "lg" ? "w-12 h-6" : "w-10 h-5";
   
-  const sizeClassesDot = 
-    size === 'sm' ? 'h-4 w-4' : 
-    size === 'lg' ? 'h-5 w-5' : 
-                    'h-4 w-4';
-
-  const dotTranslateX = 
-    size === 'sm' ? (checked ? 'translate-x-[calc(theme(width.9)-theme(width.4)-theme(spacing.1))]' : 'translate-x-0.5') :
-    size === 'lg' ? (checked ? 'translate-x-[calc(theme(width.12)-theme(width.5)-theme(spacing.1))]' : 'translate-x-0.5') :
-                    (checked ? 'translate-x-[calc(theme(width.10)-theme(width.4)-theme(spacing.1))]' : 'translate-x-0.5');
-  
+  const translateX = checked ? 
+    (size === "sm" ? "translate-x-3.5" : 
+     size === "md" ? "translate-x-5" : 
+     size === "lg" ? "translate-x-6" : "translate-x-5") : 
+    "translate-x-0.5";
+    
   return (
-    <div className={`flex items-center ${disabled ? 'opacity-50 cursor-not-allowed' : ''} ${containerClassName}`}>
-        <button
-            type="button"
-            role="switch"
-            aria-checked={checked}
-            onClick={() => !disabled && onChange(!checked)}
-            id={id}
-            className={`${sizeClassesBackground} relative inline-flex flex-shrink-0 items-center rounded-full p-0.5
-                       ${checked 
-                         ? 'bg-[var(--color-primary-accent)]' 
-                         : 'bg-[var(--color-bg-surface-3)]'}
-                       ${disabled ? '' : 'cursor-pointer'}
-                       focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-focus-ring-offset)] 
-                       transition-colors var(--duration-fast) var(--ease-ios) will-change-background`}
-            disabled={disabled}
-            aria-labelledby={typeof label === 'string' ? `${id}-label` : undefined}
-        >
-            <span className="sr-only">{typeof label === 'string' ? label : 'Toggle setting'}</span>
-            <span
-                aria-hidden="true"
-                className={`${sizeClassesDot} ${dotTranslateX} pointer-events-none inline-block transform rounded-full bg-white shadow-lg ring-0 
-                           transition-transform var(--duration-fast) var(--ease-ios)`} 
-            />
-        </button>
-        {(label || description) && (
-            <div className="ml-3.5">
-                {typeof label === 'string' ? (
-                    <label id={`${id}-label`} htmlFor={id} className={`block text-[var(--color-text-primary)] text-sm font-medium ${disabled ? '' : 'cursor-pointer'} ${labelClassName}`}>{label}</label>
-                ) : (
-                     <div className={`${disabled ? '' : 'cursor-pointer'} ${labelClassName}`} onClick={() => !disabled && onChange(!checked)}>{label}</div>
-                )}
-                {description && <p className={`text-xs text-[var(--color-text-muted)] mt-1 animate-fadeIn ${descriptionClassName}`}>{description}</p>}
-            </div>
-        )}
+    <div className={`inline-flex items-center ${disabled ? 'opacity-60 cursor-not-allowed' : ''} ${containerClassName} ${labelPosition === "left" ? "flex-row-reverse" : ""}`}>
+      {label && (
+        typeof label === 'string' ? (
+          <label id={`${id}-label`} htmlFor={id} className={`text-sm font-medium text-[var(--color-text-body)] ${labelPosition === "left" ? "mr-3" : "ml-3"} ${disabled ? '' : 'cursor-pointer'} ${labelClassName}`}>{label}</label>
+        ) : (
+           <div className={`text-sm font-medium text-[var(--color-text-body)] ${labelPosition === "left" ? "mr-3" : "ml-3"} ${disabled ? '' : 'cursor-pointer'} ${labelClassName}`} onClick={() => !disabled && onChange(!checked)}>{label}</div>
+        )
+      )}
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        onClick={() => !disabled && onChange(!checked)}
+        id={id}
+        ref={ref}
+        className={`${sizeClassesBackground} relative inline-flex flex-shrink-0 items-center rounded-full p-0.5
+                   ${checked 
+                     ? 'bg-[var(--color-primary-accent)]' 
+                     : 'bg-[var(--color-bg-surface-3)]'}
+                   ${disabled ? '' : 'cursor-pointer'}
+                   focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-focus-ring-offset)] 
+                   transition-colors var(--duration-fast) var(--ease-ios) will-change-background`}
+        disabled={disabled}
+        aria-labelledby={typeof label === 'string' ? `${id}-label` : undefined}
+      >
+        <span className="sr-only">{typeof label === 'string' ? label : ''}</span>
+        <span aria-hidden="true" className={`${sizeClassesThumb} ${translateX} pointer-events-none inline-block transform rounded-full bg-white shadow-lg ring-0 
+                     transition-transform var(--duration-fast) var(--ease-ios)`}></span>
+      </button>
     </div>
   );
-};
+});
 Toggle.displayName = "Toggle";
 
 

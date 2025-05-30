@@ -61,8 +61,8 @@ export const en = {
   new: "New",
   appVersion: "App Version",
   themeSettings: "Theme Settings",
-  darkMode: "Dark",
-  lightMode: "Light", 
+  darkMode: "Dark Mode",
+  lightMode: "Light Mode", 
   currentlyUsingDarkTheme: "Currently using dark theme.",
   currentlyUsingLightTheme: "Currently using light theme.",
 
@@ -182,8 +182,8 @@ export const vi = {
   new: "Mới",
   appVersion: "Phiên bản ứng dụng",
   themeSettings: "Cài đặt Giao diện",
-  darkMode: "Tối",
-  lightMode: "Sáng",
+  darkMode: "Chế đô tối",
+  lightMode: "Chế độ sáng",
   currentlyUsingDarkTheme: "Đang sử dụng giao diện tối.",
   currentlyUsingLightTheme: "Đang sử dụng giao diện sáng.",
 

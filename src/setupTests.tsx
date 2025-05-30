@@ -65,7 +65,7 @@ jest.mock('framer-motion', () => {
       // Add other motion elements as needed (e.g., h1, p, section)
       div: fn(({ children, ...props }) => <div {...props}>{children}</div>),
       h1: fn(({ children, ...props }) => <h1 {...props}>{children}</h1>),
-      p: fn(({ children, ...props }) => <p {...props}>{children}</p>),
+      p: fn(({ children, ...props }) => <p {...props}>{children}</div>),
       section: fn(({ children, ...props }) => <section {...props}>{children}</section>),
       // Add other specific motion components you use, e.g., motion.button
     },
@@ -86,7 +86,7 @@ jest.mock('react-router-dom', () => ({
 
 // Mock @react-oauth/google
 jest.mock('@react-oauth/google', () => ({
-  GoogleOAuthProvider: ({ children }: { children: React.ReactNode }) => <div {...props}>{children}</div>,
+  GoogleOAuthProvider: ({ children, ...restProps }: { children: React.ReactNode; [key: string]: any }) => <div {...restProps}>{children}</div>,
   useGoogleLogin: fn(() => fn()), // Mock the hook to return a mock login function
   googleLogout: fn(),
 }));
@@ -116,6 +116,7 @@ jest.mock('pdfjs-dist/build/pdf', () => ({
 jest.mock('mammoth', () => ({
   extractRawText: fn().mockResolvedValue({ value: 'mock docx text' }),
 }));
-// Added props to GoogleOAuthProvider mock
-const { children, ...props } = { children: React.createElement('div') }; // Example props, adjust as needed
 
+// This line was problematic as `props` was defined in module scope but used in mock scope without clear capture.
+// The GoogleOAuthProvider mock has been updated to correctly handle props.
+// const { children, ...props } = { children: React.createElement('div') }; 

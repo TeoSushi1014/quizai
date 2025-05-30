@@ -1,11 +1,13 @@
 
+
+
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppContext, useTranslation } from '../../App';
-import { Button, Card, LoadingSpinner, Tooltip, Toggle } from '../../components/ui'; // Added Toggle
-import { GoogleDriveIcon, RefreshIcon, CheckCircleIcon, XCircleIcon, InformationCircleIcon, SunIcon, MoonIcon } from '../../constants'; // Added SunIcon, MoonIcon
+import { Button, Card, LoadingSpinner, Tooltip, Toggle } from '../../components/ui'; 
+import { GoogleDriveIcon, RefreshIcon, CheckCircleIcon, XCircleIcon, InformationCircleIcon, SunIcon, MoonIcon } from '../../constants'; 
 import MathText from '../../components/MathText';
-import { useTheme } from '../../contexts/ThemeContext'; // Import useTheme
+import { useTheme } from '../../contexts/ThemeContext'; 
 
 const SyncSettingsPage: React.FC = () => {
   const { 
@@ -18,7 +20,7 @@ const SyncSettingsPage: React.FC = () => {
   } = useAppContext();
   const { t, language } = useTranslation();
   const navigate = useNavigate();
-  const { theme, toggleTheme } = useTheme(); // Use theme context
+  const { theme, toggleTheme } = useTheme(); 
 
   if (!currentUser) {
     navigate('/signin', { state: { from: { pathname: '/settings' } } });
@@ -48,33 +50,7 @@ const SyncSettingsPage: React.FC = () => {
         </div>
 
         <div className="space-y-8">
-          {/* Theme Settings Card */}
-          <Card className="!bg-[var(--color-bg-surface-2)]/80 !border-[var(--color-border-default)] p-5 sm:p-6 rounded-xl shadow-lg">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-              <div className="flex-1">
-                <div className="flex items-center mb-1.5">
-                    {theme === 'dark' ? 
-                        <MoonIcon className="w-5 h-5 mr-2.5 text-[var(--color-primary-accent)] flex-shrink-0" /> :
-                        <SunIcon className="w-5 h-5 mr-2.5 text-[var(--color-primary-accent)] flex-shrink-0" />
-                    }
-                    <p className="text-base font-semibold text-[var(--color-text-primary)]">{t('themeSettings')}</p>
-                </div>
-                <p className="text-xs text-[var(--color-text-secondary)] sm:ml-[28px]"> {/* Align with icon roughly */}
-                  {theme === 'dark' ? t('currentlyUsingDarkTheme') : t('currentlyUsingLightTheme')}
-                </p>
-              </div>
-              <div className="flex items-center space-x-3 w-full sm:w-auto justify-center sm:justify-end">
-                <SunIcon className={`w-5 h-5 ${theme === 'light' ? 'text-[var(--color-primary-accent)]' : 'text-[var(--color-text-muted)]'}`} />
-                <Toggle 
-                  checked={theme === 'dark'} 
-                  onChange={toggleTheme} 
-                  label="" 
-                  size="lg"  
-                />
-                <MoonIcon className={`w-5 h-5 ${theme === 'dark' ? 'text-[var(--color-primary-accent)]' : 'text-[var(--color-text-muted)]'}`} />
-              </div>
-            </div>
-          </Card>
+          {/* Theme Settings Card Removed */}
 
           {/* Google Drive Sync Card */}
           <Card className="!bg-[var(--color-bg-surface-2)]/80 !border-[var(--color-border-default)] p-5 sm:p-6 rounded-xl shadow-lg">

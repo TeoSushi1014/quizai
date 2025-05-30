@@ -559,8 +559,8 @@ AppProvider.displayName = "AppProvider";
 const NavLink: React.FC<{ to: string; children: ReactNode; end?: boolean; className?: string; activeClassName?: string; inactiveClassName?: string; isMobile?: boolean; }> = 
 ({ to, children, end = false, className = '', activeClassName = '', inactiveClassName = '', isMobile = false }) => {
   const baseDesktopStyle = `px-3.5 py-2 rounded-lg text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-focus-ring-offset)] hover:bg-[var(--color-primary-accent)]/10 transition-colors var(--duration-fast) var(--ease-ios)`;
-  const activeDesktopStyle = `bg-[var(--color-primary-accent)]/20 text-[var(--color-primary-accent)] font-semibold`;
-  const inactiveDesktopStyle = `text-[var(--color-text-secondary)] hover:text-[var(--color-primary-accent)]`;
+  const activeDesktopStyle = `bg-[var(--color-primary-accent)]/20 text-[var(--color-primary-accent)] font-semibold border-b-2 border-[var(--color-primary-accent)]`;
+  const inactiveDesktopStyle = `text-[var(--color-text-secondary)] hover:text-[var(--color-primary-accent)] border-b-2 border-transparent hover:border-[var(--color-primary-accent)]/50`;
 
   const baseMobileStyle = `flex flex-col items-center justify-center h-full w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-bg-surface-2)] rounded-lg hover:bg-[var(--color-bg-surface-3)] active:bg-[var(--color-bg-surface-3)] transition-colors var(--duration-fast) var(--ease-ios) ${isMobile ? 'mobile-nav-item' : ''}`;
   const activeMobileStyle = `text-[var(--color-primary-accent)] font-semibold bg-[var(--color-mobile-nav-item-active-bg)]`;
@@ -587,10 +587,10 @@ NavLink.displayName = "NavLink";
 const UserDropdownMenu: React.FC = () => {
     const { currentUser, logout, setCurrentView } = useAppContext();
     const { t } = useTranslation();
-    // const { theme, toggleTheme } = useTheme(); // Replaced by ThemeToggleSwitch
     const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
     const userDropdownRef = useRef<HTMLDivElement>(null);
     const location = useLocation();
+    const generalSettingsIconUrl = "https://img.icons8.com/?size=256&id=s5NUIabJrb4C&format=png"; // General settings icon
 
     useEffect(() => {
         if (!isUserDropdownOpen) return;
@@ -664,7 +664,7 @@ const UserDropdownMenu: React.FC = () => {
                                     ${isProfileActive ? 'bg-[var(--color-primary-accent)]/20 text-[var(--color-primary-accent)]' : 'text-[var(--color-text-body)] hover:text-[var(--color-primary-accent)]'}`}
                         role="menuitem"
                     >
-                        <UserCircleIcon className="w-4 h-4 mr-3 flex-shrink-0" strokeWidth={2}/>
+                        <UserCircleIcon className="w-4 h-4 mr-3 flex-shrink-0" />
                         {t('profile')}
                     </button>
                     <button
@@ -673,7 +673,11 @@ const UserDropdownMenu: React.FC = () => {
                                     ${isSettingsActive ? 'bg-[var(--color-primary-accent)]/20 text-[var(--color-primary-accent)]' : 'text-[var(--color-text-body)] hover:text-[var(--color-primary-accent)]'}`}
                         role="menuitem"
                     >
-                        <SettingsIcon className="w-4 h-4 mr-3 flex-shrink-0 group-hover:rotate-45 transition-transform var(--duration-normal) var(--ease-ios)" strokeWidth={2}/>
+                        <img 
+                            src={generalSettingsIconUrl} 
+                            alt={t('navSettings')} 
+                            className="w-4 h-4 mr-3 flex-shrink-0 group-hover:rotate-12 transition-transform var(--duration-normal) var(--ease-ios)" 
+                        />
                         {t('navSettings')}
                     </button>
                     <ThemeToggleSwitch />
@@ -727,10 +731,11 @@ const AppLayout: React.FC = () => {
     logout, setCurrentView
   } = useAppContext(); 
   const { t } = useTranslation();
-  const { theme } = useTheme(); // Removed toggleTheme, use ThemeToggle component
+  const { theme } = useTheme(); 
   const navigate = useNavigate();
   const location = useLocation();
   const [isMobileProfileOpen, setIsMobileProfileOpen] = useState(false);
+  const generalSettingsIconUrl = "https://img.icons8.com/?size=256&id=s5NUIabJrb4C&format=png"; // General settings icon
   
   const apiKeyWarnings = [];
   if (!isGeminiKeyAvailable) {
@@ -818,7 +823,6 @@ const AppLayout: React.FC = () => {
 
   const MobileProfileSheet: React.FC = () => {
     const sheetId = useId(); 
-    // const { theme, toggleTheme } = useTheme(); // Replaced by ThemeToggleSwitch
     const { t } = useTranslation(); 
     const { logout, setCurrentView, currentUser } = useAppContext();
 
@@ -869,14 +873,18 @@ const AppLayout: React.FC = () => {
                   onClick={() => { setCurrentView('/profile'); setIsMobileProfileOpen(false); }}
                   className="w-full text-left px-4 py-3.5 text-base text-[var(--color-text-body)] hover:bg-[var(--color-bg-surface-2)] active:bg-[var(--color-bg-surface-3)] flex items-center rounded-lg transition-colors var(--duration-fast) var(--ease-ios)"
                 >
-                  <UserCircleIcon className="w-5 h-5 mr-3.5 flex-shrink-0" strokeWidth={2}/>
+                  <UserCircleIcon className="w-5 h-5 mr-3.5 flex-shrink-0" />
                   {t('profile')}
                 </button>
                 <button
                   onClick={() => { setCurrentView('/settings'); setIsMobileProfileOpen(false); }}
                   className="w-full text-left px-4 py-3.5 text-base text-[var(--color-text-body)] hover:bg-[var(--color-bg-surface-2)] active:bg-[var(--color-bg-surface-3)] flex items-center rounded-lg transition-colors var(--duration-fast) var(--ease-ios)"
                 >
-                  <SettingsIcon className="w-5 h-5 mr-3.5 flex-shrink-0" strokeWidth={2}/>
+                   <img 
+                      src={generalSettingsIconUrl} 
+                      alt={t('navSettings')} 
+                      className="w-5 h-5 mr-3.5 flex-shrink-0" 
+                    />
                   {t('navSettings')}
                   <div className="ml-auto flex items-center">
                     <span className="bg-[var(--color-primary-accent)]/20 text-[var(--color-primary-accent)] text-xs px-2 py-0.5 rounded-full">{t('new')}</span>
@@ -929,7 +937,7 @@ const AppLayout: React.FC = () => {
                  <NavLink to="/" end>{t('navHome')}</NavLink>
                 <NavLink to="/dashboard">{t('navDashboard')}</NavLink>
                 <NavLink to="/create">{t('navCreateQuiz')}</NavLink>
-                {currentUser && <NavLink to="/settings">{t('navSettings')}</NavLink>}
+                {/* Settings link removed from PC nav */}
               </nav>
               
               {currentUser && <SyncStatusIndicator />}
@@ -979,39 +987,12 @@ const AppLayout: React.FC = () => {
             <PlusCircleIcon className="w-5 h-5 mb-1"/> <span className="text-xs font-medium">{t('navCreateQuiz')}</span>
           </NavLink>
           
-          {/* Theme toggle for all users on mobile */}
-          <button 
-            onClick={() => { const { toggleTheme: tt } = useTheme(); tt(); }} // Inline hook usage due to render context
-            className="flex flex-col items-center justify-center h-full w-full focus-visible:ring-2 focus-visible:ring-[var(--color-primary-accent)]/70 rounded-lg hover:bg-[var(--color-bg-surface-3)] active:bg-[var(--color-bg-surface-3)] text-[var(--color-text-muted)] hover:text-[var(--color-primary-accent)] transition-colors var(--duration-fast) var(--ease-ios) btn-ripple mobile-nav-item"
-            aria-label={theme === 'dark' ? t('switchToLightTheme') : t('switchToDarkTheme')}
-          >
-            {theme === 'dark' ? 
-              <SunIcon className="w-5 h-5 mb-1" /> : 
-              <MoonIcon className="w-5 h-5 mb-1" />
-            }
-            <span className="text-xs font-medium">{theme === 'dark' ? t('lightMode') : t('darkMode')}</span>
-          </button>
-          
            {currentUser && (
             <NavLink to="/settings" isMobile>
               <SettingsIconMobileNav className="w-5 h-5 mb-1"/> <span className="text-xs font-medium">{t('navSettings')}</span>
             </NavLink>
           )}
-          {currentUser && (
-            <button 
-              onClick={() => setIsMobileProfileOpen(true)}
-              className="flex flex-col items-center justify-center h-full w-full focus-visible:ring-2 focus-visible:ring-[var(--color-primary-accent)]/70 rounded-lg hover:bg-[var(--color-bg-surface-3)] active:bg-[var(--color-bg-surface-3)] text-[var(--color-text-muted)] hover:text-[var(--color-primary-accent)] transition-colors var(--duration-fast) var(--ease-ios) btn-ripple mobile-nav-item"
-              aria-label={t('profile')}
-            >
-              <UserAvatar
-                photoUrl={currentUser.imageUrl}
-                userName={currentUser.name}
-                size="sm" 
-                className="mb-1 border border-[var(--color-border-interactive)] group-hover:border-[var(--color-primary-accent)] transition-colors var(--duration-fast) var(--ease-ios)"
-              />
-              <span className="text-xs font-medium">{t('profile')}</span>
-            </button>
-          )}
+          {/* Profile button (UserAvatar & name) removed from mobile nav */}
         </nav>
 
       <main key={location.pathname} className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 md:py-10 mb-20 md:mb-0"> 
