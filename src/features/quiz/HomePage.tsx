@@ -1,4 +1,5 @@
 
+
 import React, { useState, useRef, ReactNode, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -6,7 +7,7 @@ import { Button, Card, Textarea, Tooltip, LoadingSpinner } from '../../component
 import { useAppContext, useTranslation } from '../../App';
 import { Quiz } from '../../types';
 import { PlusIcon, UserCircleIcon, ChevronRightIcon } from '../../constants';
-import QuizCard from './components/QuizCard';
+import { QuizCard } from './components/QuizCard'; // Changed default to named import
 
 import { translations } from '../../i18n';
 import MathText from '../../components/MathText';
@@ -72,12 +73,12 @@ const FeedbackSection: React.FC = () => {
     >
       <Card
         useGlassEffect
-        className={`max-w-2xl mx-auto shadow-2xl !rounded-2xl !border-slate-700/40`}
+        className={`max-w-2xl mx-auto shadow-2xl !rounded-2xl`} // Removed hardcoded border
       >
         <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 sm:gap-8">
           <div className="flex-1 text-center sm:text-left">
             <motion.h2
-              className={`text-xl sm:text-2xl font-bold text-slate-50 mb-2 sm:mb-3`}
+              className={`text-xl sm:text-2xl font-bold text-[var(--color-text-primary)] mb-2 sm:mb-3`}
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
@@ -86,7 +87,7 @@ const FeedbackSection: React.FC = () => {
               {t('feedbackSectionTitle')}
             </motion.h2>
             <motion.p
-              className={`text-slate-300/80 text-sm sm:text-base mb-4 sm:mb-0`}
+              className={`text-[var(--color-text-secondary)] text-sm sm:text-base mb-4 sm:mb-0`}
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
@@ -105,8 +106,8 @@ const FeedbackSection: React.FC = () => {
           >
             {currentUser ? (
               <div className="space-y-4">
-                <Textarea // Changed from Input to Textarea for multi-line feedback
-                  label={<span className="text-sm font-medium text-slate-200">{t('feedbackTextareaLabel')}</span>}
+                <Textarea 
+                  label={<span className="text-sm font-medium text-[var(--color-text-secondary)]">{t('feedbackTextareaLabel')}</span>}
                   value={feedbackText}
                   onChange={(e) => setFeedbackText(e.target.value)}
                   placeholder={t('feedbackTextareaPlaceholder')}
@@ -125,10 +126,10 @@ const FeedbackSection: React.FC = () => {
                 </Button>
               </div>
             ) : (
-              <div className="text-center bg-slate-700/50 p-5 sm:p-6 rounded-xl border border-slate-600/70 shadow-inner">
-                <UserCircleIcon className="w-12 h-12 sm:w-16 sm:h-16 text-slate-500 mx-auto mb-4 sm:mb-6" />
-                <p className="text-base sm:text-lg font-semibold text-slate-200 mb-2 sm:mb-3">{t('feedbackLoginPromptTitle')}</p>
-                <p className="text-slate-400 text-xs sm:text-sm mb-6 sm:mb-8 max-w-md mx-auto">{t('feedbackLoginPromptSubtitle')}</p>
+              <div className="text-center bg-[var(--color-bg-surface-2)]/70 p-5 sm:p-6 rounded-xl border border-[var(--color-border-default)] shadow-inner">
+                <UserCircleIcon className="w-12 h-12 sm:w-16 sm:h-16 text-[var(--color-text-muted)] mx-auto mb-4 sm:mb-6" />
+                <p className="text-base sm:text-lg font-semibold text-[var(--color-text-primary)] mb-2 sm:mb-3">{t('feedbackLoginPromptTitle')}</p>
+                <p className="text-[var(--color-text-secondary)] text-xs sm:text-sm mb-6 sm:mb-8 max-w-md mx-auto">{t('feedbackLoginPromptSubtitle')}</p>
                 <Button
                   onClick={() => setCurrentView('/signin')}
                   variant="primary"
@@ -195,8 +196,8 @@ const HomePage: React.FC = () => {
         <>
           <section
             className={`relative text-center py-20 md:py-28 rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl
-            bg-gradient-to-br from-sky-600/20 via-slate-800/50 to-purple-600/20
-            border border-slate-700/40`}
+            bg-gradient-to-br from-[var(--color-primary-accent)]/20 via-[var(--color-bg-surface-1)]/50 to-[var(--color-secondary-accent)]/20
+            border border-[var(--color-border-default)]`} // Themed gradient and border
           >
             <motion.div
               className="relative z-10 container mx-auto px-4"
@@ -206,13 +207,13 @@ const HomePage: React.FC = () => {
             >
               <motion.h1
                 variants={heroItemVariants}
-                className={`text-3xl sm:text-4xl md:text-5xl xl:text-6xl font-extrabold text-slate-50 leading-tight mb-6 sm:mb-8`}
+                className={`text-3xl sm:text-4xl md:text-5xl xl:text-6xl font-extrabold text-[var(--color-text-primary)] leading-tight mb-6 sm:mb-8`}
               >
-                {t('heroTitle').split(': ')[0]}: <br className="sm:hidden" /> <span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-400 via-indigo-400 to-purple-400">{t('heroTitle').split(': ')[1]}</span>
+                {t('heroTitle').split(': ')[0]}: <br className="sm:hidden" /> <span className="text-transparent bg-clip-text bg-gradient-to-r from-[var(--color-primary-accent)] via-indigo-400 to-purple-400">{t('heroTitle').split(': ')[1]}</span>
               </motion.h1>
               <motion.p
                 variants={heroItemVariants}
-                className={`text-sm sm:text-base md:text-lg text-slate-300/80 max-w-xl md:max-w-2xl xl:max-w-3xl mx-auto mb-10 sm:mb-12`}
+                className={`text-sm sm:text-base md:text-lg text-[var(--color-text-secondary)] max-w-xl md:max-w-2xl xl:max-w-3xl mx-auto mb-10 sm:mb-12`}
               >
                 {t('heroSubtitle')}
               </motion.p>
@@ -222,7 +223,7 @@ const HomePage: React.FC = () => {
                   variant="primary"
                   onClick={() => setCurrentView('/create')}
                   leftIcon={<PlusIcon className="w-5 h-5" strokeWidth={2.5}/>}
-                  className="shadow-2xl hover:shadow-sky-400/50 focus:ring-offset-transparent py-3 px-8 sm:py-3.5 sm:px-10 text-sm sm:text-base rounded-xl"
+                  className="shadow-2xl hover:shadow-[var(--color-primary-accent)]/50 focus:ring-offset-transparent py-3 px-8 sm:py-3.5 sm:px-10 text-sm sm:text-base rounded-xl"
                 >
                   {heroButtonText}
                 </Button>
@@ -237,20 +238,20 @@ const HomePage: React.FC = () => {
     return (
       <div className="relative"> {/* Wrapper for potential loading overlay */}
         {contextIsLoading && quizCountForDisplay > 0 && ( // Loading overlay if quizzes exist but context is refreshing
-          <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm rounded-xl z-10 flex items-center justify-center">
+          <div className="absolute inset-0 bg-[var(--color-bg-body)]/50 backdrop-blur-sm rounded-xl z-10 flex items-center justify-center">
             <LoadingSpinner text={t('homeSyncingQuizzesMessage')} size="lg" />
           </div>
         )}
         <div className={contextIsLoading && quizCountForDisplay > 0 ? 'opacity-50' : ''}> {/* Apply opacity if overlay is active */}
           {quizCountForDisplay > 0 && (
             <section className="animate-fadeInUp">
-              <Card useGlassEffect className={`!p-6 sm:!p-8 text-center sm:text-left !rounded-2xl shadow-2xl !border-slate-700/40`}>
+              <Card useGlassEffect className={`!p-6 sm:!p-8 text-center sm:text-left !rounded-2xl shadow-2xl`}> 
                 <div className="flex flex-col sm:flex-row justify-between items-center gap-6">
                   <div>
-                    <h1 className="text-2xl sm:text-3xl font-bold text-slate-50 mb-2">
+                    <h1 className="text-2xl sm:text-3xl font-bold text-[var(--color-text-primary)] mb-2">
                       {currentUser ? t('homeDashboardUserTitle', { name: currentUser.name || t('user') }) : t('homeDashboardTitle')}
                     </h1>
-                    <p className="text-slate-300 text-sm sm:text-base">
+                    <p className="text-[var(--color-text-secondary)] text-sm sm:text-base">
                       {t('homeStatsQuizzes', { count: quizCountForDisplay })}
                     </p>
                   </div>
@@ -260,7 +261,7 @@ const HomePage: React.FC = () => {
                       size="lg"
                       onClick={() => navigate('/create')}
                       leftIcon={<PlusIcon className="w-5 h-5" strokeWidth={2.5} />}
-                      className="shadow-xl hover:shadow-sky-400/50 py-3 px-7 rounded-xl w-full sm:w-auto flex-shrink-0"
+                      className="shadow-xl hover:shadow-[var(--color-primary-accent)]/50 py-3 px-7 rounded-xl w-full sm:w-auto flex-shrink-0"
                     >
                       {t('dashboardCreateNew')}
                     </Button>
@@ -273,11 +274,11 @@ const HomePage: React.FC = () => {
           {recentQuizzesForDisplay.length > 0 && (
             <section className="animate-fadeInUp">
               <div className={`flex flex-wrap justify-between items-center mb-6 sm:mb-8 gap-4`}>
-                <h2 className="text-2xl sm:text-3xl font-semibold text-slate-100">
+                <h2 className="text-2xl sm:text-3xl font-semibold text-[var(--color-text-primary)]">
                   {t('homeRecentQuizzesTitle')}
                 </h2>
                 {quizCountForDisplay > MAX_RECENT_QUIZZES_HOME && (
-                  <Button variant="link" onClick={() => navigate('/dashboard')} className="text-sm text-sky-300 hover:text-sky-200" rightIcon={<ChevronRightIcon className="w-4 h-4" />}>
+                  <Button variant="link" onClick={() => navigate('/dashboard')} className="text-sm !text-[var(--color-primary-accent)] hover:!text-[var(--color-primary-accent-hover)]" rightIcon={<ChevronRightIcon className="w-4 h-4" />}>
                     {t('homeViewAllQuizzes')}
                   </Button>
                 )}
@@ -289,7 +290,7 @@ const HomePage: React.FC = () => {
               </div>
               {quizCountForDisplay > 0 && quizCountForDisplay <= MAX_RECENT_QUIZZES_HOME && (
                 <div className={`mt-8 sm:mt-10 text-center`}>
-                  <Button variant="secondary" onClick={() => navigate('/dashboard')} size="md" className="py-2.5 px-6 rounded-lg shadow-lg hover:shadow-slate-900/50" rightIcon={<ChevronRightIcon className="w-4 h-4" />}>
+                  <Button variant="secondary" onClick={() => navigate('/dashboard')} size="md" className="py-2.5 px-6 rounded-lg shadow-lg" rightIcon={<ChevronRightIcon className="w-4 h-4" />}>
                     {t('homeViewAllQuizzes')}
                   </Button>
                 </div>
@@ -299,7 +300,7 @@ const HomePage: React.FC = () => {
            {(quizCountForDisplay === 0 && contextIsLoading) && ( // Case where buffer is empty AND context is loading
               <div className="flex flex-col items-center justify-center min-h-[300px] text-center">
                 <LoadingSpinner text={t('loading')} size="xl" />
-                <p className="mt-4 text-slate-400">{t('homeInitialLoadMessage')}</p>
+                <p className="mt-4 text-[var(--color-text-secondary)]">{t('homeInitialLoadMessage')}</p>
               </div>
             )}
         </div>

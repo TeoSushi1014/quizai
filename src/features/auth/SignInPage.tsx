@@ -104,25 +104,25 @@ const SignInPage: React.FC = () => {
         className="max-w-md w-full text-center shadow-2xl p-8 sm:p-10 md:p-12 !rounded-2xl" 
         useGlassEffect={true}
       >
-        <h1 className="text-2xl sm:text-3xl font-bold text-slate-50 mb-4 mt-8 sm:mt-10">{t('signInTitle')}</h1>
-        <p className="text-slate-300/80 mb-10 text-sm">{t('signInSubtitle')}</p>
+        <h1 className="text-2xl sm:text-3xl font-bold text-[var(--color-text-primary)] mb-4 mt-8 sm:mt-10">{t('signInTitle')}</h1>
+        <p className="text-[var(--color-text-secondary)] mb-10 text-sm">{t('signInSubtitle')}</p>
         
         <div className="flex justify-center mb-8">
             <Button
               onClick={handleCustomGoogleLoginClick}
-              variant="outline" 
+              variant="subtle" 
               size="lg" 
               leftIcon={<img src="https://img.icons8.com/color/48/google-logo.png" alt="Google" className="w-5 h-5" />}
-              className="w-full max-w-xs sm:w-[280px] !justify-start !text-slate-200 !bg-slate-700/60 hover:!bg-slate-600/80 !border-slate-600 hover:!border-slate-500 !px-4 !py-3 !rounded-lg shadow-md"
+              className="w-full max-w-xs sm:w-[280px] !justify-start !text-[var(--color-text-primary)] hover:!bg-[var(--color-bg-surface-3)] !border-[var(--color-border-interactive)] hover:!border-[var(--color-border-strong)] !px-4 !py-3 !rounded-lg shadow-md"
             >
               <span className="ml-3 text-sm font-medium">{t('loginWithGoogle')}</span>
             </Button>
         </div>
         
-        <p className="text-xs text-slate-400/80">
+        <p className="text-xs text-[var(--color-text-muted)]">
           {t('signInAgreementPrompt')} {' '}
-          <a href="#" className="text-sky-400 hover:underline font-medium">{t('footerTerms')}</a> {t('and')} {' '}
-          <a href="#" className="text-sky-400 hover:underline font-medium">{t('footerPrivacy')}</a>.
+          <a href="#" className="text-[var(--color-primary-accent)] hover:underline font-medium">{t('footerTerms')}</a> {t('and')} {' '}
+          <a href="#" className="text-[var(--color-primary-accent)] hover:underline font-medium">{t('footerPrivacy')}</a>.
         </p>
       </Card>
     </div>

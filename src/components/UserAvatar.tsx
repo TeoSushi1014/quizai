@@ -1,11 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
 
-// Note: UserCircleIcon was in the user's original import example but commented out,
-// and the fallback implemented uses initials. If UserCircleIcon were needed, it would be:
-// import { UserCircleIcon } from '../constants';
-
-
 type UserAvatarProps = {
   photoUrl?: string | null;
   userName?: string | null;
@@ -25,10 +20,10 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
   useEffect(() => {
     if (photoUrl) {
       setCurrentImageUrl(photoUrl);
-      setImageError(false); // Reset error if new photoUrl is provided
+      setImageError(false); 
     } else {
-      setCurrentImageUrl(''); // Clear if photoUrl becomes null/undefined
-      setImageError(false); // No error if there's no URL to load
+      setCurrentImageUrl(''); 
+      setImageError(false); 
     }
   }, [photoUrl]);
 
@@ -44,7 +39,7 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
   if (!currentImageUrl || imageError) {
     return (
       <div
-        className={`${sizeClass} rounded-full bg-sky-600 flex items-center justify-center text-white font-semibold text-lg ${className}`}
+        className={`${sizeClass} rounded-full bg-[var(--color-primary-accent)] flex items-center justify-center text-[var(--color-primary-accent-text)] font-semibold text-lg ${className}`}
         aria-label={userName ? `${userName}'s avatar fallback` : 'User avatar fallback'}
       >
         {initials}
@@ -61,7 +56,7 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
         console.error('Failed to load avatar image from URL:', currentImageUrl);
         setImageError(true);
       }}
-      referrerPolicy="no-referrer" // Added for Google images
+      referrerPolicy="no-referrer" 
     />
   );
 };

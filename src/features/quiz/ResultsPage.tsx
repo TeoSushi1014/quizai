@@ -50,46 +50,46 @@ const QuestionResultItem: React.FC<QuestionResultItemProps> = ({
     >
       <Accordion
         initiallyOpen={initiallyOpen}
-        containerClassName={`!rounded-xl shadow-lg ${isCorrect ? `!border-green-500/60` : `!border-red-500/60`}`}
+        containerClassName={`!rounded-xl shadow-lg ${isCorrect ? `!border-green-500/60` : `!border-red-500/60`}`} // Status borders
         title={
           <div className="flex items-center w-full gap-3">
-            <span className="text-xs text-slate-400 font-semibold">Q{index + 1}.</span>
-            <span className={`flex-grow text-sm sm:text-base ${isCorrect ? 'text-slate-200' : 'text-slate-100 font-semibold'} min-w-0 break-words`} title={question.questionText}>
+            <span className="text-xs text-[var(--color-text-muted)] font-semibold">Q{index + 1}.</span>
+            <span className={`flex-grow text-sm sm:text-base ${isCorrect ? 'text-[var(--color-text-secondary)]' : 'text-[var(--color-text-primary)] font-semibold'} min-w-0 break-words`} title={question.questionText}>
               <MathText text={question.questionText} />
             </span>
           </div>
         }
-        titleClassName={`py-3.5 px-4 sm:px-5 rounded-t-xl ${isCorrect ? `hover:!bg-green-400/15` : `hover:!bg-red-400/15`}`}
-        contentClassName={`!bg-slate-700/30`}
+        titleClassName={`py-3.5 px-4 sm:px-5 rounded-t-xl ${isCorrect ? `hover:!bg-green-400/15` : `hover:!bg-red-400/15`}`} // Themed hover
+        contentClassName={`!bg-[var(--color-bg-surface-2)]/30`} // Themed content bg
       >
         <div className="space-y-4 text-sm sm:text-base">
-          <p className="text-slate-300">
-            <strong className="font-semibold text-slate-100">{t('resultsYourAnswer')} </strong>
+          <p className="text-[var(--color-text-secondary)]">
+            <strong className="font-semibold text-[var(--color-text-primary)]">{t('resultsYourAnswer')} </strong>
             <span className={`${isCorrect ? 'text-green-400 font-medium' : 'text-red-400 font-medium'} break-words`}>
               <MathText text={userAnswerText || t('resultsNotAnswered')} />
             </span>
           </p>
           {!isCorrect && (
-            <p className="text-slate-300">
-              <strong className="font-semibold text-slate-100">{t('resultsCorrectAnswerMC')} </strong>
+            <p className="text-[var(--color-text-secondary)]">
+              <strong className="font-semibold text-[var(--color-text-primary)]">{t('resultsCorrectAnswerMC')} </strong>
               <span className="text-green-400 font-medium break-words">
                 <MathText text={question.correctAnswer} />
               </span>
             </p>
           )}
-          <div className="mt-5 pt-5 border-t border-slate-600/70">
-            <p className="flex items-start text-base font-semibold text-sky-300 mb-2.5">
+          <div className="mt-5 pt-5 border-t border-[var(--color-border-default)]">
+            <p className="flex items-start text-base font-semibold text-[var(--color-primary-accent)] mb-2.5">
               <img src={explanationIconUrl} alt={t('resultsExplanationTitle')} className="w-5 h-5 mr-3 flex-shrink-0 mt-0.5" />
               {t('resultsExplanationTitle')}
             </p>
-            <div className="text-slate-300/90 leading-relaxed whitespace-pre-wrap break-words">
+            <div className="text-[var(--color-text-body)]/90 leading-relaxed whitespace-pre-wrap break-words">
               <MathText text={question.explanation || t('resultsNoExplanation')} />
             </div>
           </div>
           {sourceContentSnippet && (
-            <details className="mt-5 pt-5 border-t border-slate-600/70">
-              <summary className="text-xs text-slate-400 cursor-pointer hover:text-sky-300 flex items-center font-semibold group transition-colors var(--duration-fast) var(--ease-ios)"> <DocumentTextIcon className="w-4 h-4 mr-2.5 text-slate-500 group-hover:text-sky-400 transition-colors var(--duration-fast) var(--ease-ios)" strokeWidth={2} /> {t('resultsViewSourceSnippet')} </summary>
-              <blockquote className={`mt-3 text-xs text-slate-400/80 max-h-36 overflow-y-auto p-3.5 bg-slate-700/60 border border-slate-600/60 rounded-lg shadow-inner italic`}>
+            <details className="mt-5 pt-5 border-t border-[var(--color-border-default)]">
+              <summary className="text-xs text-[var(--color-text-muted)] cursor-pointer hover:text-[var(--color-primary-accent)] flex items-center font-semibold group transition-colors var(--duration-fast) var(--ease-ios)"> <DocumentTextIcon className="w-4 h-4 mr-2.5 text-[var(--color-text-muted)] group-hover:text-[var(--color-primary-accent)] transition-colors var(--duration-fast) var(--ease-ios)" strokeWidth={2} /> {t('resultsViewSourceSnippet')} </summary>
+              <blockquote className={`mt-3 text-xs text-[var(--color-text-muted)]/80 max-h-36 overflow-y-auto p-3.5 bg-[var(--color-bg-surface-2)]/60 border border-[var(--color-border-default)] rounded-lg shadow-inner italic`}>
                 <MathText text={sourceContentSnippet} />
               </blockquote>
             </details>
@@ -146,12 +146,6 @@ const ResultsPage: React.FC = () => {
   const { t } = useTranslation();
   const { quizId: paramQuizId } = useParams<{ quizId: string }>();
   const navigate = useNavigate();
-
-  // Removed refs and visibility states for framer-motion
-  // pageCardRef, isPageCardVisible
-  // summaryCardRef, isSummaryCardVisible
-  // breakdownTitleRef, isBreakdownTitleVisible
-  // actionsRef, areActionsVisible
 
   const [currentDisplayQuiz, setCurrentDisplayQuiz] = useState<Quiz | null>(null);
   const [isLoadingQuizData, setIsLoadingQuizData] = useState(true);
@@ -213,8 +207,8 @@ const ResultsPage: React.FC = () => {
         className="flex flex-col items-center justify-center min-h-[calc(100vh-380px)] text-center p-5"
       >
         <XCircleIcon className="w-16 h-16 text-red-400/80 mb-6" />
-        <p className="text-xl font-semibold text-slate-200 mb-3">{t('error')}</p>
-        <p className="text-base text-slate-400 mb-10 max-w-md">{errorState}</p>
+        <p className="text-xl font-semibold text-[var(--color-text-primary)] mb-3">{t('error')}</p>
+        <p className="text-base text-[var(--color-text-secondary)] mb-10 max-w-md">{errorState}</p>
         <Button onClick={() => navigate('/dashboard')} variant="secondary" size="lg" className="py-3 px-7 rounded-xl"> {t('resultsGoToDashboard')} </Button>
      </motion.div>
    );
@@ -230,8 +224,8 @@ const ResultsPage: React.FC = () => {
         className="flex flex-col items-center justify-center min-h-[calc(100vh-380px)] text-center p-5"
       >
         <XCircleIcon className="w-16 h-16 text-red-400/80 mb-6" />
-        <p className="text-xl font-semibold text-slate-200 mb-3">{t('error')}</p>
-        <p className="text-base text-slate-400 mb-10 max-w-md">{t('resultsErrorNotFound', { quizId: paramQuizId || "unknown" })} (Unexpected)</p>
+        <p className="text-xl font-semibold text-[var(--color-text-primary)] mb-3">{t('error')}</p>
+        <p className="text-base text-[var(--color-text-secondary)] mb-10 max-w-md">{t('resultsErrorNotFound', { quizId: paramQuizId || "unknown" })} (Unexpected)</p>
         <Button onClick={() => navigate('/dashboard')} variant="secondary" size="lg" className="py-3.5 px-8 rounded-xl"> {t('resultsGoToDashboard')} </Button>
      </motion.div>
    );
@@ -248,7 +242,7 @@ const ResultsPage: React.FC = () => {
       >
         <XCircleIcon className="w-16 h-16 text-red-400/80 mb-6" />
         <p className="text-xl font-semibold text-red-400 mb-4">Critical Error: Data Mismatch</p>
-        <p className="text-sm text-slate-500">Displayed Quiz ID: {currentDisplayQuiz.id}, Result Quiz ID: {quizResult.quizId}</p>
+        <p className="text-sm text-[var(--color-text-muted)]">Displayed Quiz ID: {currentDisplayQuiz.id}, Result Quiz ID: {quizResult.quizId}</p>
         <Button onClick={() => navigate('/dashboard')} variant="secondary" size="lg" className="py-3.5 px-8 rounded-xl mt-6"> {t('resultsGoToDashboard')} </Button>
      </motion.div>
    );
@@ -277,32 +271,32 @@ const ResultsPage: React.FC = () => {
       animate="visible"
       variants={pageContainerVariants}
     >
-      <Card className="max-w-4xl mx-auto shadow-2xl !border-slate-700/40 !rounded-2xl" useGlassEffect>
-        <motion.h1 variants={itemVariants} className="text-3xl sm:text-4xl font-bold text-slate-50 mb-4 text-center leading-tight tracking-tight line-clamp-2" title={currentDisplayQuiz.title}>
+      <Card className="max-w-4xl mx-auto shadow-2xl !rounded-2xl" useGlassEffect>
+        <motion.h1 variants={itemVariants} className="text-3xl sm:text-4xl font-bold text-[var(--color-text-primary)] mb-4 text-center leading-tight tracking-tight line-clamp-2" title={currentDisplayQuiz.title}>
           <MathText text={pageTitle} />
         </motion.h1>
-        <motion.p variants={itemVariants} className="text-base text-slate-300/80 mb-12 text-center">
+        <motion.p variants={itemVariants} className="text-base text-[var(--color-text-secondary)] mb-12 text-center">
             {sourceMode === 'practice' ? t('practiceSummarySubtitle') : t('resultsSubtitle')}
         </motion.p>
 
         <motion.div variants={itemVariants}>
-          <Card className={`mb-12 !bg-slate-700/70 shadow-xl !border-slate-600/60 p-0 overflow-hidden !rounded-2xl`} useGlassEffect={false}>
-            <div className={`flex flex-col md:flex-row justify-around items-center text-center gap-8 p-6 sm:p-10 !bg-slate-800/60`}>
+          <Card className={`mb-12 !bg-[var(--color-bg-surface-2)]/70 shadow-xl !border-[var(--color-border-default)] p-0 overflow-hidden !rounded-2xl`} useGlassEffect={false}>
+            <div className={`flex flex-col md:flex-row justify-around items-center text-center gap-8 p-6 sm:p-10 !bg-[var(--color-bg-surface-1)]/60`}>
               <div className="flex flex-col items-center">
-                <p className="text-sm text-slate-400 uppercase tracking-wider font-medium mb-1.5">{t('resultsYourScore')}</p>
+                <p className="text-sm text-[var(--color-text-muted)] uppercase tracking-wider font-medium mb-1.5">{t('resultsYourScore')}</p>
                 <p className={`text-6xl sm:text-7xl font-extrabold ${scoreColor} tracking-tight`}>{score.toFixed(0)}<span className="text-4xl">%</span></p>
               </div>
-              <div className={`w-full md:w-px h-px md:h-24 bg-slate-600/70 my-3 md:my-0`}></div>
+              <div className={`w-full md:w-px h-px md:h-24 bg-[var(--color-border-default)] my-3 md:my-0`}></div>
               <div className="flex flex-col items-center">
-                <p className="text-sm text-slate-400 uppercase tracking-wider font-medium mb-1.5">{t('resultsCorrectAnswers')}</p>
-                <p className="text-5xl sm:text-6xl font-bold text-slate-100">{totalCorrect} <span className="text-3xl text-slate-400/80">/ {totalQuestions}</span></p>
+                <p className="text-sm text-[var(--color-text-muted)] uppercase tracking-wider font-medium mb-1.5">{t('resultsCorrectAnswers')}</p>
+                <p className="text-5xl sm:text-6xl font-bold text-[var(--color-text-primary)]">{totalCorrect} <span className="text-3xl text-[var(--color-text-muted)]/80">/ {totalQuestions}</span></p>
               </div>
             </div>
             <ProgressBar progress={score} className="w-full rounded-b-2xl overflow-hidden" size="lg" barClassName={`${scoreProgressGradient} !h-3.5`} showPercentage={false} />
           </Card>
         </motion.div>
 
-        <motion.h2 variants={itemVariants} className={`text-2xl sm:text-3xl font-semibold text-slate-100 mb-8 sm:mb-10`}>{t('resultsBreakdownTitle')}</motion.h2>
+        <motion.h2 variants={itemVariants} className={`text-2xl sm:text-3xl font-semibold text-[var(--color-text-primary)] mb-8 sm:mb-10`}>{t('resultsBreakdownTitle')}</motion.h2>
         
         <motion.div 
             variants={listContainerVariants} // This will stagger its children (QuestionResultItem)
@@ -343,7 +337,7 @@ const ResultsPage: React.FC = () => {
           <Button onClick={() => navigate('/dashboard')} variant="secondary" size="lg" leftIcon={<HomeIcon className="w-5 h-5"/>} className="w-full sm:w-auto py-3 px-8 rounded-xl">
              {t('resultsBackToDashboard')}
           </Button>
-          <Button onClick={() => navigate('/create')} variant="primary" size="lg" leftIcon={<PlusCircleIcon className="w-5 h-5" />} className="w-full sm:w-auto bg-gradient-to-r from-sky-500 to-indigo-500 hover:from-sky-600 hover:to-indigo-600 text-white shadow-xl py-3 px-8 rounded-xl">
+          <Button onClick={() => navigate('/create')} variant="primary" size="lg" leftIcon={<PlusCircleIcon className="w-5 h-5" />} className="w-full sm:w-auto bg-gradient-to-r from-[var(--color-primary-accent)] to-indigo-500 hover:from-[var(--color-primary-accent-hover)] hover:to-indigo-600 text-white shadow-xl py-3 px-8 rounded-xl">
             {t('resultsCreateNewQuiz')}
           </Button>
         </motion.div>

@@ -34,7 +34,7 @@ interface QuizCardProps {
   animationDelay?: number; 
 }
 
-const QuizCard: React.FC<QuizCardProps> = ({ quiz, onDelete, onEditQuiz, animationDelay = 0 }) => {
+export const QuizCard: React.FC<QuizCardProps> = ({ quiz, onDelete, onEditQuiz, animationDelay = 0 }) => {
   const { t, language } = useTranslation();
   const [isConfirmDeleteModalOpen, setIsConfirmDeleteModalOpen] = useState(false);
   const [isAttemptSettingsModalOpen, setIsAttemptSettingsModalOpen] = useState(false);
@@ -138,20 +138,20 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onDelete, onEditQuiz, animati
   const settingsIconUrl = "https://img.icons8.com/?size=256&id=s5NUIabJrb4C&format=png";
   
   let shareButtonIcon;
-  let shareButtonCustomClass = "";
+  let shareButtonCustomClass = "text-[var(--color-text-secondary)] opacity-80 hover:text-[var(--color-success-accent)] hover:bg-[var(--color-success-accent)]/10 hover:!border-[var(--color-success-accent)]/70";
 
   switch (shareFeedback.type) {
     case 'copied':
-      shareButtonIcon = <CheckCircleIcon className="w-4 h-4 text-green-400" />;
-      shareButtonCustomClass = "text-green-400 bg-green-400/10 !border-green-400/70 hover:!border-green-400";
+      shareButtonIcon = <CheckCircleIcon className="w-4 h-4 text-[var(--color-success-accent)]" />;
+      shareButtonCustomClass = "text-[var(--color-success-accent)] bg-[var(--color-success-accent)]/10 !border-[var(--color-success-accent)]/70 hover:!border-[var(--color-success-accent)]";
       break;
     case 'failed':
-      shareButtonIcon = <XCircleIcon className="w-4 h-4 text-red-400" />;
-      shareButtonCustomClass = "text-red-400 bg-red-400/10 !border-red-400/70 hover:!border-red-400";
+      shareButtonIcon = <XCircleIcon className="w-4 h-4 text-[var(--color-danger-accent)]" />;
+      shareButtonCustomClass = "text-[var(--color-danger-accent)] bg-[var(--color-danger-accent)]/10 !border-[var(--color-danger-accent)]/70 hover:!border-[var(--color-danger-accent)]";
       break;
     default: // idle
       shareButtonIcon = <ShareIcon className="w-4 h-4"/>;
-      shareButtonCustomClass = "text-slate-300 opacity-80 hover:text-green-400 hover:bg-green-400/10 hover:border-green-400/70";
+      // Default class is already set
       break;
   }
 
@@ -174,44 +174,43 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onDelete, onEditQuiz, animati
         >
           <div className="p-4 sm:p-6 flex-grow pb-4">
             <h3
-                className="text-base sm:text-lg font-semibold text-slate-50 mb-3 group-hover:text-sky-300 line-clamp-2 transition-colors var(--duration-fast) var(--ease-ios)"
+                className="text-base sm:text-lg font-semibold text-[var(--color-text-primary)] mb-3 group-hover:text-[var(--color-primary-accent)] line-clamp-2 transition-colors var(--duration-fast) var(--ease-ios)"
                 title={quiz.title}
             >
                 <MathText text={quiz.title} />
             </h3>
             <div className="mb-3 space-y-2">
-                <div className="text-sm sm:text-xs text-slate-300 opacity-80 flex items-center flex-wrap gap-x-3.5 gap-y-2">
-                    <span className="font-medium text-slate-200">{t('dashboardQuizCardQuestions', { count: quiz.questions.length })}</span>
-                    <span className="text-slate-600 text-lg">•</span>
-                    <span className={`px-2.5 py-1 rounded-full font-semibold shadow-sm bg-sky-400/20 text-sky-300`}>{difficultyText}</span>
+                <div className="text-sm sm:text-xs text-[var(--color-text-secondary)] opacity-90 flex items-center flex-wrap gap-x-3.5 gap-y-2">
+                    <span className="font-medium text-[var(--color-text-primary)]">{t('dashboardQuizCardQuestions', { count: quiz.questions.length })}</span>
+                    <span className="text-[var(--color-text-muted)] text-lg">•</span>
+                    <span className={`px-2.5 py-1 rounded-full font-semibold shadow-sm bg-[var(--color-primary-accent)]/20 text-[var(--color-primary-accent)]`}>{difficultyText}</span>
                      {quiz.config?.language && <>
-                        <span className="text-slate-600 text-lg">•</span>
-                        <span className={`uppercase text-[0.7rem] sm:text-xs font-bold tracking-wider px-2.5 py-1 rounded-full shadow-sm bg-indigo-400/20 text-indigo-300`}>{quiz.config.language.substring(0,2)}</span>
+                        <span className="text-[var(--color-text-muted)] text-lg">•</span>
+                        <span className={`uppercase text-[0.7rem] sm:text-xs font-bold tracking-wider px-2.5 py-1 rounded-full shadow-sm bg-purple-500/20 text-purple-400`}>{quiz.config.language.substring(0,2)}</span>
                      </>}
                 </div>
                 {quiz.sourceContentSnippet && (
-                    <p className="text-sm sm:text-xs text-slate-300 opacity-80 italic line-clamp-1" title={quiz.sourceContentSnippet}>
+                    <p className="text-sm sm:text-xs text-[var(--color-text-secondary)] opacity-90 italic line-clamp-1" title={quiz.sourceContentSnippet}>
                        {t('dashboardQuizCardSource', { snippet: '' })}<MathText text={quiz.sourceContentSnippet} />
                     </p>
                 )}
-                 <p className="text-sm sm:text-xs text-slate-300 opacity-80 pt-1">{dateLabel}</p>
+                 <p className="text-sm sm:text-xs text-[var(--color-text-secondary)] opacity-90 pt-1">{dateLabel}</p>
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-2.5 items-stretch sm:items-center justify-between mt-auto border-t border-slate-700/50 p-3 sm:p-4 bg-slate-800/30 rounded-b-2xl">
-            {/* Row 1 for mobile: Take Quiz & Practice */}
+          <div className="flex flex-col sm:flex-row gap-2.5 items-stretch sm:items-center justify-between mt-auto border-t border-[var(--color-border-default)] p-3 sm:p-4 bg-[var(--color-bg-surface-1)]/30 rounded-b-2xl">
             <div className="flex gap-2.5 w-full sm:w-auto">
               <Button
                 size="sm" 
                 variant="primary"
                 onClick={() => handleStartQuiz('take')}
-                className="flex-grow sm:flex-grow-0 shadow-lg hover:shadow-sky-400/40 py-2.5 px-4 sm:py-2 sm:px-4 rounded-lg min-h-[44px]"
+                className="flex-grow sm:flex-grow-0 shadow-lg hover:shadow-[var(--color-primary-accent)]/40 py-2.5 px-4 sm:py-2 sm:px-4 rounded-lg min-h-[44px]"
               >
                 {t('dashboardQuizCardTakeQuiz')}
               </Button>
               <Button
                 size="sm" 
-                variant="secondary"
+                variant="secondary" // Consider making a new "practice" variant or styling more distinctively
                 onClick={() => handleStartQuiz('practice')}
                 className="flex-grow sm:flex-grow-0 py-2.5 px-4 sm:py-2 sm:px-4 rounded-lg bg-purple-500/80 hover:bg-purple-500 text-white hover:shadow-purple-400/40 min-h-[44px]"
               >
@@ -219,57 +218,53 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onDelete, onEditQuiz, animati
               </Button>
             </div>
 
-            {/* Row 2 for mobile: Icon buttons, now grouped */}
             <div className="flex flex-wrap gap-x-2 gap-y-2 w-full sm:w-auto justify-between sm:justify-end items-center">
-              {/* Group 1: Edit & Settings */}
               <div className="flex items-center gap-x-2">
                 <Tooltip content={t('edit')} wrapperClassName="inline-flex">
                   <Button
                     size="sm"
                     variant="outline"
                     onClick={() => onEditQuiz(quiz)}
-                    className="!p-2.5 rounded-lg border-slate-500/70 hover:border-sky-400 min-w-[40px] min-h-[40px]"
+                    className="!p-2.5 rounded-lg !border-[var(--color-border-interactive)] hover:!border-[var(--color-primary-accent)] min-w-[40px] min-h-[40px]"
                     aria-label={t('edit')}
                   >
-                    <EditIcon className="w-4 h-4" strokeWidth={1.5} />
-                  </Button>
-                </Tooltip>
-                <Tooltip content={t('settings')} wrapperClassName="inline-flex">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={openAttemptSettingsModal}
-                    className="!p-2.5 rounded-lg border-slate-500/70 hover:border-sky-400 min-w-[40px] min-h-[40px]"
-                    aria-label={t('settings')}
-                  >
-                    <img src={settingsIconUrl} alt={t('settings')} className="w-4 h-4" />
-                  </Button>
-                </Tooltip>
-              </div>
-              
-              {/* Group 2: Share & Delete */}
-              <div className="flex items-center gap-x-2">
-                <Tooltip content={shareFeedback.message} wrapperClassName="inline-flex"> 
-                  <Button 
-                    size="sm" 
-                    variant="outline" 
-                    onClick={handleShareQuiz} 
-                    className={`!p-2.5 rounded-lg border-slate-500/70 min-w-[40px] min-h-[40px] ${shareButtonCustomClass}`}
-                    aria-label={t('share')}
-                  >
-                    {shareButtonIcon}
+                    <EditIcon className="w-4 h-4" strokeWidth={2}/>
                   </Button>
                 </Tooltip>
                 <Tooltip content={t('delete')} wrapperClassName="inline-flex">
-                  <Button 
-                    size="sm" 
-                    variant="outline" 
-                    onClick={handleDeleteRequest} 
-                    className="!p-2.5 rounded-lg border-slate-500/70 text-slate-300 opacity-80 hover:text-red-500 hover:bg-red-400/10 hover:border-red-500/70 min-w-[40px] min-h-[40px]"
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleDeleteRequest}
+                    className="!p-2.5 rounded-lg text-[var(--color-text-secondary)] opacity-80 hover:text-[var(--color-danger-accent)] hover:bg-[var(--color-danger-accent)]/10 hover:!border-[var(--color-danger-accent)]/70 !border-[var(--color-border-interactive)] min-w-[40px] min-h-[40px]"
                     aria-label={t('delete')}
                   >
-                    <DeleteIcon className="w-4 h-4"/>
+                    <DeleteIcon className="w-4 h-4" />
                   </Button>
+                </Tooltip>
+              </div>
+              <div className="flex items-center gap-x-2">
+                <Tooltip content={shareFeedback.message} placement="top" wrapperClassName="inline-flex">
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={handleShareQuiz}
+                        className={`!p-2.5 rounded-lg !border-[var(--color-border-interactive)] transition-all var(--duration-fast) var(--ease-ios) min-w-[40px] min-h-[40px] ${shareButtonCustomClass}`}
+                        aria-label={t('share')}
+                    >
+                        {shareButtonIcon}
+                    </Button>
+                </Tooltip>
+                 <Tooltip content={t('attemptSettingsModalTitle')} wrapperClassName="inline-flex">
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={openAttemptSettingsModal}
+                        className="!p-2.5 rounded-lg text-[var(--color-text-secondary)] opacity-80 hover:text-[var(--color-primary-accent)] hover:!bg-[var(--color-primary-accent)]/10 hover:!border-[var(--color-primary-accent)]/70 !border-[var(--color-border-interactive)] min-w-[40px] min-h-[40px]"
+                        aria-label={t('attemptSettingsModalTitle')}
+                    >
+                        <img src={settingsIconUrl} alt={t('settings')} className="w-4 h-4 opacity-80 group-hover:opacity-100"/>
+                    </Button>
                 </Tooltip>
               </div>
             </div>
@@ -283,77 +278,71 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onDelete, onEditQuiz, animati
           onClose={handleCancelDelete}
           title={t('confirmDeletionTitle')}
           size="md"
+          useSolidBackground
           footerContent={
-            <div className="flex justify-end gap-3.5">
-              <Button variant="secondary" onClick={handleCancelDelete} size="md">
-                {t('cancel')}
-              </Button>
-              <Button variant="danger" onClick={handleConfirmDelete} size="md">
-                {t('confirmDeleteButton')}
-              </Button>
+            <div className="flex justify-end gap-4">
+              <Button variant="secondary" onClick={handleCancelDelete} size="md">{t('cancel')}</Button>
+              <Button variant="danger" onClick={handleConfirmDelete} size="md">{t('confirmDeleteButton')}</Button>
             </div>
           }
         >
-          <div className="flex items-start">
-            <XCircleIcon className="w-10 h-10 text-red-400/80 mr-4 flex-shrink-0 mt-1" />
-            <p className="text-slate-200 text-base leading-relaxed">
-              <MathText text={t('confirmDeletionMessage', { quizName: quiz.title })} />
-            </p>
-          </div>
+          <p className="text-[var(--color-text-body)] text-base">
+            {t('confirmDeletionMessage', { quizName: quiz.title })}
+          </p>
         </Modal>
       )}
-
+      
       {isAttemptSettingsModalOpen && (
         <Modal
           isOpen={isAttemptSettingsModalOpen}
           onClose={handleCloseAttemptSettingsModal}
-          title={
-            <div className="flex items-center">
-                <img src={settingsIconUrl} alt={t('settings')} className="w-6 h-6 mr-3" />
-                {t('attemptSettingsModalTitle')}
-            </div>
-          }
+          title={t('attemptSettingsModalTitle')}
           size="lg"
+          useSolidBackground
           footerContent={
-            <div className="flex flex-col sm:flex-row justify-end gap-3.5">
-              <Button variant="secondary" onClick={handleCloseAttemptSettingsModal} size="md" className="w-full sm:w-auto">
-                {t('cancel')}
-              </Button>
-              <Button variant="primary" onClick={handleSaveAttemptSettings} size="md" className="w-full sm:w-auto">
-                {t('saveSettingsButtonText')}
-              </Button>
+            <div className="flex justify-end gap-4">
+              <Button variant="secondary" onClick={handleCloseAttemptSettingsModal} size="md">{t('cancel')}</Button>
+              <Button variant="primary" onClick={handleSaveAttemptSettings} size="md">{t('saveSettingsButtonText')}</Button>
             </div>
           }
         >
-          <div className="space-y-6 p-2">
-            <Toggle
+          <div className="space-y-6">
+             <Toggle
               label={t('attemptShuffleQuestionsLabel')}
               checked={currentAttemptSettings.shuffleQuestions}
               onChange={(checked) => handleAttemptSettingsChange('shuffleQuestions', checked)}
-              labelClassName="font-medium text-slate-100"
             />
             <Toggle
               label={t('attemptShuffleAnswersLabel')}
               checked={currentAttemptSettings.shuffleAnswers}
               onChange={(checked) => handleAttemptSettingsChange('shuffleAnswers', checked)}
-              labelClassName="font-medium text-slate-100"
             />
             <Input
-              label={<span className="font-medium text-slate-100">{t('attemptTimeLimitLabel')}</span>}
+              label={t('attemptTimeLimitLabel')}
               type="number"
+              name="timeLimit"
               value={currentAttemptSettings.timeLimit}
-              onChange={(e) => handleAttemptSettingsChange('timeLimit', parseInt(e.target.value, 10) >= 0 ? parseInt(e.target.value, 10) : 0)}
+              onChange={(e) => handleAttemptSettingsChange('timeLimit', parseInt(e.target.value, 10) || 0)}
               min="0"
-              inputClassName="text-sm"
-              containerClassName="mt-1"
+              containerClassName="mt-4"
+              inputClassName="w-32"
+              // @ts-ignore
+              description={t('attemptTimeLimitInfo')}
             />
-            <p className="text-xs text-slate-400 -mt-4 pl-1">{t('attemptTimeLimitInfo')}</p>
           </div>
         </Modal>
       )}
     </>
   );
 };
-QuizCard.displayName = "QuizCard";
+// QuizCard.displayName = "QuizCard"; // This line can be removed if not strictly needed by other tools
+// export default QuizCard; // Removed to keep it as a named export
+// The component is already defined as `export const QuizCard ...`
 
-export default QuizCard;
+// Removed `export default QuizCard;` as it should be `export const QuizCard` for named imports.
+// The error "does not provide an export named 'QuizCard'" means the named export is missing.
+// If the intent was default export, then imports should be `import QuizCard from ...`.
+// Since imports are `import { QuizCard }`, the export MUST be named.
+// The change `export const QuizCard: React.FC<QuizCardProps> = ...` handles this.
+// No need for QuizCard.displayName explicitly if function name is QuizCard.
+// This file should now correctly provide a named export 'QuizCard'.

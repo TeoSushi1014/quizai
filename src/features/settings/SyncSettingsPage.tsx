@@ -2,9 +2,10 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppContext, useTranslation } from '../../App';
-import { Button, Card, LoadingSpinner, Tooltip } from '../../components/ui';
-import { GoogleDriveIcon, RefreshIcon, CheckCircleIcon, XCircleIcon, InformationCircleIcon } from '../../constants';
+import { Button, Card, LoadingSpinner, Tooltip, Toggle } from '../../components/ui'; // Added Toggle
+import { GoogleDriveIcon, RefreshIcon, CheckCircleIcon, XCircleIcon, InformationCircleIcon, SunIcon, MoonIcon } from '../../constants'; // Added SunIcon, MoonIcon
 import MathText from '../../components/MathText';
+import { useTheme } from '../../contexts/ThemeContext'; // Import useTheme
 
 const SyncSettingsPage: React.FC = () => {
   const { 
@@ -13,10 +14,11 @@ const SyncSettingsPage: React.FC = () => {
     isDriveLoading, 
     driveSyncError, 
     lastDriveSync,
-    setDriveSyncError // Added for clearing specific errors
+    setDriveSyncError
   } = useAppContext();
   const { t, language } = useTranslation();
   const navigate = useNavigate();
+  const { theme, toggleTheme } = useTheme(); // Use theme context
 
   if (!currentUser) {
     navigate('/signin', { state: { from: { pathname: '/settings' } } });
@@ -34,43 +36,79 @@ const SyncSettingsPage: React.FC = () => {
     : t('syncStatusNever');
 
   return (
-    <div className="max-w-2xl mx-auto py-8">
+    <div className="max-w-2xl mx-auto py-8 animate-page-slide-fade-in">
       <Card useGlassEffect className="shadow-2xl !rounded-2xl">
-        <div className="text-center mb-8">
-          <GoogleDriveIcon className="w-16 h-16 mx-auto mb-4" />
-          <h1 className="text-3xl font-bold text-slate-50 mb-3">
-            <MathText text={t('syncSettingsTitle')} />
+        <div className="text-center mb-10">
+           <h1 className="text-3xl font-bold text-[var(--color-text-primary)] mb-3 tracking-tight">
+            <MathText text={t('navSettings')} />
           </h1>
-          <p className="text-slate-300/90 text-sm leading-relaxed">
-            <MathText text={t('syncSettingsDescription')} />
+          <p className="text-[var(--color-text-secondary)] text-sm leading-relaxed">
+            Manage your application preferences and data synchronization.
           </p>
         </div>
 
-        <div className="space-y-6">
-          <Card className="!bg-slate-700/60 !border-slate-600/70 p-5 rounded-xl shadow-lg">
+        <div className="space-y-8">
+          {/* Theme Settings Card */}
+          <Card className="!bg-[var(--color-bg-surface-2)]/80 !border-[var(--color-border-default)] p-5 sm:p-6 rounded-xl shadow-lg">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div className="flex-1">
+                <div className="flex items-center mb-1.5">
+                    {theme === 'dark' ? 
+                        <MoonIcon className="w-5 h-5 mr-2.5 text-[var(--color-primary-accent)] flex-shrink-0" /> :
+                        <SunIcon className="w-5 h-5 mr-2.5 text-[var(--color-primary-accent)] flex-shrink-0" />
+                    }
+                    <p className="text-base font-semibold text-[var(--color-text-primary)]">{t('themeSettings')}</p>
+                </div>
+                <p className="text-xs text-[var(--color-text-secondary)] sm:ml-[28px]"> {/* Align with icon roughly */}
+                  {theme === 'dark' ? t('currentlyUsingDarkTheme') : t('currentlyUsingLightTheme')}
+                </p>
+              </div>
+              <div className="flex items-center space-x-3 w-full sm:w-auto justify-center sm:justify-end">
+                <SunIcon className={`w-5 h-5 ${theme === 'light' ? 'text-[var(--color-primary-accent)]' : 'text-[var(--color-text-muted)]'}`} />
+                <Toggle 
+                  checked={theme === 'dark'} 
+                  onChange={toggleTheme} 
+                  label="" 
+                  size="lg"  
+                />
+                <MoonIcon className={`w-5 h-5 ${theme === 'dark' ? 'text-[var(--color-primary-accent)]' : 'text-[var(--color-text-muted)]'}`} />
+              </div>
+            </div>
+          </Card>
+
+          {/* Google Drive Sync Card */}
+          <Card className="!bg-[var(--color-bg-surface-2)]/80 !border-[var(--color-border-default)] p-5 sm:p-6 rounded-xl shadow-lg">
+            <div className="flex items-center mb-1.5">
+                 <GoogleDriveIcon className="w-5 h-5 mr-2.5 text-sky-400 flex-shrink-0" />
+                 <p className="text-base font-semibold text-[var(--color-text-primary)]">{t('syncSettingsTitle')}</p>
+            </div>
+            <p className="text-xs text-[var(--color-text-secondary)] mb-5 sm:ml-[28px]">
+                {t('syncSettingsDescription')}
+            </p>
+            
             <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
               <div>
-                <p className="text-sm font-medium text-slate-200 mb-1">{t('syncStatus')}</p>
+                <p className="text-sm font-medium text-[var(--color-text-secondary)] mb-1">{t('syncStatus')}</p>
                 {isDriveLoading && !driveSyncError && (
-                  <div className="flex items-center text-sky-300 animate-pulse">
+                  <div className="flex items-center text-[var(--color-primary-accent)] animate-pulse">
                     <RefreshIcon className="w-4 h-4 mr-2 animate-spin" />
                     <span className="text-xs font-semibold">{t('syncStatusInProgress')}</span>
                   </div>
                 )}
                 {!isDriveLoading && driveSyncError && (
-                  <div className="flex items-center text-red-400">
+                  <div className="flex items-center text-[var(--color-danger-accent)]">
                     <XCircleIcon className="w-4 h-4 mr-2" />
                     <span className="text-xs font-semibold">{t('syncStatusError', { error: driveSyncError })}</span>
                   </div>
                 )}
                 {!isDriveLoading && !driveSyncError && lastDriveSync && (
-                  <div className="flex items-center text-green-400">
+                  <div className="flex items-center text-[var(--color-success-accent)]">
                     <CheckCircleIcon className="w-4 h-4 mr-2" />
                     <span className="text-xs font-semibold">{t('syncStatusLast', { dateTime: formattedLastSync })}</span>
                   </div>
                 )}
                  {!isDriveLoading && !driveSyncError && !lastDriveSync && (
-                  <div className="flex items-center text-slate-400">
+                  <div className="flex items-center text-[var(--color-text-muted)]">
                     <InformationCircleIcon className="w-4 h-4 mr-2" />
                     <span className="text-xs font-semibold">{t('syncStatusNever')}</span>
                   </div>
@@ -83,7 +121,7 @@ const SyncSettingsPage: React.FC = () => {
                 variant="primary" 
                 size="md" 
                 leftIcon={<RefreshIcon className={`w-5 h-5 ${isDriveLoading ? 'animate-spin' : ''}`} />}
-                className="w-full sm:w-auto shadow-lg hover:shadow-sky-400/40 py-2.5 px-6"
+                className="w-full sm:w-auto shadow-lg hover:shadow-[var(--color-primary-accent)]/40 py-2.5 px-6"
               >
                 {isDriveLoading ? t('syncStatusInProgress') : t('syncNowButton')}
               </Button>
@@ -93,18 +131,15 @@ const SyncSettingsPage: React.FC = () => {
                     variant="link"
                     size="xs"
                     onClick={() => setDriveSyncError(null)}
-                    className="mt-3 text-sky-400 hover:text-sky-300 text-xs"
+                    className="mt-3 !text-[var(--color-primary-accent)] hover:!text-[var(--color-primary-accent-hover)] text-xs"
                 >
-                    {t('close')} {/* Or a more specific "Clear Error" text */}
+                    {t('close')}
                 </Button>
             )}
+            <p className="text-xs text-[var(--color-text-muted)] text-center pt-6 mt-4 border-t border-[var(--color-border-default)]/50">
+                Your QuizAI data is securely stored in a file named <code>{`quizai_user_data.json`}</code> in your Google Drive's root folder, accessible only by this application.
+            </p>
           </Card>
-
-          {/* Future: Add toggle for enabling/disabling sync if needed */}
-          {/* For now, sync is implicitly enabled when logged in */}
-          <p className="text-xs text-slate-400/80 text-center pt-4">
-            Your QuizAI data is securely stored in a file named <code>{`quizai_user_data.json`}</code> in your Google Drive's root folder, accessible only by this application.
-          </p>
         </div>
       </Card>
     </div>

@@ -1,20 +1,21 @@
 
-import React, { useState, useCallback, useEffect, createContext, useContext, ReactNode, useMemo, useRef, lazy, Suspense } from 'react';
-import { HashRouter, Routes, Route, useNavigate, useLocation, NavLink as RouterNavLink } from 'react-router-dom';
+import React, { useState, useCallback, useEffect, createContext, useContext, ReactNode, useMemo, useRef, lazy, Suspense, useId } from 'react';
+import { HashRouter, Routes, Route, useNavigate, useLocation, NavLink as RouterNavLink, Navigate } from 'react-router-dom'; // Added Navigate
 import { GoogleOAuthProvider, googleLogout } from '@react-oauth/google';
 import { useSwipeable } from 'react-swipeable';
 import { Quiz, AppContextType, Language, QuizResult, UserProfile, SyncState } from './types';
-import { APP_NAME, KeyIcon, LogoutIcon, HomeIcon, PlusCircleIcon, ChartBarIcon, SettingsIcon, SettingsIconMobileNav, InformationCircleIcon, XCircleIcon, RefreshIcon, CheckCircleIcon, ChevronDownIcon, UserCircleIcon } from './constants'; 
+import { APP_NAME, KeyIcon, LogoutIcon, HomeIcon, PlusCircleIcon, ChartBarIcon, SettingsIcon, SettingsIconMobileNav, InformationCircleIcon, XCircleIcon, RefreshIcon, CheckCircleIcon, ChevronDownIcon, UserCircleIcon, SunIcon, MoonIcon } from './constants'; 
 import { Button, LoadingSpinner, Tooltip, Toggle } from './components/ui';
 import { UserAvatar } from './components/UserAvatar'; 
 import ErrorBoundary from './components/ErrorBoundary'; 
 import { getTranslator, translations } from './i18n';
 import useIntersectionObserver from './hooks/useIntersectionObserver';
 import { logger } from './services/logService'; 
+import { useTheme } from './contexts/ThemeContext'; 
+import { ThemeToggle, ThemeToggleSwitch } from './components/ThemeToggle'; // Import ThemeToggle components
 
 import HomePage from './features/quiz/HomePage';
 import DashboardPage from './features/quiz/DashboardPage';
-// Lazy load other pages
 const QuizCreatePage = lazy(() => import('./features/quiz/QuizCreatePage'));
 const QuizTakingPage = lazy(() => import('./features/quiz/QuizTakingPage'));
 const ResultsPage = lazy(() => import('./features/quiz/ResultsPage'));
@@ -130,9 +131,6 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     const savedLanguage = localStorage.getItem(LOCALSTORAGE_LANGUAGE_KEY) as Language | null;
     if (savedLanguage && translations[savedLanguage]) {
       setLanguageState(savedLanguage);
-      document.documentElement.lang = savedLanguage;
-    } else {
-      document.documentElement.lang = 'en'; 
     }
     
     const savedUserJson = localStorage.getItem(LOCALSTORAGE_USER_KEY);
@@ -320,14 +318,9 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
   const setLanguage = useCallback((lang: Language) => {
     setLanguageState(lang);
     localStorage.setItem(LOCALSTORAGE_LANGUAGE_KEY, lang);
-    document.documentElement.lang = lang; 
     logger.info(`Language changed to ${lang}`, 'AppContext');
   }, []);
   
-  useEffect(() => {
-    document.documentElement.lang = language;
-  }, [language]);
-
   const navigate = useNavigate(); 
 
   const setCurrentView = useCallback((viewPath: string, _params?: Record<string, string | number>) => {
@@ -540,8 +533,20 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
   ]);
 
   if (!appInitialized) {
-    return null;
+    return (
+        <div style={{
+            position: 'fixed', inset: 0, display: 'flex',
+            alignItems: 'center', justifyContent: 'center',
+            backgroundColor: 'var(--color-bg-body)'
+        }}>
+            <svg className="animate-spin text-[var(--color-primary-accent)] w-14 h-14" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3"></circle>
+              <path className="opacity-80" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+        </div>
+    );
   }
+
 
   return (
     <AppContext.Provider value={contextValue}>
@@ -553,14 +558,14 @@ AppProvider.displayName = "AppProvider";
 
 const NavLink: React.FC<{ to: string; children: ReactNode; end?: boolean; className?: string; activeClassName?: string; inactiveClassName?: string; isMobile?: boolean; }> = 
 ({ to, children, end = false, className = '', activeClassName = '', inactiveClassName = '', isMobile = false }) => {
+  const baseDesktopStyle = `px-3.5 py-2 rounded-lg text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-focus-ring-offset)] hover:bg-[var(--color-primary-accent)]/10 transition-colors var(--duration-fast) var(--ease-ios)`;
+  const activeDesktopStyle = `bg-[var(--color-primary-accent)]/20 text-[var(--color-primary-accent)] font-semibold`;
+  const inactiveDesktopStyle = `text-[var(--color-text-secondary)] hover:text-[var(--color-primary-accent)]`;
 
-  const baseDesktopStyle = "px-3.5 py-2 rounded-lg text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 hover:bg-sky-400/10 transition-colors var(--duration-fast) var(--ease-ios)";
-  const activeDesktopStyle = "bg-sky-400/20 text-sky-300 font-semibold";
-  const inactiveDesktopStyle = "text-slate-300 hover:text-sky-300";
+  const baseMobileStyle = `flex flex-col items-center justify-center h-full w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-bg-surface-2)] rounded-lg hover:bg-[var(--color-bg-surface-3)] active:bg-[var(--color-bg-surface-3)] transition-colors var(--duration-fast) var(--ease-ios) ${isMobile ? 'mobile-nav-item' : ''}`;
+  const activeMobileStyle = `text-[var(--color-primary-accent)] font-semibold bg-[var(--color-mobile-nav-item-active-bg)]`;
+  const inactiveMobileStyle = `text-[var(--color-text-muted)] hover:text-[var(--color-primary-accent)]`;
 
-  const baseMobileStyle = `flex flex-col items-center justify-center h-full w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-800 rounded-lg hover:bg-slate-700/60 active:bg-slate-700 transition-colors var(--duration-fast) var(--ease-ios) ${isMobile ? 'mobile-nav-item' : ''}`; // Added active:bg-slate-700 and mobile-nav-item
-  const activeMobileStyle = "text-sky-300 font-semibold bg-sky-400/15";
-  const inactiveMobileStyle = "text-slate-400 hover:text-sky-300";
 
   return (
     <RouterNavLink
@@ -569,7 +574,7 @@ const NavLink: React.FC<{ to: string; children: ReactNode; end?: boolean; classN
       className={({ isActive }) => 
         `${isMobile ? baseMobileStyle : baseDesktopStyle} ${className} 
          ${isActive 
-            ? (activeClassName || (isMobile ? activeMobileStyle : activeDesktopStyle)) 
+            ? `active ${activeClassName || (isMobile ? activeMobileStyle : activeDesktopStyle)}`
             : (inactiveClassName || (isMobile ? inactiveMobileStyle : inactiveDesktopStyle))}`
       }
     >
@@ -582,17 +587,10 @@ NavLink.displayName = "NavLink";
 const UserDropdownMenu: React.FC = () => {
     const { currentUser, logout, setCurrentView } = useAppContext();
     const { t } = useTranslation();
+    // const { theme, toggleTheme } = useTheme(); // Replaced by ThemeToggleSwitch
     const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
     const userDropdownRef = useRef<HTMLDivElement>(null);
     const location = useLocation();
-
-    // Placeholder for dark mode state and toggle function
-    const [isDarkModePlaceholder, setIsDarkModePlaceholder] = useState(document.documentElement.classList.contains('dark'));
-    const toggleDarkModePlaceholder = () => {
-        setIsDarkModePlaceholder(p => !p);
-        console.log("Dark mode toggle clicked. Actual theme switching not implemented in this update.");
-        // In a real app: document.documentElement.classList.toggle('dark'); localStorage.setItem('theme', ...);
-    };
 
     useEffect(() => {
         if (!isUserDropdownOpen) return;
@@ -624,8 +622,8 @@ const UserDropdownMenu: React.FC = () => {
         <div className="relative" ref={userDropdownRef}>
             <button
                 onClick={() => setIsUserDropdownOpen(prev => !prev)}
-                className={`flex items-center p-1.5 sm:p-2 rounded-full focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-800 group
-                            ${isUserDropdownOpen ? 'bg-sky-400/10 ring-2 ring-sky-400 ring-offset-2 ring-offset-slate-800' : ''}`}
+                className={`flex items-center p-1.5 sm:p-2 rounded-full focus-visible:ring-2 focus-visible:ring-[var(--color-primary-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-bg-body)] group
+                            ${isUserDropdownOpen ? 'bg-[var(--color-primary-accent)]/10 ring-2 ring-[var(--color-primary-accent)]' : ''}`}
                 aria-label="User menu"
                 aria-expanded={isUserDropdownOpen}
                 aria-haspopup="true"
@@ -635,35 +633,35 @@ const UserDropdownMenu: React.FC = () => {
                   photoUrl={currentUser.imageUrl}
                   userName={currentUser.name}
                   size="sm" 
-                  className={`border-2 ${isUserDropdownOpen ? 'border-sky-400' : 'border-slate-600 group-hover:border-sky-300'} transition-colors var(--duration-fast) var(--ease-ios)`}
+                  className={`border-2 ${isUserDropdownOpen ? 'border-[var(--color-primary-accent)]' : 'border-[var(--color-border-interactive)] group-hover:border-[var(--color-primary-accent)]'} transition-colors var(--duration-fast) var(--ease-ios)`}
                 />
-                <ChevronDownIcon className={`w-4 h-4 ml-1 text-slate-400 transition-transform var(--duration-fast) var(--ease-ios) ${isUserDropdownOpen ? 'rotate-180' : ''}`} />
+                <ChevronDownIcon className={`w-4 h-4 ml-1 text-[var(--color-text-muted)] transition-transform var(--duration-fast) var(--ease-ios) ${isUserDropdownOpen ? 'rotate-180' : ''}`} />
             </button>
             <div
                 id="user-dropdown-menu"
                 role="menu"
-                className={`absolute right-0 mt-3 w-64 sm:w-72 bg-slate-800 border border-slate-700/70 rounded-xl shadow-2xl py-2 z-50 origin-top-right
+                className={`absolute right-0 mt-3 w-64 sm:w-72 bg-[var(--color-bg-surface-1)] border border-[var(--color-border-default)] rounded-xl shadow-2xl py-2 z-50 origin-top-right
                             ${isUserDropdownOpen ? 'dropdown-animation-active pointer-events-auto' : 'opacity-0 scale-95 pointer-events-none'}`}
             >
-                <div className="px-5 py-4 border-b border-slate-700/30">
+                <div className="px-5 py-4 border-b border-[var(--color-border-default)]">
                     <div className="flex items-center gap-3">
                         <UserAvatar
                           photoUrl={currentUser.imageUrl}
                           userName={currentUser.name}
                           size="md" 
-                          className="border-2 border-slate-600"
+                          className="border-2 border-[var(--color-border-interactive)]"
                         />
                         <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold text-white truncate mb-0.5" title={currentUser.name || undefined}>{currentUser.name || t('user')}</p>
-                            <p className="text-xs text-slate-300 truncate" title={currentUser.email || undefined}>{currentUser.email}</p>
+                            <p className="text-sm font-semibold text-[var(--color-text-primary)] truncate mb-0.5" title={currentUser.name || undefined}>{currentUser.name || t('user')}</p>
+                            <p className="text-xs text-[var(--color-text-secondary)] truncate" title={currentUser.email || undefined}>{currentUser.email}</p>
                         </div>
                     </div>
                 </div>
                 <div className="py-2">
                     <button
                         onClick={() => { setCurrentView('/profile'); setIsUserDropdownOpen(false); }}
-                        className={`w-full text-left px-5 py-3.5 text-sm hover:bg-slate-700/60 active:bg-slate-600 flex items-center transition-colors var(--duration-fast) var(--ease-ios)
-                                    ${isProfileActive ? 'bg-sky-400/20 text-sky-300' : 'text-slate-200 hover:text-sky-300'}`}
+                        className={`w-full text-left px-5 py-3.5 text-sm hover:bg-[var(--color-bg-surface-2)] active:bg-[var(--color-bg-surface-3)] flex items-center transition-colors var(--duration-fast) var(--ease-ios)
+                                    ${isProfileActive ? 'bg-[var(--color-primary-accent)]/20 text-[var(--color-primary-accent)]' : 'text-[var(--color-text-body)] hover:text-[var(--color-primary-accent)]'}`}
                         role="menuitem"
                     >
                         <UserCircleIcon className="w-4 h-4 mr-3 flex-shrink-0" strokeWidth={2}/>
@@ -671,29 +669,18 @@ const UserDropdownMenu: React.FC = () => {
                     </button>
                     <button
                         onClick={() => { setCurrentView('/settings'); setIsUserDropdownOpen(false); }}
-                        className={`w-full text-left px-5 py-3.5 text-sm hover:bg-slate-700/60 active:bg-slate-600 flex items-center transition-colors var(--duration-fast) var(--ease-ios) group
-                                    ${isSettingsActive ? 'bg-sky-400/20 text-sky-300' : 'text-slate-200 hover:text-sky-300'}`}
+                        className={`w-full text-left px-5 py-3.5 text-sm hover:bg-[var(--color-bg-surface-2)] active:bg-[var(--color-bg-surface-3)] flex items-center transition-colors var(--duration-fast) var(--ease-ios) group
+                                    ${isSettingsActive ? 'bg-[var(--color-primary-accent)]/20 text-[var(--color-primary-accent)]' : 'text-[var(--color-text-body)] hover:text-[var(--color-primary-accent)]'}`}
                         role="menuitem"
                     >
                         <SettingsIcon className="w-4 h-4 mr-3 flex-shrink-0 group-hover:rotate-45 transition-transform var(--duration-normal) var(--ease-ios)" strokeWidth={2}/>
                         {t('navSettings')}
                     </button>
-                    <button
-                        onClick={() => { toggleDarkModePlaceholder(); /* setIsUserDropdownOpen(false); */ }}
-                        className="w-full text-left px-5 py-3.5 text-sm text-slate-200 hover:bg-slate-700/60 active:bg-slate-600 flex items-center justify-between hover:text-sky-300 transition-colors var(--duration-fast) var(--ease-ios)"
-                        role="menuitemcheckbox"
-                        aria-checked={isDarkModePlaceholder}
-                    >
-                      <div className="flex items-center">
-                        <span className="w-4 h-4 mr-3 flex-shrink-0">🌓</span> {/* Placeholder icon */}
-                        {isDarkModePlaceholder ? t('switchToLightTheme') : t('switchToDarkTheme')}
-                      </div>
-                      <Toggle checked={isDarkModePlaceholder} onChange={toggleDarkModePlaceholder} label="" />
-                    </button>
-                    <div className="h-px bg-slate-700/30 my-2 mx-5"></div>
+                    <ThemeToggleSwitch />
+                    <div className="h-px bg-[var(--color-border-default)] my-2 mx-5"></div>
                     <button
                         onClick={() => { logout(); setIsUserDropdownOpen(false); }}
-                        className="w-full text-left px-5 py-3.5 text-sm text-red-400 hover:bg-red-400/15 active:bg-red-400/25 flex items-center hover:text-red-300 transition-colors var(--duration-fast) var(--ease-ios)"
+                        className="w-full text-left px-5 py-3.5 text-sm text-[var(--color-danger-accent)] hover:bg-[var(--color-danger-accent)]/15 active:bg-[var(--color-danger-accent)]/25 flex items-center hover:text-[var(--color-danger-accent)] transition-colors var(--duration-fast) var(--ease-ios)"
                         role="menuitem"
                     >
                         <LogoutIcon className="w-4 h-4 mr-3 flex-shrink-0" />
@@ -721,11 +708,14 @@ const AnimatedApiKeyWarning: React.FC<{children: ReactNode}> = ({ children }) =>
 };
 AnimatedApiKeyWarning.displayName = "AnimatedApiKeyWarning";
 
-const RouteLoadingFallback: React.FC = () => (
-  <div className="flex items-center justify-center h-[calc(100vh-200px)]"> 
-    <LoadingSpinner size="lg" text={translations.en.loading} /> 
-  </div>
-);
+const RouteLoadingFallback: React.FC = () => {
+  const { t } = useTranslation();
+  return (
+    <div className="flex items-center justify-center h-[calc(100vh-200px)]"> 
+      <LoadingSpinner size="lg" text={t('loading')} /> 
+    </div>
+  );
+};
 RouteLoadingFallback.displayName = "RouteLoadingFallback";
 
 
@@ -737,6 +727,7 @@ const AppLayout: React.FC = () => {
     logout, setCurrentView
   } = useAppContext(); 
   const { t } = useTranslation();
+  const { theme } = useTheme(); // Removed toggleTheme, use ThemeToggle component
   const navigate = useNavigate();
   const location = useLocation();
   const [isMobileProfileOpen, setIsMobileProfileOpen] = useState(false);
@@ -746,9 +737,10 @@ const AppLayout: React.FC = () => {
     apiKeyWarnings.push("Google Gemini API Key (process.env.GEMINI_API_KEY)");
   }
   
-  if (globalIsLoading) { 
+  const appInitialized = true; // Assuming this is true if AppLayout is rendered
+  if (globalIsLoading && !appInitialized) { 
     return (
-      <div className="fixed inset-0 bg-slate-900 flex items-center justify-center z-[200]">
+      <div className="fixed inset-0 bg-[var(--color-bg-body)] flex items-center justify-center z-[200]">
         <LoadingSpinner text={currentUser?.accessToken && isDriveLoading && !lastDriveSync && syncState === 'syncing' ? (currentSyncActivityMessage || t('initialSyncMessage')) : t('loading')} size="xl" />
       </div>
     );
@@ -760,7 +752,7 @@ const AppLayout: React.FC = () => {
     let text = "";
     let tooltipText = "";
     let baseClasses = "text-xs font-medium flex items-center";
-    let colorClasses = "";
+    let colorClasses = ""; 
     let showIndicator = false;
 
     switch (syncState) {
@@ -768,13 +760,13 @@ const AppLayout: React.FC = () => {
             showIndicator = true;
             icon = <RefreshIcon className="w-3.5 h-3.5 mr-1.5 animate-spin" />;
             text = currentSyncActivityMessage || t('syncStatusInProgressShort'); 
-            colorClasses = "text-sky-300";
+            colorClasses = "text-[var(--color-primary-accent)]";
             tooltipText = currentSyncActivityMessage || t('syncStatusInProgress');
             break;
         case 'success':
             showIndicator = true;
             icon = <CheckCircleIcon className="w-3.5 h-3.5 mr-1.5" />;
-            colorClasses = "text-green-400";
+            colorClasses = "text-[var(--color-success-accent)]";
              if (currentSyncActivityMessage) { 
                 text = currentSyncActivityMessage;
                 tooltipText = currentSyncActivityMessage;
@@ -789,7 +781,7 @@ const AppLayout: React.FC = () => {
         case 'error':
             showIndicator = true;
             icon = <XCircleIcon className="w-3.5 h-3.5 mr-1.5" />;
-            colorClasses = "text-red-400";
+            colorClasses = "text-[var(--color-danger-accent)]";
             text = t('syncStatusErrorShort');
             tooltipText = driveSyncError || t('driveErrorGeneric');
             break;
@@ -797,14 +789,14 @@ const AppLayout: React.FC = () => {
         default:
             if (currentUser && lastDriveSync) {
                  showIndicator = true;
-                 icon = <CheckCircleIcon className="w-3.5 h-3.5 mr-1.5 text-slate-400" />;
-                 colorClasses = "text-slate-400";
+                 icon = <CheckCircleIcon className="w-3.5 h-3.5 mr-1.5 text-[var(--color-text-muted)]" />;
+                 colorClasses = "text-[var(--color-text-muted)]";
                  text = t('syncStatusLastShort', { dateTime: lastDriveSync.toLocaleTimeString(currentLang, { hour: '2-digit', minute: '2-digit'}) });
                  tooltipText = t('syncStatusLast', { dateTime: lastDriveSync.toLocaleString(currentLang, { dateStyle: 'medium', timeStyle: 'short' }) });
             } else if (currentUser) { 
                 showIndicator = true;
-                icon = <InformationCircleIcon className="w-3.5 h-3.5 mr-1.5 text-slate-500" />;
-                colorClasses = "text-slate-500";
+                icon = <InformationCircleIcon className="w-3.5 h-3.5 mr-1.5 text-[var(--color-text-muted)]" />;
+                colorClasses = "text-[var(--color-text-muted)]";
                 text = t('syncStatusNeverShort');
                 tooltipText = t('syncStatusNever');
             } else { 
@@ -816,7 +808,7 @@ const AppLayout: React.FC = () => {
 
     return (
         <Tooltip content={tooltipText} placement="bottom-end">
-          <div className={`${baseClasses} ${colorClasses} px-2 py-1 rounded-md bg-slate-700/50 border border-slate-600/50 sync-indicator-base ${showIndicator ? 'sync-indicator-visible' : 'sync-indicator-hidden'}`}>
+          <div className={`${baseClasses} ${colorClasses} px-2 py-1 rounded-md bg-[var(--color-bg-surface-2)] border border-[var(--color-border-default)] sync-indicator-base ${showIndicator ? 'sync-indicator-visible' : 'sync-indicator-hidden'}`}>
             {icon}
             <span>{text}</span>
           </div>
@@ -825,13 +817,12 @@ const AppLayout: React.FC = () => {
   };
 
   const MobileProfileSheet: React.FC = () => {
-    if (!currentUser || !isMobileProfileOpen) return null;
+    const sheetId = useId(); 
+    // const { theme, toggleTheme } = useTheme(); // Replaced by ThemeToggleSwitch
+    const { t } = useTranslation(); 
+    const { logout, setCurrentView, currentUser } = useAppContext();
 
-    const [isDarkModePlaceholder, setIsDarkModePlaceholder] = useState(document.documentElement.classList.contains('dark'));
-    const toggleDarkModePlaceholder = () => {
-        setIsDarkModePlaceholder(p => !p);
-        console.log("Dark mode toggle clicked. Actual theme switching not implemented in this update.");
-    };
+    if (!currentUser || !isMobileProfileOpen) return null;
     
     const swipeHandlers = useSwipeable({
       onSwipedDown: () => setIsMobileProfileOpen(false),
@@ -840,100 +831,96 @@ const AppLayout: React.FC = () => {
     });
 
     return (
-      <div 
-        className="fixed inset-0 z-[200] flex items-end justify-center modal-backdrop-enhanced open"
-        onClick={() => setIsMobileProfileOpen(false)}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="mobile-profile-title"
-      >
+      <>
+        <div 
+            className={`fixed inset-0 z-[199] transition-opacity var(--duration-normal) var(--ease-ios) ${isMobileProfileOpen ? 'modal-backdrop-enhanced open' : 'opacity-0 pointer-events-none'}`}
+            onClick={() => setIsMobileProfileOpen(false)}
+            aria-hidden="true"
+        />
         <div 
           {...swipeHandlers}
-          className="w-full max-w-md bg-slate-800 border-t border-x border-slate-700/70 rounded-t-2xl shadow-2xl animate-slideInUp"
-          onClick={(e) => e.stopPropagation()}
+          className={`fixed bottom-0 left-0 right-0 z-[200] w-full max-w-md mx-auto bg-[var(--color-bg-surface-1)] border-t border-x border-[var(--color-border-default)] rounded-t-2xl shadow-2xl 
+                     transition-transform var(--duration-normal) var(--ease-ios) ${isMobileProfileOpen ? 'mobile-sheet-enter-active' : 'mobile-sheet-enter'}`}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={`${sheetId}-title`}
           style={{maxHeight: '85vh', overflowY: 'auto'}}
+          onClick={(e) => e.stopPropagation()}
         >
           <div className="flex justify-center pt-3 pb-2">
-            <div className="w-12 h-1.5 bg-slate-600 rounded-full"></div>
+            <div className="w-12 h-1.5 bg-[var(--color-bg-surface-3)] rounded-full"></div>
           </div>
-          <div className="px-5 py-6 flex items-center space-x-4 border-b border-slate-700/70">
+          <div className="px-5 py-6 flex items-center space-x-4 border-b border-[var(--color-border-default)]">
             <UserAvatar
               photoUrl={currentUser.imageUrl}
               userName={currentUser.name}
               size="lg" 
-              className="border-2 border-sky-400"
+              className="border-2 border-[var(--color-primary-accent)]"
             />
             <div className="flex-1 min-w-0">
-              <h2 id="mobile-profile-title" className="text-xl font-semibold text-slate-50 truncate mb-1">{currentUser.name || t('user')}</h2>
-              <p className="text-sm text-slate-400 truncate" title={currentUser.email || undefined}>{currentUser.email}</p>
+              <h2 id={`${sheetId}-title`} className="text-xl font-semibold text-[var(--color-text-primary)] truncate mb-1">{currentUser.name || t('user')}</h2>
+              <p className="text-sm text-[var(--color-text-secondary)] truncate" title={currentUser.email || undefined}>{currentUser.email}</p>
             </div>
           </div>
-          <div className="py-4 divide-y divide-slate-700/30">
+          <div className="py-4 divide-y divide-[var(--color-border-default)]">
             <div className="px-5 py-2 space-y-1">
-                <h3 className="text-xs uppercase text-slate-500 font-semibold tracking-wider mb-2">{t('account')}</h3>
+                <h3 className="text-xs uppercase text-[var(--color-text-muted)] font-semibold tracking-wider mb-2">{t('account')}</h3>
                 <button
                   onClick={() => { setCurrentView('/profile'); setIsMobileProfileOpen(false); }}
-                  className="w-full text-left px-4 py-3.5 text-base text-slate-200 hover:bg-slate-700/60 active:bg-slate-600 flex items-center rounded-lg transition-colors var(--duration-fast) var(--ease-ios)"
+                  className="w-full text-left px-4 py-3.5 text-base text-[var(--color-text-body)] hover:bg-[var(--color-bg-surface-2)] active:bg-[var(--color-bg-surface-3)] flex items-center rounded-lg transition-colors var(--duration-fast) var(--ease-ios)"
                 >
                   <UserCircleIcon className="w-5 h-5 mr-3.5 flex-shrink-0" strokeWidth={2}/>
                   {t('profile')}
                 </button>
                 <button
                   onClick={() => { setCurrentView('/settings'); setIsMobileProfileOpen(false); }}
-                  className="w-full text-left px-4 py-3.5 text-base text-slate-200 hover:bg-slate-700/60 active:bg-slate-600 flex items-center rounded-lg transition-colors var(--duration-fast) var(--ease-ios)"
+                  className="w-full text-left px-4 py-3.5 text-base text-[var(--color-text-body)] hover:bg-[var(--color-bg-surface-2)] active:bg-[var(--color-bg-surface-3)] flex items-center rounded-lg transition-colors var(--duration-fast) var(--ease-ios)"
                 >
                   <SettingsIcon className="w-5 h-5 mr-3.5 flex-shrink-0" strokeWidth={2}/>
                   {t('navSettings')}
                   <div className="ml-auto flex items-center">
-                    <span className="bg-sky-400/20 text-sky-300 text-xs px-2 py-0.5 rounded-full">{t('new')}</span>
+                    <span className="bg-[var(--color-primary-accent)]/20 text-[var(--color-primary-accent)] text-xs px-2 py-0.5 rounded-full">{t('new')}</span>
                   </div>
                 </button>
-                 <button
-                    onClick={() => { toggleDarkModePlaceholder(); /* setIsMobileProfileOpen(false); */ }}
-                    className="w-full text-left px-4 py-3.5 text-base text-slate-200 hover:bg-slate-700/60 active:bg-slate-600 flex items-center justify-between rounded-lg transition-colors var(--duration-fast) var(--ease-ios)"
-                >
-                  <div className="flex items-center">
-                    <span className="w-5 h-5 mr-3.5 flex-shrink-0">🌓</span> {/* Placeholder MoonIcon */}
-                    {isDarkModePlaceholder ? t('switchToLightTheme') : t('switchToDarkTheme')}
-                  </div>
-                  <Toggle checked={isDarkModePlaceholder} onChange={toggleDarkModePlaceholder} label="" />
-                </button>
+                <ThemeToggleSwitch className="!px-4 !py-3.5 !text-base"/>
             </div>
             <div className="px-5 py-2">
                 <button
                   onClick={() => { logout(); setIsMobileProfileOpen(false); }}
-                  className="w-full text-left px-4 py-3.5 text-base text-red-400 hover:bg-red-400/15 active:bg-red-400/25 flex items-center rounded-lg transition-colors var(--duration-fast) var(--ease-ios)"
+                  className="w-full text-left px-4 py-3.5 text-base text-[var(--color-danger-accent)] hover:bg-[var(--color-danger-accent)]/15 active:bg-[var(--color-danger-accent)]/25 flex items-center rounded-lg transition-colors var(--duration-fast) var(--ease-ios)"
                 >
                   <LogoutIcon className="w-5 h-5 mr-3.5 flex-shrink-0" />
                   {t('logout')}
                 </button>
             </div>
           </div>
-          <div className="px-5 py-4 border-t border-slate-700/50 mt-2">
+          <div className="px-5 py-4 border-t border-[var(--color-border-default)] mt-2">
             <div className="flex items-center justify-between mb-4">
-                <p className="text-xs text-slate-500">{t('appVersion')} 1.0.0</p>
-                <p className="text-xs text-slate-500">© {new Date().getFullYear()} {t('appName')}</p>
+                <p className="text-xs text-[var(--color-text-muted)]">{t('appVersion')} 1.0.0</p>
+                <p className="text-xs text-[var(--color-text-muted)]">© {new Date().getFullYear()} {t('appName')}</p>
             </div>
-            <button
+            <Button
+              variant="secondary"
               onClick={() => setIsMobileProfileOpen(false)}
-              className="w-full py-3.5 rounded-lg bg-slate-700 text-slate-100 text-center font-medium hover:bg-slate-600 active:bg-slate-500 transition-colors var(--duration-fast) var(--ease-ios)"
+              className="w-full py-3.5 rounded-lg !text-[var(--color-text-primary)] text-center font-medium"
             >
               {t('close')}
-            </button>
+            </Button>
           </div>
         </div>
-      </div>
+      </>
     );
   };
   MobileProfileSheet.displayName = "MobileProfileSheet";
   
   return (
-    <div className={`min-h-screen flex flex-col bg-slate-900 selection:bg-sky-500/20 selection:text-sky-300 pb-16 md:pb-0`}>
+    <div className="min-h-screen flex flex-col selection:bg-[var(--color-primary-accent)]/20 selection:text-[var(--color-primary-accent)] pb-16 md:pb-0"
+         style={{ backgroundColor: 'var(--color-bg-body)', color: 'var(--color-text-body)' }}>
       <header className="glass-effect sticky top-0 z-50">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16 md:h-[72px]">
             <div className="flex items-center space-x-2 sm:space-x-3 cursor-pointer group" onClick={() => navigate('/')}>
-              <h1 className="text-xl sm:text-2xl font-bold text-slate-50 group-hover:text-sky-400 tracking-tight transition-colors var(--duration-fast) var(--ease-ios)">
+              <h1 className="text-xl sm:text-2xl font-bold text-[var(--color-text-primary)] group-hover:text-[var(--color-primary-accent)] tracking-tight transition-colors var(--duration-fast) var(--ease-ios)">
                 {APP_NAME} 
               </h1>
             </div>
@@ -947,11 +934,15 @@ const AppLayout: React.FC = () => {
               
               {currentUser && <SyncStatusIndicator />}
 
+              {!currentUser && (
+                <ThemeToggle compact={true} />
+              )}
+
               <Tooltip content={language === 'en' ? "Change Language / Đổi Ngôn Ngữ" : "Đổi Ngôn Ngữ / Change Language"} placement="bottom">
                 <Button 
                     variant="ghost" 
                     size="md"
-                    className="!p-2 sm:!p-2.5 text-slate-300 hover:text-sky-400 hover:bg-sky-400/10 rounded-lg"
+                    className="!p-2 sm:!p-2.5 !text-[var(--color-text-secondary)] hover:!text-[var(--color-primary-accent)] hover:!bg-[var(--color-primary-accent)]/10 rounded-lg"
                     onClick={() => setLanguage(language === 'en' ? 'vi' : 'en')}
                     aria-label={language === 'en' ? "Switch to Vietnamese" : "Switch to English"}
                 >
@@ -967,7 +958,7 @@ const AppLayout: React.FC = () => {
                     variant="primary" 
                     size="sm" 
                     onClick={() => navigate('/signin')}
-                    className="font-semibold shadow-lg hover:shadow-sky-400/30 py-2 px-4 sm:px-5 rounded-lg"
+                    className="font-semibold shadow-lg hover:shadow-[var(--color-primary-accent)]/30 py-2 px-4 sm:px-5 rounded-lg"
                 >
                     {t('signIn')}
                 </Button>
@@ -987,6 +978,20 @@ const AppLayout: React.FC = () => {
           <NavLink to="/create" isMobile>
             <PlusCircleIcon className="w-5 h-5 mb-1"/> <span className="text-xs font-medium">{t('navCreateQuiz')}</span>
           </NavLink>
+          
+          {/* Theme toggle for all users on mobile */}
+          <button 
+            onClick={() => { const { toggleTheme: tt } = useTheme(); tt(); }} // Inline hook usage due to render context
+            className="flex flex-col items-center justify-center h-full w-full focus-visible:ring-2 focus-visible:ring-[var(--color-primary-accent)]/70 rounded-lg hover:bg-[var(--color-bg-surface-3)] active:bg-[var(--color-bg-surface-3)] text-[var(--color-text-muted)] hover:text-[var(--color-primary-accent)] transition-colors var(--duration-fast) var(--ease-ios) btn-ripple mobile-nav-item"
+            aria-label={theme === 'dark' ? t('switchToLightTheme') : t('switchToDarkTheme')}
+          >
+            {theme === 'dark' ? 
+              <SunIcon className="w-5 h-5 mb-1" /> : 
+              <MoonIcon className="w-5 h-5 mb-1" />
+            }
+            <span className="text-xs font-medium">{theme === 'dark' ? t('lightMode') : t('darkMode')}</span>
+          </button>
+          
            {currentUser && (
             <NavLink to="/settings" isMobile>
               <SettingsIconMobileNav className="w-5 h-5 mb-1"/> <span className="text-xs font-medium">{t('navSettings')}</span>
@@ -995,14 +1000,14 @@ const AppLayout: React.FC = () => {
           {currentUser && (
             <button 
               onClick={() => setIsMobileProfileOpen(true)}
-              className="flex flex-col items-center justify-center h-full w-full focus-visible:ring-2 focus-visible:ring-sky-400/70 rounded-lg hover:bg-slate-700/60 active:bg-slate-700 text-slate-400 hover:text-sky-300 transition-colors var(--duration-fast) var(--ease-ios) btn-ripple mobile-nav-item"
+              className="flex flex-col items-center justify-center h-full w-full focus-visible:ring-2 focus-visible:ring-[var(--color-primary-accent)]/70 rounded-lg hover:bg-[var(--color-bg-surface-3)] active:bg-[var(--color-bg-surface-3)] text-[var(--color-text-muted)] hover:text-[var(--color-primary-accent)] transition-colors var(--duration-fast) var(--ease-ios) btn-ripple mobile-nav-item"
               aria-label={t('profile')}
             >
               <UserAvatar
                 photoUrl={currentUser.imageUrl}
                 userName={currentUser.name}
                 size="sm" 
-                className="mb-1 border border-slate-600 group-hover:border-sky-400 transition-colors var(--duration-fast) var(--ease-ios)"
+                className="mb-1 border border-[var(--color-border-interactive)] group-hover:border-[var(--color-primary-accent)] transition-colors var(--duration-fast) var(--ease-ios)"
               />
               <span className="text-xs font-medium">{t('profile')}</span>
             </button>
@@ -1021,8 +1026,8 @@ const AppLayout: React.FC = () => {
             <Route path="/quiz/:quizId" element={<QuizTakingPage />} />
             <Route path="/practice/:quizId" element={<QuizPracticePage />} />
             <Route path="/results/:quizId" element={<ResultsPage />} />
-            <Route path="/settings" element={currentUser ? <SyncSettingsPage /> : <HomePage />} />
-            <Route path="/profile" element={currentUser ? <SyncSettingsPage /> : <HomePage />} /> 
+            <Route path="/settings" element={currentUser ? <SyncSettingsPage /> : <Navigate to="/signin" state={{ from: location }} replace />} />
+            <Route path="/profile" element={currentUser ? <SyncSettingsPage /> : <Navigate to="/signin" state={{ from: location }} replace />} />
             <Route path="*" element={<HomePage />} /> 
           </Routes>
         </Suspense>
@@ -1031,44 +1036,44 @@ const AppLayout: React.FC = () => {
       <footer className="bg-transparent py-4 md:py-6 mt-auto">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="mb-4 md:mb-5 space-x-3 sm:space-x-4 text-center">
-            <a href="#" className="text-xs text-slate-400 hover:text-sky-300 transition-colors var(--duration-fast) var(--ease-ios)">{t('footerTerms')}</a>
-            <a href="#" className="text-xs text-slate-400 hover:text-sky-300 transition-colors var(--duration-fast) var(--ease-ios)">{t('footerPrivacy')}</a>
-            <a href="#" className="text-xs text-slate-400 hover:text-sky-300 transition-colors var(--duration-fast) var(--ease-ios)">{t('footerFAQ')}</a>
+            <a href="#" className="text-xs text-[var(--color-text-muted)] hover:text-[var(--color-primary-accent)] transition-colors var(--duration-fast) var(--ease-ios)">{t('footerTerms')}</a>
+            <a href="#" className="text-xs text-[var(--color-text-muted)] hover:text-[var(--color-primary-accent)] transition-colors var(--duration-fast) var(--ease-ios)">{t('footerPrivacy')}</a>
+            <a href="#" className="text-xs text-[var(--color-text-muted)] hover:text-[var(--color-primary-accent)] transition-colors var(--duration-fast) var(--ease-ios)">{t('footerFAQ')}</a>
           </div>
 
-          <div className="pt-4 md:pt-5 border-t border-slate-700/50">
-            <p className="text-sm font-semibold text-slate-300 mb-3 sm:mb-3 text-center">{t('footerContactUs')}</p> 
+          <div className="pt-4 md:pt-5 border-t border-[var(--color-border-default)]">
+            <p className="text-sm font-semibold text-[var(--color-text-secondary)] mb-3 sm:mb-3 text-center">{t('footerContactUs')}</p> 
             <div className="flex justify-center items-center space-x-3 sm:space-x-4">
               <Tooltip content="Facebook" placement="top">
-                <a href="https://www.facebook.com/boboiboy.gala.7/" target="_blank" rel="noopener noreferrer" aria-label="Facebook" className="text-slate-400 hover:text-sky-400 transition-colors var(--duration-fast) var(--ease-ios)">
+                <a href="https://www.facebook.com/boboiboy.gala.7/" target="_blank" rel="noopener noreferrer" aria-label="Facebook" className="text-[var(--color-text-muted)] hover:text-[var(--color-primary-accent)] transition-colors var(--duration-fast) var(--ease-ios)">
                   <img src="https://img.icons8.com/?size=256&id=uLWV5A9vXIPu&format=png" alt="Facebook" className="w-5 h-5"/>
                 </a>
               </Tooltip>
               <Tooltip content="TikTok" placement="top">
-                <a href="https://www.tiktok.com/@teosushi1014" target="_blank" rel="noopener noreferrer" aria-label="TikTok" className="text-slate-400 hover:text-sky-400 transition-colors var(--duration-fast) var(--ease-ios)">
+                <a href="https://www.tiktok.com/@teosushi1014" target="_blank" rel="noopener noreferrer" aria-label="TikTok" className="text-[var(--color-text-muted)] hover:text-[var(--color-primary-accent)] transition-colors var(--duration-fast) var(--ease-ios)">
                    <img src="https://img.icons8.com/?size=256&id=118640&format=png" alt="TikTok" className="w-5 h-5"/>
                 </a>
               </Tooltip>
               <Tooltip content="YouTube" placement="top">
-                <a href="https://www.youtube.com/@TeoSushi1014" target="_blank" rel="noopener noreferrer" aria-label="YouTube" className="text-slate-400 hover:text-sky-400 transition-colors var(--duration-fast) var(--ease-ios)">
+                <a href="https://www.youtube.com/@TeoSushi1014" target="_blank" rel="noopener noreferrer" aria-label="YouTube" className="text-[var(--color-text-muted)] hover:text-[var(--color-primary-accent)] transition-colors var(--duration-fast) var(--ease-ios)">
                    <img src="https://img.icons8.com/?size=256&id=19318&format=png" alt="YouTube" className="w-5 h-5"/>
                 </a>
               </Tooltip>
               <Tooltip content={t('footerGmail')} placement="top">
-                <a href="mailto:teosushi1014@gmail.com" aria-label={t('footerGmail')} className="text-slate-400 hover:text-sky-400 transition-colors var(--duration-fast) var(--ease-ios)">
+                <a href="mailto:teosushi1014@gmail.com" aria-label={t('footerGmail')} className="text-[var(--color-text-muted)] hover:text-[var(--color-primary-accent)] transition-colors var(--duration-fast) var(--ease-ios)">
                   <img src="https://img.icons8.com/?size=256&id=P7UIlhbpWzZm&format=png" alt="Gmail" className="w-5 h-5"/>
                 </a>
               </Tooltip>
             </div>
           </div>
           
-          <p className="text-xs text-slate-400/70 mt-6 md:mt-8 text-center">{t('footerRights', {year: new Date().getFullYear(), appName: APP_NAME})}</p>
+          <p className="text-xs text-[var(--color-text-muted)]/70 mt-6 md:mt-8 text-center">{t('footerRights', {year: new Date().getFullYear(), appName: APP_NAME})}</p>
         </div>
       </footer>
       
       {apiKeyWarnings.length > 0 && (
          <AnimatedApiKeyWarning>
-            <div role="alert" className="fixed bottom-20 md:bottom-4 left-1/2 -translate-x-1/2 w-auto max-w-[calc(100%-2rem)] bg-amber-500 text-amber-50 p-3 sm:p-3.5 text-xs sm:text-sm shadow-2xl z-[200] flex items-center justify-center gap-2.5 border border-amber-400/50 rounded-xl">
+            <div role="alert" className="fixed bottom-20 md:bottom-4 left-1/2 -translate-x-1/2 w-auto max-w-[calc(100%-2rem)] bg-amber-500 text-amber-950 p-3 sm:p-3.5 text-xs sm:text-sm shadow-2xl z-[200] flex items-center justify-center gap-2.5 border border-amber-400/50 rounded-xl">
                 <KeyIcon className="w-4 h-4 sm:w-5 sm:h-5 text-amber-950 flex-shrink-0" strokeWidth={2}/>
                 <strong className="font-semibold">{t('apiKeyWarningTitle')}:</strong> 
                 <span className="text-amber-950/90">{t('apiKeyWarningMissing', {keys: apiKeyWarnings.join(', ')})} {t('apiKeyWarningFunctionality')}</span>
@@ -1078,17 +1083,17 @@ const AppLayout: React.FC = () => {
 
       {driveSyncError && syncState === 'error' && ( 
          <AnimatedApiKeyWarning>
-            <div role="alert" className="fixed bottom-20 md:bottom-4 right-4 w-auto max-w-[calc(100%-2rem)] md:max-w-md bg-red-600 text-white p-3 sm:p-3.5 text-xs sm:text-sm shadow-2xl z-[200] flex items-center gap-2.5 border border-red-500/50 rounded-xl">
-                <InformationCircleIcon className="w-4 h-4 sm:w-5 sm:h-5 text-red-50 flex-shrink-0" />
+            <div role="alert" className="fixed bottom-20 md:bottom-4 right-4 w-auto max-w-[calc(100%-2rem)] md:max-w-md bg-[var(--color-danger-accent)] text-[var(--color-primary-accent-text)] p-3 sm:p-3.5 text-xs sm:text-sm shadow-2xl z-[200] flex items-center gap-2.5 border border-[var(--color-danger-accent)]/50 rounded-xl">
+                <InformationCircleIcon className="w-4 h-4 sm:w-5 sm:h-5 text-[var(--color-primary-accent-text)] flex-shrink-0" />
                 <strong className="font-semibold">{t('error')}:</strong> 
-                <span className="text-red-100">{driveSyncError}</span>
-                 <Button variant="ghost" size="xs" onClick={() => setDriveSyncError(null)} className="!p-1 text-red-100 hover:text-white hover:bg-red-500/20 -mr-1">
+                <span className="text-[var(--color-primary-accent-text)]/90">{driveSyncError}</span>
+                 <Button variant="ghost" size="xs" onClick={() => setDriveSyncError(null)} className="!p-1 !text-[var(--color-primary-accent-text)]/90 hover:!text-white hover:!bg-black/20 -mr-1">
                     <XCircleIcon className="w-4 h-4"/>
                 </Button>
             </div>
         </AnimatedApiKeyWarning>
       )}
-      <MobileProfileSheet />
+      {currentUser && isMobileProfileOpen && <MobileProfileSheet /> } {/* Conditional rendering based on isMobileProfileOpen */}
     </div>
   );
 };

@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FixedSizeList } from 'react-window';
@@ -6,7 +7,7 @@ import { useAppContext, useTranslation } from '../../App';
 import { Quiz } from '../../types.ts';
 import { Button, LoadingSpinner } from '../../components/ui';
 import { PlusCircleIcon } from '../../constants';
-import QuizCard from './components/QuizCard';
+import { QuizCard } from './components/QuizCard'; // Changed default to named import
 import QuizCardSkeleton from './components/QuizCardSkeleton'; // Import skeleton
 import useIntersectionObserver from '../../hooks/useIntersectionObserver';
 
@@ -138,7 +139,6 @@ const DashboardPage: React.FC = () => {
 
   const renderContent = () => {
     // If AppContext.isLoading is true and it's an initial load (no quizzes yet), show skeletons.
-    // AppLayout's global spinner might cover this; this component-level skeleton is for flexibility.
     if (isLoading && sortedQuizzes.length === 0) {
       return (
         <div className="space-y-4"> {/* Consistent spacing for skeletons */}
@@ -154,11 +154,11 @@ const DashboardPage: React.FC = () => {
     // If loading is finished, and there are still no quizzes.
     if (!isLoading && sortedQuizzes.length === 0) {
       return (
-        <div ref={noQuizzesRef} className={`text-center py-24 sm:py-28 bg-slate-800 rounded-3xl shadow-2xl border border-slate-700/70 glass-effect ${isNoQuizzesVisible ? 'animate-page-slide-fade-in' : 'opacity-0'}`}>
-          <h3 className="mt-2 text-2xl sm:text-3xl font-semibold text-slate-100 mb-4 pt-10">
+        <div ref={noQuizzesRef} className={`text-center py-24 sm:py-28 bg-[var(--color-bg-surface-1)] rounded-3xl shadow-2xl border border-[var(--color-border-default)] glass-effect ${isNoQuizzesVisible ? 'animate-page-slide-fade-in' : 'opacity-0'}`}>
+          <h3 className="mt-2 text-2xl sm:text-3xl font-semibold text-[var(--color-text-primary)] mb-4 pt-10">
             {t('dashboardNoQuizzes')}
           </h3>
-          <p className="mt-1 text-base text-slate-400 max-w-lg mx-auto mb-12">
+          <p className="mt-1 text-base text-[var(--color-text-secondary)] max-w-lg mx-auto mb-12">
             {t('dashboardNoQuizzesDesc')}
           </p>
           <Button
@@ -166,7 +166,7 @@ const DashboardPage: React.FC = () => {
             size="lg"
             leftIcon={<PlusCircleIcon className="w-5 h-5" strokeWidth={2} />}
             onClick={() => navigate('/create')}
-            className="shadow-lg hover:shadow-black/30 py-3.5 px-8 text-base rounded-xl"
+            className="shadow-lg py-3.5 px-8 text-base rounded-xl"
           >
             {t('createQuiz')}
           </Button>
@@ -175,8 +175,6 @@ const DashboardPage: React.FC = () => {
     }
 
     // If we have quizzes (sortedQuizzes.length > 0).
-    // AppContext.isLoading might be true here for background syncs, but we show the list.
-    // Skeletons are shown if the list component itself isn't ready (showList is false).
     return (
       <div ref={listContainerRef} className="quiz-list-container" style={{ height: listHeight > 0 ? `${listHeight}px` : 'auto', minHeight: '300px' }}>
         {showList && listHeight > 0 && sortedQuizzes.length > 0 ? (
@@ -191,9 +189,7 @@ const DashboardPage: React.FC = () => {
             {Row}
           </FixedSizeList>
         ) : (
-           // Show skeletons if data is available but list component isn't ready
-           // or if sortedQuizzes got populated but showList/listHeight effect hasn't run/finished.
-           (sortedQuizzes.length > 0 && !showList && !isLoading) && // Added !isLoading here to ensure skeletons don't flash if global spinner was very brief
+           (sortedQuizzes.length > 0 && !showList && !isLoading) &&
             <div className="space-y-4">
               {[...Array(Math.min(3, sortedQuizzes.length))].map((_, i) => (
                 <div key={i} className="h-[344px] px-1">
@@ -202,7 +198,6 @@ const DashboardPage: React.FC = () => {
               ))}
             </div>
         )}
-         {/* Fallback for when showList is false but data is still technically loading - covered by first condition now */}
          {isLoading && sortedQuizzes.length > 0 && !showList && (
              <div className="space-y-4">
                 {[...Array(Math.min(3, sortedQuizzes.length))].map((_, i) => (
@@ -218,12 +213,12 @@ const DashboardPage: React.FC = () => {
 
   return (
     <div className="space-y-10 md:space-y-12">
-      <div ref={headerRef} className={`flex flex-col sm:flex-row justify-between items-start sm:items-center gap-5 border-b border-slate-700/50 pb-8 sm:pb-10 ${isHeaderVisible ? 'animate-page-slide-fade-in' : 'opacity-0'}`}>
+      <div ref={headerRef} className={`flex flex-col sm:flex-row justify-between items-start sm:items-center gap-5 border-b border-[var(--color-border-default)] pb-8 sm:pb-10 ${isHeaderVisible ? 'animate-page-slide-fade-in' : 'opacity-0'}`}>
         <div>
-          <h1 className="text-3xl sm:text-4xl font-bold text-slate-50 tracking-tight">
+          <h1 className="text-3xl sm:text-4xl font-bold text-[var(--color-text-primary)] tracking-tight">
             {t('myQuizzesTitle')}
           </h1>
-          <p className="mt-1.5 text-sm text-slate-400 max-w-xl">
+          <p className="mt-1.5 text-sm text-[var(--color-text-secondary)] max-w-xl">
             {t('manageBrowseQuizzes')}
           </p>
         </div>
@@ -233,32 +228,23 @@ const DashboardPage: React.FC = () => {
             size="md"
             leftIcon={<PlusCircleIcon className="w-5 h-5" strokeWidth={2.5} />}
             onClick={() => navigate('/create')}
-            className="shadow-xl hover:shadow-sky-400/50 py-3 px-6 rounded-xl"
+            className="shadow-xl hover:shadow-[var(--color-primary-accent)]/50 py-3 px-6 rounded-xl"
           >
             {t('dashboardCreateNew')}
           </Button>
         </div>
       </div>
       
-      {/* Only show "Recent Quizzes" title if not initial-loading AND quizzes exist */}
       {!isLoading && sortedQuizzes.length > 0 && (
-         <h2 ref={recentQuizzesTitleRef} className={`text-2xl sm:text-3xl font-semibold text-slate-100 ${isRecentQuizzesTitleVisible ? 'animate-fadeInUp' : 'opacity-0'}`}>
+         <h2 ref={recentQuizzesTitleRef} className={`text-2xl sm:text-3xl font-semibold text-[var(--color-text-primary)] ${isRecentQuizzesTitleVisible ? 'animate-fadeInUp' : 'opacity-0'}`}>
             {t('recentQuizzesSectionTitle')}
           </h2>
       )}
-      {/* Show general loading spinner if isLoading is true AND there are quizzes (implies background sync/refresh)
-          AND list is not ready to be shown. This condition is a bit tricky with skeletons.
-          The main skeleton logic now handles initial load (isLoading && sortedQuizzes.length === 0).
-          If list is not ready (showList=false) but data is available, it also shows skeletons.
-          A generic spinner might be redundant here if skeletons cover the placeholder states well.
-      */}
       {isLoading && sortedQuizzes.length > 0 && !showList && (
         <div className="flex justify-center items-center" style={{ height: listHeight > 0 ? `${listHeight}px` : '300px' }}>
             <LoadingSpinner text={t('loading')} size="lg" />
         </div>
       )}
-
-
       {renderContent()}
     </div>
   );

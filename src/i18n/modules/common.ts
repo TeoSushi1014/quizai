@@ -1,4 +1,3 @@
-
 // src/i18n/modules/common.ts
 export const en = {
   appName: "QuizAI",
@@ -16,7 +15,7 @@ export const en = {
   back: "Back",
   home: "Home",
   dashboard: "Dashboard",
-  createQuiz: "Create Quiz", // Generic 'Create Quiz' button, e.g., on empty dashboard.
+  createQuiz: "Create Quiz", 
   upload: "Upload",
   settings: "Settings",
   share: "Share",
@@ -58,9 +57,14 @@ export const en = {
   refresh: "Refresh",
   refreshing: "Refreshing...",
   profile: "Profile",
-  account: "Account", // New
-  new: "New", // New (for badge)
-  appVersion: "App Version", // New
+  account: "Account",
+  new: "New",
+  appVersion: "App Version",
+  themeSettings: "Theme Settings",
+  darkMode: "Dark",
+  lightMode: "Light", 
+  currentlyUsingDarkTheme: "Currently using dark theme.",
+  currentlyUsingLightTheme: "Currently using light theme.",
 
 
   // Header & Navigation
@@ -132,7 +136,7 @@ export const vi = {
   back: "Quay lại",
   home: "Trang chủ",
   dashboard: "Bảng điều khiển",
-  createQuiz: "Tạo Quiz", // Generic
+  createQuiz: "Tạo Quiz", 
   upload: "Tải lên",
   settings: "Cài đặt",
   share: "Chia sẻ",
@@ -168,65 +172,70 @@ export const vi = {
   attemptTimeLimitLabel: "Giới hạn thời gian cho lượt này (phút)",
   attemptTimeLimitInfo: "Nhập 0 nếu không giới hạn thời gian.",
   saveSettingsButtonText: "Lưu Cài đặt",
-  rateLimitErrorUnauthenticated: "Người dùng chưa xác thực được giới hạn {limit} quiz mỗi ngày. Vui lòng đăng nhập để truy cập không giới hạn.",
+  rateLimitErrorUnauthenticated: "Người dùng chưa xác thực bị giới hạn {limit} quiz mỗi ngày. Vui lòng đăng nhập để truy cập không giới hạn.",
   rateLimitInfoUnauthenticated: "Người dùng chưa xác thực: tối đa {limit} quiz/ngày.",
-  rateLimitInfoAuthenticated: "Người dùng đã xác thực qua Google: tạo quiz không giới hạn.",
+  rateLimitInfoAuthenticated: "Người dùng đã xác thực Google: tạo quiz không giới hạn.",
   refresh: "Làm mới",
   refreshing: "Đang làm mới...",
   profile: "Hồ sơ",
-  account: "Tài khoản", // New
-  new: "Mới", // New (for badge)
-  appVersion: "Phiên bản ứng dụng", // New
-
+  account: "Tài khoản",
+  new: "Mới",
+  appVersion: "Phiên bản ứng dụng",
+  themeSettings: "Cài đặt Giao diện",
+  darkMode: "Tối",
+  lightMode: "Sáng",
+  currentlyUsingDarkTheme: "Đang sử dụng giao diện tối.",
+  currentlyUsingLightTheme: "Đang sử dụng giao diện sáng.",
 
   // Header & Navigation
   navHome: "Trang chủ",
-  navDashboard: "Quiz của tôi",
-  navCreateQuiz: "Tạo Quiz mới",
+  navDashboard: "Bảng DK",
+  navCreateQuiz: "Tạo Quiz",
   navSettings: "Cài đặt",
   languageSwitcherLabel: "Ngôn ngữ:",
 
   // HomePage specific
-  heroTitle: "QuizAI: Biến Mọi Nội Dung Thành Quiz Hấp Dẫn Ngay Lập Tức.",
+  heroTitle: "QuizAI: Biến Mọi Nội Dung thành Quiz Hấp Dẫn Ngay Lập Tức.",
   heroSubtitle: "Tải lên PDF, văn bản, hoặc hình ảnh và để AI của tôi tạo ra những bài quiz đầy thử thách và sâu sắc cho bạn.",
   heroCTA: "Tạo Quiz Đầu Tiên",
   heroCTACreateAnother: "Tạo Quiz Khác",
   howItWorksTitle: "Cách Hoạt Động",
   howItWorksUploadTitle: "Tải Lên Nội Dung",
-  howItWorksUploadDesc: "Dễ dàng tải lên PDF, tệp văn bản, tài liệu Word hoặc thậm chí dán trực tiếp văn bản. AI của tôi xử lý nhiều định dạng một cách liền mạch.",
+  howItWorksUploadDesc: "Dễ dàng tải lên PDF, tệp văn bản, tài liệu Word hoặc thậm chí dán trực tiếp văn bản. AI của tôi xử lý liền mạch nhiều định dạng khác nhau.",
   howItWorksCustomizeTitle: "Tùy Chỉnh Quiz",
   howItWorksCustomizeDesc: "Điều chỉnh quiz của bạn: đặt số lượng câu hỏi, độ khó và cung cấp hướng dẫn tùy chỉnh. Hoặc để AI của tôi tạo ra thử thách hoàn hảo.",
   howItWorksShareTitle: "Chia Sẻ & Phân Tích",
   howItWorksShareDesc: "Chia sẻ quiz bằng liên kết, theo dõi điểm số và nhận phản hồi chi tiết do AI cung cấp cho mỗi câu hỏi.",
   homeDashboardUserTitle: "Chào mừng trở lại, {name}!",
-  homeDashboardTitle: "Trung tâm Quiz của bạn",
-  homeStatsQuizzes: "Bạn đang có {count} quiz.",
+  homeDashboardTitle: "Trung tâm Quiz của Bạn",
+  homeStatsQuizzes: "Bạn có {count} bài quiz.",
   homeRecentQuizzesTitle: "Quiz Gần Đây",
   homeViewAllQuizzes: "Xem Tất Cả Quiz",
-  homeSyncingQuizzesMessage: "Đang đồng bộ quiz, vui lòng chờ...",
+  homeSyncingQuizzesMessage: "Đang đồng bộ quiz, vui lòng đợi...",
   homeInitialLoadMessage: "Đang tải quiz của bạn lần đầu...",
 
+
   // Footer
-  footerRights: "© {year} {appName}. Đã đăng ký bản quyền.",
+  footerRights: "© {year} {appName}. Đã đăng ký Bản quyền.",
   footerTerms: "Điều khoản Dịch vụ",
   footerPrivacy: "Chính sách Bảo mật",
-  footerFAQ: "Hỏi đáp",
-  footerContactUs: "Liên hệ tôi",
+  footerFAQ: "FAQ",
+  footerContactUs: "Liên Hệ Tôi",
   footerGmail: "Gmail",
-
-  // Feedback Section
-  feedbackSectionTitle: "Gửi Phản Hồi",
+  
+  // Feedback Section (common as it's on HomePage)
+  feedbackSectionTitle: "Góp Ý",
   feedbackSectionSubtitle: "Tôi đánh giá cao ý kiến của bạn! Hãy chia sẻ suy nghĩ, đề xuất hoặc bất kỳ vấn đề nào bạn gặp phải.",
-  feedbackTextareaLabel: "Phản hồi của bạn",
-  feedbackTextareaPlaceholder: "Nhập phản hồi của bạn tại đây...",
-  feedbackSendButton: "Gửi Phản Hồi qua Email",
-  feedbackLoginPromptTitle: "Đăng Nhập để Gửi Phản Hồi",
-  feedbackLoginPromptSubtitle: "Vui lòng đăng nhập bằng tài khoản Google của bạn để gửi phản hồi.",
-  feedbackMailSubject: "Phản hồi cho {appName}",
+  feedbackTextareaLabel: "Góp ý của bạn",
+  feedbackTextareaPlaceholder: "Nhập góp ý của bạn tại đây...",
+  feedbackSendButton: "Gửi Góp Ý qua Email",
+  feedbackLoginPromptTitle: "Đăng Nhập để Gửi Góp Ý",
+  feedbackLoginPromptSubtitle: "Vui lòng đăng nhập bằng tài khoản Google của bạn để gửi góp ý.",
+  feedbackMailSubject: "Góp ý cho {appName}",
   feedbackMailBodyUser: "Người dùng: {userName} ({userEmail})",
-  feedbackMailBodyContentLabel: "Nội dung phản hồi:",
+  feedbackMailBodyContentLabel: "Nội dung góp ý:",
 
   // Test keys
-  testString: "Đây là một chuỗi thử nghiệm.",
+  testString: "Đây là một chuỗi kiểm tra.",
   stringWithParam: "Xin chào {name}!",
 };

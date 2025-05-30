@@ -1,0 +1,89 @@
+/* src/styles/theme-fixes.css */
+
+/* Fix for text input fields, textareas, and selects using CSS variables */
+/* These rules with !important aim to override Tailwind defaults or inline styles if necessary */
+
+/* Light Theme Overrides */
+html.light input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+html.light textarea,
+html.light select {
+  background-color: var(--color-input-bg) !important;
+  color: var(--color-input-text) !important;
+  border-color: var(--color-input-border) !important;
+}
+
+html.light input::placeholder, 
+html.light textarea::placeholder {
+  color: var(--color-input-placeholder) !important;
+  opacity: 1 !important;
+}
+
+html.light input:focus:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+html.light textarea:focus,
+html.light select:focus {
+  border-color: var(--color-input-focus-border) !important;
+  box-shadow: 0 0 0 2px var(--color-input-focus-ring) !important;
+}
+
+/* Dark Theme Overrides (Ensuring consistency if Tailwind specificity issues arise) */
+html.dark input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+html.dark textarea,
+html.dark select {
+  background-color: var(--color-input-bg) !important;
+  color: var(--color-input-text) !important;
+  border-color: var(--color-input-border) !important;
+}
+
+html.dark input::placeholder, 
+html.dark textarea::placeholder {
+  color: var(--color-input-placeholder) !important;
+  opacity: 1 !important;
+}
+
+html.dark input:focus:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+html.dark textarea:focus,
+html.dark select:focus {
+  border-color: var(--color-input-focus-border) !important;
+  box-shadow: 0 0 0 2px var(--color-input-focus-ring) !important;
+}
+
+
+/* Fix for code blocks and pre in light mode */
+html.light pre, 
+html.light code {
+  background-color: var(--color-bg-surface-2) !important;
+  color: var(--color-text-primary) !important;
+  border: 1px solid var(--color-border-default) !important;
+  border-radius: var(--radius-md) !important;
+}
+
+/* Fix for pasted text area in quiz creation */
+html.light .paste-text-area {
+  background-color: var(--color-input-bg) !important;
+  color: var(--color-input-text) !important;
+  border-color: var(--color-input-border) !important;
+}
+html.light .paste-text-area::placeholder {
+    color: var(--color-input-placeholder) !important;
+}
+html.light .paste-text-area:focus {
+  border-color: var(--color-input-focus-border) !important;
+  box-shadow: 0 0 0 2px var(--color-input-focus-ring) !important;
+}
+
+
+/* Fix for dropzone in light mode */
+html.light .dropzone-themed { /* Ensure Dropzone component uses this class or adapt styles */
+  background-color: var(--color-bg-surface-1) !important; /* Lighter surface for dropzone itself */
+  border-color: var(--color-input-border) !important;
+}
+
+html.light .dropzone-themed:hover {
+  background-color: var(--color-bg-surface-2) !important;
+  border-color: var(--color-border-interactive) !important;
+}
+
+html.light .dropzone-themed.dragging { /* Add a class for dragging state if possible */
+    background-color: var(--color-primary-accent)/15 !important;
+    border-color: var(--color-primary-accent) !important;
+}

@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAppContext, useTranslation } from '../../App';
@@ -150,7 +149,7 @@ const QuizTakingPage: React.FC = () => {
      return (
         <Card className="max-w-3xl mx-auto shadow-2xl !rounded-2xl animate-fadeInUp" useGlassEffect>
             <LoadingSpinner text={t('quizTakingLoading')} />
-            <p className="text-center text-slate-300 mt-4">{t('quizTakingErrorQuestionNotFound')}</p>
+            <p className="text-center text-[var(--color-text-secondary)] mt-4">{t('quizTakingErrorQuestionNotFound')}</p>
         </Card>
      );
   }
@@ -160,27 +159,27 @@ const QuizTakingPage: React.FC = () => {
   const isLastQuestion = currentQuestionIndex === totalQuestions - 1;
 
   return (
-    <Card className="max-w-3xl mx-auto shadow-2xl !border-slate-700/40 !rounded-2xl animate-page-slide-fade-in" useGlassEffect>
+    <Card className="max-w-3xl mx-auto shadow-2xl !rounded-2xl animate-page-slide-fade-in" useGlassEffect>
       <div className="mb-6 sm:mb-8">
-        <h1 className="text-2xl sm:text-3xl font-bold text-slate-50 mb-3 sm:mb-4 leading-tight tracking-tight line-clamp-2" title={localActiveQuiz.title}>
+        <h1 className="text-2xl sm:text-3xl font-bold text-[var(--color-text-primary)] mb-3 sm:mb-4 leading-tight tracking-tight line-clamp-2" title={localActiveQuiz.title}>
           <MathText text={localActiveQuiz.title} />
         </h1>
-        <div className="flex justify-between items-center text-sm text-slate-300 mb-4 sm:mb-5">
+        <div className="flex justify-between items-center text-sm text-[var(--color-text-secondary)] mb-4 sm:mb-5">
           <span>{t('quizTakingQuestionProgress', {current: currentQuestionIndex + 1, total: totalQuestions})}</span>
           {localActiveQuiz.config?.customUserPrompt && (
             <Tooltip content={<div className="max-w-xs text-left text-xs"><MathText text={localActiveQuiz.config.customUserPrompt}/></div>} placement="bottom-end">
                 <LightbulbIcon className="w-5 h-5 text-yellow-300 cursor-help"/>
             </Tooltip>
           )}
-          {timeLeft !== null && <span className={`font-semibold ${timeLeft <= 60 ? 'text-red-400 animate-pulse' : 'text-sky-300'}`}>{t('quizTakingTimeLeft', { time: formatTime(timeLeft) })}</span>}
+          {timeLeft !== null && <span className={`font-semibold ${timeLeft <= 60 ? 'text-red-400 animate-pulse' : 'text-[var(--color-primary-accent)]'}`}>{t('quizTakingTimeLeft', { time: formatTime(timeLeft) })}</span>}
         </div>
-        <ProgressBar progress={progressPercent} size="lg" barClassName="bg-gradient-to-r from-sky-500 to-indigo-500"/>
+        <ProgressBar progress={progressPercent} size="lg" barClassName="bg-gradient-to-r from-[var(--color-primary-accent)] to-indigo-500"/>
       </div>
 
     <div>
-      <div className={`p-5 sm:p-8 bg-slate-700/60 rounded-xl shadow-inner border border-slate-600/70 min-h-[280px] flex flex-col`}>
+      <div className={`p-5 sm:p-8 bg-[var(--color-bg-surface-2)]/60 rounded-xl shadow-inner border border-[var(--color-border-default)] min-h-[280px] flex flex-col`}>
         <div key={currentQuestion.id} className="animate-fadeInUp">
-          <h2 className="text-lg sm:text-xl font-semibold text-slate-100 mb-6 sm:mb-8 leading-relaxed">
+          <h2 className="text-lg sm:text-xl font-semibold text-[var(--color-text-primary)] mb-6 sm:mb-8 leading-relaxed">
             <MathText text={currentQuestion.questionText} />
           </h2>
           
@@ -188,19 +187,19 @@ const QuizTakingPage: React.FC = () => {
               <div className="space-y-3.5 sm:space-y-4">
               {currentQuestion.options.map((option, index) => {
                   const isSelectedForDisplay = selectedOption === option;
-                  let optionStyle = `bg-slate-600 hover:bg-slate-500/80 border-slate-500 hover:border-sky-500 text-slate-100`;
-                  let icon = <CircleIcon className="w-6 h-6 text-slate-400 group-hover:text-sky-400 transition-colors var(--duration-fast) var(--ease-ios)" strokeWidth={2.5}/>;
+                  let optionStyle = `bg-[var(--color-bg-surface-3)] hover:bg-[var(--color-bg-surface-3)]/70 border-[var(--color-border-interactive)] hover:border-[var(--color-primary-accent)] text-[var(--color-text-primary)]`;
+                  let icon = <CircleIcon className="w-6 h-6 text-[var(--color-text-muted)] group-hover:text-[var(--color-primary-accent)] transition-colors var(--duration-fast) var(--ease-ios)" strokeWidth={2.5}/>;
 
                   if (isSelectedForDisplay) {
-                     optionStyle = 'bg-sky-500/50 border-sky-400 text-sky-50 font-semibold hover:bg-sky-500/60 scale-[1.01]';
-                     icon = <CircleIcon className="w-6 h-6 text-sky-50" isFilled={true} strokeWidth={1}/>;
+                     optionStyle = 'bg-[var(--color-primary-accent)]/50 border-[var(--color-primary-accent)] text-[var(--color-primary-accent-text)] font-semibold hover:bg-[var(--color-primary-accent)]/60 scale-[1.01]';
+                     icon = <CircleIcon className="w-6 h-6 text-[var(--color-primary-accent-text)]" isFilled={true} strokeWidth={1}/>;
                   }
 
                   return (
                   <button
                       key={index}
                       onClick={() => handleSelectOption(option)}
-                      className={`w-full flex items-center text-left p-3.5 sm:p-4 rounded-xl border-2 focus:outline-none focus-visible:ring-4 focus-visible:ring-sky-400/50 focus-visible:ring-offset-2 ${isSelectedForDisplay ? 'focus-visible:ring-offset-white' : 'focus-visible:ring-offset-slate-700'} shadow-lg 
+                      className={`w-full flex items-center text-left p-3.5 sm:p-4 rounded-xl border-2 focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--color-primary-accent)]/50 focus-visible:ring-offset-2 ${isSelectedForDisplay ? 'focus-visible:ring-offset-[var(--color-bg-surface-1)]' : 'focus-visible:ring-offset-[var(--color-bg-surface-2)]'} shadow-lg 
                                  transition-all var(--duration-fast) var(--ease-ios) will-change-transform, border, background-color
                                  ${optionStyle}`}
                       aria-pressed={isSelectedForDisplay}
@@ -216,7 +215,7 @@ const QuizTakingPage: React.FC = () => {
       </div>
     </div>
 
-      <div className="flex flex-col space-y-3 pt-6 sm:pt-8 border-t border-slate-700/60 mt-6 sm:mt-8"> {/* Added margin-top here to space out from question box */}
+      <div className="flex flex-col space-y-3 pt-6 sm:pt-8 border-t border-[var(--color-border-default)] mt-6 sm:mt-8"> {/* Added margin-top here to space out from question box */}
         <Button 
             onClick={handleNextQuestionAttempt} 
             disabled={!selectedOption && !(currentQuestion && userAnswers[currentQuestion.id])}
@@ -251,7 +250,7 @@ const QuizTakingPage: React.FC = () => {
             </div>
           }
         >
-          <p className="text-slate-200 text-base leading-relaxed">{t('submitConfirmationMessage')}</p>
+          <p className="text-[var(--color-text-body)] text-base leading-relaxed">{t('submitConfirmationMessage')}</p>
         </Modal>
       )}
 
@@ -270,7 +269,7 @@ const QuizTakingPage: React.FC = () => {
             </div>
           }
         >
-          <p className="text-slate-200 text-base leading-relaxed text-center">
+          <p className="text-[var(--color-text-body)] text-base leading-relaxed text-center">
             {t('timesUpMessage')}
           </p>
         </Modal>
