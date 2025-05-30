@@ -330,6 +330,21 @@
       min-height: 300px; /* Ensure it has a minimum height for measurement stability */
     }
     
+    /* Sync Status Indicator Transitions */
+    .sync-indicator-base {
+      transition: opacity var(--duration-fast) var(--ease-ios), transform var(--duration-fast) var(--ease-ios);
+      will-change: opacity, transform;
+    }
+    .sync-indicator-visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .sync-indicator-hidden {
+      opacity: 0;
+      transform: translateY(5px); /* Slight upward movement on hide for a subtle effect */
+      pointer-events: none;
+    }
+
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after {
         animation-duration: 1ms !important;
@@ -351,7 +366,8 @@
       }
       .modal-backdrop-enhanced, .dot, .card-float-hover, .thin-scrollbar-horizontal::-webkit-scrollbar-thumb,
       button, a, input, select, textarea, [role="button"], [role="switch"], [role="tab"],
-      .transition-all, .transition-colors, .transition-opacity, .transition-transform, .transition-width, .transition-shadow { 
+      .transition-all, .transition-colors, .transition-opacity, .transition-transform, .transition-width, .transition-shadow,
+      .sync-indicator-base /* Apply to new class */ { 
         transition: none !important;
       }
        
@@ -396,7 +412,7 @@
   }
 }
 </script>
-  <script type="module" crossorigin src="/quizai/assets/index-DAyIYyRJ.js"></script>
+  <script type="module" crossorigin src="/quizai/assets/index-BVrPC27r.js"></script>
 </head>
 <body>
   <div id="root"></div>
