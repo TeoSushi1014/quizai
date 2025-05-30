@@ -1,25 +1,26 @@
 
-
-import React, { useState, useCallback, useEffect, createContext, useContext, ReactNode, useMemo, useRef } from 'react';
+import React, { useState, useCallback, useEffect, createContext, useContext, ReactNode, useMemo, useRef, lazy, Suspense } from 'react';
 import { HashRouter, Routes, Route, useNavigate, useLocation, NavLink as RouterNavLink } from 'react-router-dom';
 import { GoogleOAuthProvider, googleLogout } from '@react-oauth/google';
 import { Quiz, AppContextType, Language, QuizResult, UserProfile, SyncState } from './types';
 import { APP_NAME, UserCircleIcon, KeyIcon, LogoutIcon, HomeIcon, PlusCircleIcon, ChartBarIcon, SettingsIcon, InformationCircleIcon, XCircleIcon, RefreshIcon, CheckCircleIcon } from './constants'; 
 import { Button, LoadingSpinner, Tooltip } from './components/ui';
-import ErrorBoundary from './components/ErrorBoundary'; // Import ErrorBoundary
+import ErrorBoundary from './components/ErrorBoundary'; 
 import { getTranslator, translations } from './i18n';
 import useIntersectionObserver from './hooks/useIntersectionObserver';
-import { logger } from './services/logService'; // Import logger
+import { logger } from './services/logService'; 
 
 import HomePage from './features/quiz/HomePage';
 import DashboardPage from './features/quiz/DashboardPage';
-import QuizCreatePage from './features/quiz/QuizCreatePage';
-import QuizTakingPage from './features/quiz/QuizTakingPage';
-import ResultsPage from './features/quiz/ResultsPage';
-import QuizReviewPage from './features/quiz/QuizReviewPage';
-import SignInPage from './features/auth/SignInPage';
-import QuizPracticePage from './features/quiz/QuizPracticePage';
-import SyncSettingsPage from './features/settings/SyncSettingsPage';
+// Lazy load other pages
+const QuizCreatePage = lazy(() => import('./features/quiz/QuizCreatePage'));
+const QuizTakingPage = lazy(() => import('./features/quiz/QuizTakingPage'));
+const ResultsPage = lazy(() => import('./features/quiz/ResultsPage'));
+const QuizReviewPage = lazy(() => import('./features/quiz/QuizReviewPage'));
+const SignInPage = lazy(() => import('./features/auth/SignInPage'));
+const QuizPracticePage = lazy(() => import('./features/quiz/QuizPracticePage'));
+const SyncSettingsPage = lazy(() => import('./features/settings/SyncSettingsPage'));
+
 import { loadQuizDataFromDrive, saveQuizDataToDrive } from './services/driveService';
 import { quizStorage } from './services/storageService'; 
 
@@ -51,7 +52,6 @@ const mergeQuizzes = (localQuizzes: Quiz[], driveQuizzes: Quiz[]): Quiz[] => {
   logger.info('Merging local and Drive quizzes', 'MergeUtils', { localCount: localQuizzes.length, driveCount: driveQuizzes.length });
   const quizMap = new Map<string, Quiz>();
 
-  // Add all quizzes, prioritizing the one with the more recent lastModified timestamp
   [...localQuizzes, ...driveQuizzes].forEach(quiz => {
     const existingQuiz = quizMap.get(quiz.id);
     if (!existingQuiz) {
@@ -87,9 +87,9 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
   const [currentSyncActivityMessage, setCurrentSyncActivityMessage] = useState<string | null>(null);
   
   const saveToDriveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const saveToDriveMinIntervalRef = useRef(0); // For rate limiting triggerSaveToDrive scheduling
-  const autoSyncAttemptLimitRef = useRef({ count: 0, lastWindowStart: 0 }); // For attempt limiting inside auto-save
-  const manualSyncAttemptLimitRef = useRef({ count: 0, lastWindowStart: 0 }); // For attempt limiting manual sync
+  const saveToDriveMinIntervalRef = useRef(0); 
+  const autoSyncAttemptLimitRef = useRef({ count: 0, lastWindowStart: 0 }); 
+  const manualSyncAttemptLimitRef = useRef({ count: 0, lastWindowStart: 0 }); 
   
   const tForProvider = useMemo(() => getTranslator(language), [language]);
 
@@ -106,7 +106,6 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
   const setDriveSyncError = useCallback((errorKey: string | null) => {
     if (errorKey === null) {
         setDriveSyncErrorState(null);
-        // setCurrentSyncActivityMessage(null); // Let currentSyncActivityMessage be handled by the operation that cleared the error
     } else {
         const errorMessage = tForProvider(errorKey as keyof typeof translations.en) || tForProvider('driveErrorGeneric');
         setDriveSyncErrorState(errorMessage);
@@ -116,8 +115,6 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     }
   }, [tForProvider]);
 
-
-  // Load initial data from localStorage and check API keys
   useEffect(() => {
     logger.info('App initializing: Loading initial data', 'AppInit');
     const hardcodedKey = 'AIzaSyDDcYcb1JB-NKFRDC28KK0yVH_Z3GX9lU0';
@@ -164,7 +161,6 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     logger.info('App initialization complete.', 'AppInit');
   }, [setCurrentUser]); 
 
-  // Effect for loading quizzes based on user state and app initialization
   useEffect(() => {
     if (!appInitialized) return;
 
@@ -174,7 +170,7 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
       setDriveSyncError(null);
       
       let finalQuizzesToSet: Quiz[] = [];
-      let operationSuccessful = false; // To control message clearing
+      let operationSuccessful = false;
 
       if (currentUser?.accessToken) {
         setIsDriveLoading(true);
@@ -185,17 +181,15 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
           const driveQuizzes = await loadQuizDataFromDrive(currentUser.accessToken);
           const localQuizzes = await quizStorage.getAllQuizzes();
 
-          if (driveQuizzes !== null) { // Data found on Drive
+          if (driveQuizzes !== null) { 
             logger.info("Initial load: Data found on Drive. Merging with local.", 'QuizLoading', { driveCount: driveQuizzes.length, localCount: localQuizzes.length });
             finalQuizzesToSet = mergeQuizzes(localQuizzes, driveQuizzes);
-            // Save merged to local storage and then to Drive
             await quizStorage.saveQuizzes(finalQuizzesToSet);
             await saveQuizDataToDrive(currentUser.accessToken, finalQuizzesToSet); 
             logger.info("Initial load: Merged data saved locally and to Drive.", 'QuizLoading', { count: finalQuizzesToSet.length });
-          } else { // No data file on Drive
+          } else { 
             logger.info("Initial load: No data file on Drive. Using local data.", 'QuizLoading', { localCount: localQuizzes.length });
             finalQuizzesToSet = localQuizzes;
-            // quizStorage already contains localQuizzes, no need to save again to local.
             if (localQuizzes.length > 0) {
               logger.info("Initial load: Uploading local data to new Drive file.", 'QuizLoading', { count: localQuizzes.length });
               await saveQuizDataToDrive(currentUser.accessToken, localQuizzes);
@@ -209,24 +203,21 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
         } catch (error: any) {
           logger.error("Initial load: Failed to load or sync quizzes with Google Drive.", 'QuizLoading', { errorMsg: error.message }, error);
           const errorKey = error.message as keyof typeof translations.en;
-          // Check if errorKey is a valid key in translations before using it
           const knownError = translations.en[errorKey] ? errorKey : 'driveErrorLoading';
           setDriveSyncError(knownError);
-          // Fallback to local quizzes if Drive ops fail
-          finalQuizzesToSet = await quizStorage.getAllQuizzes(); // Re-fetch to be sure
+          finalQuizzesToSet = await quizStorage.getAllQuizzes(); 
           logger.info("Initial load: Fell back to local storage due to Drive error.", 'QuizLoading', { count: finalQuizzesToSet.length });
-          operationSuccessful = false; // SyncState is set to 'error' by setDriveSyncError
+          operationSuccessful = false; 
         } finally {
           setAllQuizzes(finalQuizzesToSet); 
           setIsDriveLoading(false);
           setTimeout(() => {
-             // Clear message only if current syncState matches the outcome of this operation
              if ((syncState === 'success' && operationSuccessful) || (syncState === 'error' && !operationSuccessful)) {
                setCurrentSyncActivityMessage(null);
              }
           }, 3000);
         }
-      } else { // User not logged in
+      } else { 
         finalQuizzesToSet = await quizStorage.getAllQuizzes();
         setAllQuizzes(finalQuizzesToSet);
         setSyncState('idle');
@@ -240,8 +231,6 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     loadInitialQuizzesAndSync();
   }, [appInitialized, currentUser?.accessToken, setDriveSyncError, tForProvider, language]);
 
-
-  // Debounced save to Drive
   const triggerSaveToDrive = useCallback((quizzesToSave: Quiz[]) => {
     if (Date.now() - saveToDriveMinIntervalRef.current < 10000) { 
         logger.debug("triggerSaveToDrive: Skipping schedule, too soon since last actual save initiation.", 'DriveSync');
@@ -261,7 +250,7 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
               logger.warn("triggerSaveToDrive: Too many auto-sync attempts in a short period. Aborting this attempt.", 'DriveSyncRateLimit');
               setIsDriveLoading(false); 
               setSyncState('error'); 
-              setDriveSyncError('driveErrorRateLimit'); // This sets activity message to null
+              setDriveSyncError('driveErrorRateLimit'); 
               return;
           }
       } else {
@@ -296,22 +285,12 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     }, 3000); 
   }, [currentUser?.accessToken, setDriveSyncError, tForProvider, language, syncState]);
 
-
-  // Persist quizzes to Google Drive (if logged in) based on allQuizzes changes
   useEffect(() => {
-    // Ensure app is initialized and not in the middle of initial loading/sync.
-    // Also, ensure there's actually a user with an access token.
     if (appInitialized && !isLoading && currentUser?.accessToken && allQuizzes.length >= 0) {
-        // Check if the current state of allQuizzes is different from what might have just been loaded
-        // This check is tricky because allQuizzes is the source of truth.
-        // The main purpose is to trigger save after user actions modify allQuizzes (add, delete, update).
-        // The initial load effect already handles syncing after loading from Drive/local.
-        // So, this effect is primarily for subsequent changes.
         triggerSaveToDrive(allQuizzes);
     }
   }, [allQuizzes, appInitialized, isLoading, currentUser?.accessToken, triggerSaveToDrive]);
   
-  // Persist user (including accessToken) to localStorage
   useEffect(() => {
     if (appInitialized) { 
       if (currentUser) {
@@ -326,7 +305,6 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     }
   }, [currentUser, appInitialized]);
 
-  // Persist quizResult to localStorage
   useEffect(() => {
     if (appInitialized) {
       if (quizResult) {
@@ -393,7 +371,6 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
       throw e;
     }
   }, []);
-
 
   const updateQuiz = useCallback(async (updatedQuiz: Quiz): Promise<void> => {
     const now = new Date().toISOString();
@@ -525,7 +502,6 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
   }, [allQuizzes]);
   
   const combinedIsLoading = isLoading || (appInitialized && currentUser && !lastDriveSync && isDriveLoading);
-
 
   const contextValue: AppContextType = useMemo(() => ({
     currentView: (location.pathname.substring(1) || 'home') as any, 
@@ -678,6 +654,13 @@ const AnimatedApiKeyWarning: React.FC<{children: ReactNode}> = ({ children }) =>
   );
 };
 AnimatedApiKeyWarning.displayName = "AnimatedApiKeyWarning";
+
+const RouteLoadingFallback: React.FC = () => (
+  <div className="flex items-center justify-center h-[calc(100vh-200px)]"> {/* Adjust height as needed */}
+    <LoadingSpinner size="lg" text={translations.en.loading} /> {/* Default to English for fallback text */}
+  </div>
+);
+RouteLoadingFallback.displayName = "RouteLoadingFallback";
 
 const AppLayout: React.FC = () => {
   const { language, setLanguage, currentUser, isGeminiKeyAvailable, isLoading: globalIsLoading, isDriveLoading, driveSyncError, lastDriveSync, setDriveSyncError, syncState, currentSyncActivityMessage } = useAppContext(); 
@@ -836,6 +819,7 @@ const AppLayout: React.FC = () => {
         </nav>
 
       <main key={location.pathname} className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 md:py-10 mb-20 md:mb-0"> 
+        <Suspense fallback={<RouteLoadingFallback />}>
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/signin" element={<SignInPage />} />
@@ -849,6 +833,7 @@ const AppLayout: React.FC = () => {
             <Route path="/settings" element={currentUser ? <SyncSettingsPage /> : <HomePage />} /> 
             <Route path="*" element={<HomePage />} /> 
           </Routes>
+        </Suspense>
       </main>
 
       <footer className="bg-transparent py-4 md:py-6 mt-auto">

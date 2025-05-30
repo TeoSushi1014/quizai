@@ -184,12 +184,12 @@
     
     .card-float-hover { 
       transition: transform var(--duration-normal) var(--ease-ios), box-shadow var(--duration-normal) var(--ease-ios);
-      will-change: transform, box-shadow;
+      will-change: transform; /* Removed box-shadow from will-change */
       contain: layout style paint; /* CSS Contain Property */
     }
     .card-float-hover:hover {
       transform: translateY(-3px);
-      box-shadow: 0 8px 20px rgba(0,0,0,0.25), 0 0 0 1px rgba(128, 128, 128, 0.15); /* Keep specific shadow for this hover */
+      box-shadow: 0 8px 20px rgba(0,0,0,0.25), 0 0 0 1px rgba(128, 128, 128, 0.15); 
     }
 
     
@@ -316,6 +316,7 @@
       background-size: 250px 100%; 
       background-repeat: no-repeat;
       animation: shimmer 1.8s linear infinite; 
+      will-change: background-position;
     }
 
     /* CSS Contain for specific components */
@@ -416,6 +417,5 @@
   <div id="root"></div>
   <script type="module" src="index.tsx"></script>
 </body>
-</html>
-<link rel="stylesheet" href="index.css">
+</html><link rel="stylesheet" href="index.css">
 <script src="index.tsx" type="module"></script>
