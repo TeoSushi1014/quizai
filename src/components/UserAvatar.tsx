@@ -1,4 +1,5 @@
-import React from 'react';
+
+import React, { useState, useEffect } from 'react';
 
 // Note: UserCircleIcon was in the user's original import example but commented out,
 // and the fallback implemented uses initials. If UserCircleIcon were needed, it would be:
@@ -7,33 +8,44 @@ import React from 'react';
 
 type UserAvatarProps = {
   photoUrl?: string | null;
-  userName?: string | null; // Allow userName to be null
+  userName?: string | null;
   size?: 'sm' | 'md' | 'lg';
   className?: string;
 };
 
-export const UserAvatar: React.FC<UserAvatarProps> = ({ 
-  photoUrl, 
-  userName, 
+export const UserAvatar: React.FC<UserAvatarProps> = ({
+  photoUrl,
+  userName,
   size = 'md',
   className = ''
 }) => {
-  const [imageError, setImageError] = React.useState(false);
-  
+  const [currentImageUrl, setCurrentImageUrl] = useState(photoUrl || '');
+  const [imageError, setImageError] = useState(false);
+
+  useEffect(() => {
+    if (photoUrl) {
+      setCurrentImageUrl(photoUrl);
+      setImageError(false); // Reset error if new photoUrl is provided
+    } else {
+      setCurrentImageUrl(''); // Clear if photoUrl becomes null/undefined
+      setImageError(false); // No error if there's no URL to load
+    }
+  }, [photoUrl]);
+
   const sizeClasses = {
     sm: 'w-8 h-8',
     md: 'w-10 h-10',
     lg: 'w-12 h-12'
   };
-  
+
   const sizeClass = sizeClasses[size];
   const initials = userName?.charAt(0).toUpperCase() || '?';
 
-  if (!photoUrl || imageError) {
+  if (!currentImageUrl || imageError) {
     return (
-      <div 
+      <div
         className={`${sizeClass} rounded-full bg-sky-600 flex items-center justify-center text-white font-semibold text-lg ${className}`}
-        aria-label={userName || 'User avatar fallback'} // Accessibility
+        aria-label={userName ? `${userName}'s avatar fallback` : 'User avatar fallback'}
       >
         {initials}
       </div>
@@ -42,10 +54,14 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
 
   return (
     <img
-      src={photoUrl}
+      src={currentImageUrl}
       alt={userName ? `${userName}'s avatar` : "User avatar"}
       className={`${sizeClass} rounded-full object-cover ${className}`}
-      onError={() => setImageError(true)}
+      onError={() => {
+        console.error('Failed to load avatar image from URL:', currentImageUrl);
+        setImageError(true);
+      }}
+      referrerPolicy="no-referrer" // Added for Google images
     />
   );
 };
