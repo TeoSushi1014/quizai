@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en" class="dark"> 
 <head>
@@ -64,9 +63,9 @@
       --color-focus-ring: var(--color-primary-accent);
       --color-focus-shadow: rgba(56, 189, 248, 0.25);
 
-      /* Colors - Glass Effect */
-      --color-glass-bg: rgba(30, 41, 59, 0.7); 
-      --color-glass-border: rgba(148, 163, 184, 0.2);
+      /* Colors - Glass Effect (updated for UserDropdown to be solid) */
+      --color-glass-bg: rgba(30, 41, 59, 0.7); /* Retained for header, etc. */
+      --color-glass-border: rgba(148, 163, 184, 0.2); /* Retained for header, etc. */
 
       /* Colors - Toggle Dot */
       --color-dot-inactive-bg: #e2e8f0; /* slate-200 */
@@ -76,12 +75,14 @@
 
       /* Colors - Modal */
       --color-modal-backdrop-bg: rgba(15, 23, 42, 0.85);
-      --color-modal-content-bg: rgba(30, 41, 59, 0.9); /* Slightly different from glass for modals */
-      --color-modal-border: rgba(100, 116, 139, 0.3); /* slate-500 @ 30% */
+      --color-modal-content-bg: rgba(30, 41, 59, 0.9); 
+      --color-modal-border: rgba(100, 116, 139, 0.3);
 
       /* Colors - Mobile Nav */
       --color-mobile-nav-bg: rgba(22, 32, 53, 0.88); 
       --color-mobile-nav-border: rgba(100, 116, 139, 0.25);
+      --color-mobile-nav-item-active-bg: var(--color-bg-surface-2); /* slate-700 for active items */
+
 
       /* Shadows */
       --shadow-color-level-1: rgba(0,0,0,0.05);
@@ -136,7 +137,7 @@
     .modal-content-scrollable { max-height: 75vh; overflow-y: auto; }
     
     
-    .glass-effect {
+    .glass-effect { /* Used by header, potentially other elements */
       background-color: var(--color-glass-bg); 
       backdrop-filter: blur(12px); 
       -webkit-backdrop-filter: blur(12px); 
@@ -184,8 +185,8 @@
     
     .card-float-hover { 
       transition: transform var(--duration-normal) var(--ease-ios), box-shadow var(--duration-normal) var(--ease-ios);
-      will-change: transform; /* Removed box-shadow from will-change */
-      contain: layout style paint; /* CSS Contain Property */
+      will-change: transform; 
+      contain: layout style paint; 
     }
     .card-float-hover:hover {
       transform: translateY(-3px);
@@ -203,6 +204,9 @@
       border-top-right-radius: var(--radius-lg);
     }
 
+    .mobile-nav-item:active {
+      background-color: var(--color-mobile-nav-item-active-bg); /* e.g. slate-700 */
+    }
     
     .thin-scrollbar-horizontal::-webkit-scrollbar { height: 4px; cursor: default !important; }
     .thin-scrollbar-horizontal::-webkit-scrollbar-track { background: transparent; border-radius: 4px; cursor: default !important; }
@@ -245,7 +249,37 @@
       animation: fadeIn var(--duration-normal) var(--ease-ios) forwards;
       will-change: opacity;
     }
+
+    @keyframes slideInUp {
+      from {
+        transform: translateY(100%);
+        opacity: 0.8;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+    .animate-slideInUp {
+      animation: slideInUp var(--duration-normal) var(--ease-ios) forwards;
+      will-change: transform, opacity;
+    }
     
+    /* Custom Sheet Animation */
+    .mobile-sheet-enter {
+      transform: translateY(100%);
+    }
+    .mobile-sheet-enter-active {
+      transform: translateY(0);
+      transition: transform 300ms var(--ease-ios);
+    }
+    .mobile-sheet-exit {
+      transform: translateY(0);
+    }
+    .mobile-sheet-exit-active {
+      transform: translateY(100%);
+      transition: transform 250ms var(--ease-ios);
+    }
     
     .animate-page-slide-fade-in { 
       animation: fadeInUp var(--duration-slow) var(--ease-ios) forwards; 
@@ -269,7 +303,7 @@
       to { opacity: 0; transform: scale(0.9) translateY(15px); }
     }
 
-    .modal-container-base { /* Base class for modal container for contain property */
+    .modal-container-base { 
       contain: layout style paint; 
     }
     .modal-container-animate-enter { 
@@ -323,12 +357,12 @@
     .accordion-item-container {
       contain: layout style paint;
     }
-    .question-item-motion-wrapper { /* Already exists, add contain here */
+    .question-item-motion-wrapper { 
       contain: layout style paint;
     }
     .quiz-list-container {
       contain: layout style paint;
-      min-height: 300px; /* Ensure it has a minimum height for measurement stability */
+      min-height: 300px; 
     }
     
     /* Sync Status Indicator Transitions */
@@ -342,9 +376,62 @@
     }
     .sync-indicator-hidden {
       opacity: 0;
-      transform: translateY(5px); /* Slight upward movement on hide for a subtle effect */
+      transform: translateY(5px); 
       pointer-events: none;
     }
+
+    /* Ripple Effect */
+    .btn-ripple {
+      position: relative;
+      overflow: hidden;
+    }
+    .btn-ripple:after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 5px;
+      height: 5px;
+      background: rgba(255, 255, 255, 0.5);
+      opacity: 0;
+      border-radius: 100%;
+      transform: scale(1, 1) translate(-50%);
+      transform-origin: 50% 50%;
+    }
+    .btn-ripple:focus:not(:active)::after { /* Consider if ripple should be on :active instead/also */
+        animation: ripple 1s ease-out;
+    }
+    @keyframes ripple {
+        0% {
+            transform: scale(0, 0) translate(-50%, -50%);
+            opacity: 0.5;
+        }
+        20% {
+            transform: scale(25, 25) translate(-50%, -50%);
+            opacity: 0.3;
+        }
+        100% {
+            opacity: 0;
+            transform: scale(40, 40) translate(-50%, -50%);
+        }
+    }
+
+    /* Dropdown Animation */
+    @keyframes dropdownFadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(-8px) scale(0.95);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+    .dropdown-animation-active {
+        animation: dropdownFadeIn 0.2s var(--ease-ios) forwards;
+        /* Removed pointer-events-auto and opacity/scale from here, handled by JS or Tailwind active classes */
+    }
+
 
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after {
@@ -355,20 +442,23 @@
         animation-delay: 0ms !important;
       }
       .animate-fadeInUp, .animate-slideInRightPage, .animate-scaleIn, .animate-fadeIn,
-      .animate-page-slide-fade-in, .animate-element-fade-scale-in,
-      .modal-container-animate-enter-active, .modal-container-animate-exit-active {
+      .animate-page-slide-fade-in, .animate-element-fade-scale-in, .animate-slideInUp,
+      .modal-container-animate-enter-active, .modal-container-animate-exit-active,
+      .mobile-sheet-enter-active, .mobile-sheet-exit-active,
+      .dropdown-animation-active /* Added dropdown animation */ { 
         animation: none !important; 
         opacity: 1 !important;
         transform: none !important;
       }
-      .progress-bar-shimmer::after {
+      .progress-bar-shimmer::after, .btn-ripple:after /* Added ripple */ {
         animation: none !important;
-        background-image: none !important;
+        background-image: none !important; /* For shimmer */
+        opacity: 0 !important; /* For ripple */
       }
       .modal-backdrop-enhanced, .dot, .card-float-hover, .thin-scrollbar-horizontal::-webkit-scrollbar-thumb,
       button, a, input, select, textarea, [role="button"], [role="switch"], [role="tab"],
       .transition-all, .transition-colors, .transition-opacity, .transition-transform, .transition-width, .transition-shadow,
-      .sync-indicator-base /* Apply to new class */ { 
+      .sync-indicator-base { 
         transition: none !important;
       }
        
@@ -403,6 +493,7 @@
     "localforage": "https://esm.sh/localforage@1.10.0",
     "lucide-react": "https://esm.sh/lucide-react@^0.400.0",
     "react-window": "https://esm.sh/react-window@1.8.10",
+    "react-swipeable": "https://esm.sh/react-swipeable@^7.0.1",
     "path": "https://esm.sh/path@^0.12.7",
     "vite": "https://esm.sh/vite@^6.3.5",
     "dotenv": "https://esm.sh/dotenv@^16.5.0",
@@ -413,7 +504,7 @@
   }
 }
 </script>
-  <script type="module" crossorigin src="/quizai/assets/index-BUXGKdXA.js"></script>
+  <script type="module" crossorigin src="/quizai/assets/index-nNLKeTiq.js"></script>
 </head>
 <body>
   <div id="root"></div>
