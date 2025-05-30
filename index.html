@@ -11,9 +11,6 @@
     gtag('config', 'G-PPLMXLJNZT');
   </script>
   
-  <!-- Load environment variables at runtime - Removed to prevent 404 error -->
-  <!-- <script src="/quizai/env-config.js"></script> -->
-  
   <script src="https://www.google.com/recaptcha/enterprise.js?render=6LfjXkorAAAAAOk4X5LwVd-8RgwMGS0IWxZLtFGQ"></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -25,64 +22,72 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     :root {
-      /* Durations & Easing */
-      --duration-fast: 250ms;
-      --duration-normal: 350ms;
-      --duration-slow: 400ms;
-      --ease-ios: cubic-bezier(0.25, 0.1, 0.25, 1);
+      /* Animation Variables */
+      --duration-fast: 150ms; /* User requested 150ms, but existing uses 250ms widely. Changing to 150ms. */
+      --duration-normal: 250ms;
+      --duration-slow: 350ms;
+      --ease-ios: cubic-bezier(0.23, 1, 0.32, 1);
       --ease-in-out-quad: cubic-bezier(0.455, 0.03, 0.515, 0.955); 
 
       /* Fonts */
       --font-primary: 'Inter', sans-serif;
 
-      /* Colors - Base */
-      --color-bg-body: #0f172a;
-      --color-text-body: #cbd5e1;
-      --color-bg-surface-1: #1e293b; /* Example: slate-800 */
-      --color-bg-surface-2: #334155; /* Example: slate-700 */
-      --color-border-default: #475569; /* Example: slate-600 */
-      --color-border-strong: #64748b; /* Example: slate-500 */
+      /* Dark Theme (default) */
+      --color-bg-body: rgb(15, 23, 42); /* slate-900 */
+      --color-bg-primary: rgb(15, 23, 42); /* slate-900 */
+      --color-bg-surface-1: rgb(30, 41, 59); /* slate-800 */
+      --color-bg-surface-2: rgb(51, 65, 85); /* slate-700 */
+      --color-bg-surface-3: rgb(71, 85, 105); /* slate-600 */
+      
+      --color-text-primary: rgb(241, 245, 249); /* slate-100 */
+      --color-text-secondary: rgb(148, 163, 184); /* slate-400 */
+      --color-text-body: rgb(203, 213, 225); /* slate-300 */
+      --color-text-muted: rgb(100, 116, 139); /* slate-500 - Kept existing, user didn't specify */
+      
+      --color-primary-accent: rgb(56, 189, 248); /* sky-400 */
+      --color-primary-accent-hover: rgb(125, 211, 252); /* sky-300 */
+      --color-primary-accent-text: #ffffff; 
 
-      /* Colors - Accent / Interactive */
-      --color-primary-accent: #38bdf8; /* sky-400 */
-      --color-primary-accent-hover: #0ea5e9; /* sky-500 */
-      --color-primary-accent-text: #ffffff;
-      --color-secondary-accent: #64748b; /* slate-500 */
-      --color-secondary-accent-hover: #475569; /* slate-600 */
+      --color-secondary-accent: #475569; /* slate-600 */
+      --color-secondary-accent-hover: #64748b; /* slate-500 */
       --color-secondary-accent-text: #e2e8f0; /* slate-200 */
-      --color-danger-accent: #f43f5e; /* rose-500 */
+
+      --color-danger-accent: rgb(248, 113, 113); /* red-400 */
       --color-success-accent: #22c55e; /* green-500 */
       --color-warning-accent: #f59e0b; /* amber-500 */
+      
+      --color-border-default: rgba(100, 116, 139, 0.3); /* slate-500 at 30% */
+      --color-border-interactive: rgba(100, 116, 139, 0.5); /* slate-500 at 50% */
+      --color-border-strong: rgba(100, 116, 139, 0.5); /* Mapped from user's --color-border-interactive */
 
+      /* Modal & Overlay styling */
+      --color-modal-backdrop-bg: rgba(15, 23, 42, 0.85); /* slate-900 at 85% */
+      --color-modal-content-bg: rgb(30, 41, 59); /* slate-800 - Solid as per ui.tsx usage */
+      --color-modal-content-bg-glass: rgba(30, 41, 59, 0.9); /* slate-800 at 90% for glass effect */
+      --color-modal-border: rgba(100, 116, 139, 0.3); /* slate-500 at 30% */
+      
+      /* Mobile nav styling */
+      --color-mobile-nav-bg: rgba(15, 23, 42, 0.88); /* slate-900 at 88% */
+      --color-mobile-nav-border: rgba(51, 65, 85, 0.5); /* slate-700 at 50% */
+      --color-mobile-nav-item-active-bg: rgb(51, 65, 85); /* slate-700 */
 
-      /* Colors - Scrollbar */
-      --color-scrollbar-thumb: #475569;
-      --color-scrollbar-thumb-hover: #64748b;
+      /* Tooltip (Dark) */
+      --color-tooltip-bg: var(--color-bg-surface-3); 
+      --color-tooltip-text: var(--color-text-primary); 
+      --color-tooltip-border: var(--color-border-strong); 
 
-      /* Colors - Focus */
+      /* Scrollbar (Dark) */
+      --color-scrollbar-thumb: #475569; /* slate-600 */
+      --color-scrollbar-thumb-hover: #64748b; /* slate-500 */
+
+      /* Focus (Dark) */
       --color-focus-ring: var(--color-primary-accent);
       --color-focus-shadow: rgba(56, 189, 248, 0.25);
+      --color-focus-ring-offset: var(--color-bg-body);
 
-      /* Colors - Glass Effect (updated for UserDropdown to be solid) */
-      --color-glass-bg: rgba(30, 41, 59, 0.7); /* Retained for header, etc. */
-      --color-glass-border: rgba(148, 163, 184, 0.2); /* Retained for header, etc. */
-
-      /* Colors - Toggle Dot */
-      --color-dot-inactive-bg: #e2e8f0; /* slate-200 */
-      --color-dot-active-bg: #ffffff;
-      --color-toggle-bg-inactive: var(--color-secondary-accent);
-      --color-toggle-bg-active: var(--color-primary-accent);
-
-      /* Colors - Modal */
-      --color-modal-backdrop-bg: rgba(15, 23, 42, 0.85);
-      --color-modal-content-bg: rgba(30, 41, 59, 0.9); 
-      --color-modal-border: rgba(100, 116, 139, 0.3);
-
-      /* Colors - Mobile Nav */
-      --color-mobile-nav-bg: rgba(22, 32, 53, 0.88); 
-      --color-mobile-nav-border: rgba(100, 116, 139, 0.25);
-      --color-mobile-nav-item-active-bg: var(--color-bg-surface-2); /* slate-700 for active items */
-
+      /* Glass Effect Base (Dark) - For header */
+      --color-glass-bg: rgba(15, 23, 42, 0.85);
+      --color-glass-border: rgba(51, 65, 85, 0.7);
 
       /* Shadows */
       --shadow-color-level-1: rgba(0,0,0,0.05);
@@ -102,11 +107,90 @@
       --radius-xl: 1rem;     /* 16px */
       --radius-2xl: 1.5rem;  /* 24px */
       --radius-full: 9999px;
+
+      /* Form elements for dark theme */
+      --color-input-bg: rgb(30, 41, 59); /* slate-800 */
+      --color-input-text: rgb(241, 245, 249); /* slate-100 */
+      --color-input-placeholder: rgb(100, 116, 139); /* slate-500 */
+      --color-input-border: rgba(100, 116, 139, 0.4); /* slate-500 at 40% */
+      --color-input-focus-border: var(--color-primary-accent); 
+      --color-input-focus-ring: rgba(56, 189, 248, 0.25);
     }
 
+    html.light {
+      --color-bg-body: rgb(248, 250, 252); /* slate-50 */
+      --color-bg-primary: rgb(248, 250, 252); /* slate-50 */
+      --color-bg-surface-1: rgb(255, 255, 255); /* white */
+      --color-bg-surface-2: rgb(241, 245, 249); /* slate-100 */
+      --color-bg-surface-3: rgb(226, 232, 240); /* slate-200 */
+      
+      --color-text-primary: rgb(15, 23, 42); /* slate-900 */
+      --color-text-secondary: rgb(71, 85, 105); /* slate-600 */
+      --color-text-body: rgb(51, 65, 85); /* slate-700 */
+      --color-text-muted: rgb(100, 116, 139); /* slate-500 */
+      
+      --color-primary-accent: rgb(14, 165, 233); /* sky-500 */
+      --color-primary-accent-hover: rgb(2, 132, 199); /* sky-600 */
+      --color-primary-accent-text: #ffffff; /* Text on primary buttons */
+
+      --color-secondary-accent: #e2e8f0; /* slate-200 */
+      --color-secondary-accent-hover: #cbd5e1; /* slate-300 */
+      --color-secondary-accent-text: #1e293b; /* slate-800 */
+
+      --color-danger-accent: rgb(239, 68, 68); /* red-500 */
+      --color-success-accent: #16a34a; /* green-600 for better contrast */
+      --color-warning-accent: #d97706; /* amber-600 for better contrast */
+      
+      --color-border-default: rgba(203, 213, 225, 0.8); /* slate-300 at 80% */
+      --color-border-interactive: rgba(148, 163, 184, 0.7); /* slate-400 at 70% */
+      --color-border-strong: rgba(148, 163, 184, 0.7); /* Mapped from user's --color-border-interactive */
+
+      /* Modal & Overlay styling */
+      --color-modal-backdrop-bg: rgba(241, 245, 249, 0.85); /* slate-100 at 85% */
+      --color-modal-content-bg: rgb(255, 255, 255); /* white - Solid */
+      --color-modal-content-bg-glass: rgba(255, 255, 255, 0.95); /* white at 95% for glass */
+      --color-modal-border: rgba(203, 213, 225, 0.5); /* slate-300 at 50% */
+      
+      /* Mobile nav styling */
+      --color-mobile-nav-bg: rgba(255, 255, 255, 0.92); /* white at 92% */
+      --color-mobile-nav-border: rgba(226, 232, 240, 0.7); /* slate-200 at 70% */
+      --color-mobile-nav-item-active-bg: rgb(241, 245, 249); /* slate-100 */
+
+      /* Tooltip (Light) */
+      --color-tooltip-bg: var(--color-bg-surface-3); 
+      --color-tooltip-text: var(--color-text-primary); 
+      --color-tooltip-border: var(--color-border-strong);
+
+      /* Scrollbar (Light) */
+      --color-scrollbar-thumb: #cbd5e1; /* slate-300 */
+      --color-scrollbar-thumb-hover: #94a3b8; /* slate-400 */
+
+      /* Focus (Light) */
+      --color-focus-shadow: rgba(14, 165, 233, 0.3); 
+      --color-focus-ring-offset: var(--color-bg-body);
+
+      /* Glass Effect Base (Light) - For header */
+      --color-glass-bg: rgba(248, 250, 252, 0.85);
+      --color-glass-border: rgba(226, 232, 240, 0.7);
+
+      /* Shadows (Light) */
+      --shadow-color-level-1: rgba(0,0,0,0.03);
+      --shadow-color-level-2: rgba(0,0,0,0.06);
+      --shadow-color-level-3: rgba(0,0,0,0.1);
+
+      /* Form elements for light theme */
+      --color-input-bg: rgb(255, 255, 255); /* white */
+      --color-input-text: rgb(15, 23, 42); /* slate-900 */
+      --color-input-placeholder: rgb(100, 116, 139); /* slate-500 */
+      --color-input-border: rgba(203, 213, 225, 0.9); /* slate-300 at 90% */
+      --color-input-focus-border: var(--color-primary-accent);
+      --color-input-focus-ring: rgba(14, 165, 233, 0.25);
+    }
     
     html {
       font-family: var(--font-primary);
+      background-color: var(--color-bg-body); 
+      color: var(--color-text-body); 
     }
     body {
       -webkit-font-smoothing: antialiased;
@@ -115,7 +199,6 @@
       color: var(--color-text-body); 
       cursor: default; 
     }
-
     
     ::-webkit-scrollbar { width: 7px; height: 7px; cursor: default !important; }
     ::-webkit-scrollbar-track { background: transparent; cursor: default !important; }
@@ -125,51 +208,55 @@
     ::-webkit-scrollbar-button { cursor: default !important; }
     ::-webkit-scrollbar-corner { cursor: default !important; }
 
-    
     *:focus-visible {
       outline: 2px solid var(--color-focus-ring); 
       outline-offset: 2px;
       box-shadow: 0 0 0 4px var(--color-focus-shadow); 
       transition: outline var(--duration-fast) var(--ease-ios), box-shadow var(--duration-fast) var(--ease-ios);
     }
-    
+    /* Removed focus-visible offset var, use direct value or keep consistent 2px */
     
     .modal-content-scrollable { max-height: 75vh; overflow-y: auto; }
-    
-    
-    .glass-effect { /* Used by header, potentially other elements */
+        
+    /* Glass effect for header */
+    .glass-effect { 
       background-color: var(--color-glass-bg); 
       backdrop-filter: blur(12px); 
       -webkit-backdrop-filter: blur(12px); 
-      border: 1px solid var(--color-glass-border); 
+      border-bottom: 1px solid var(--color-glass-border); 
       box-shadow: 0 4px 12px var(--shadow-color-level-1), 0 1px 3px var(--shadow-color-level-2); 
-      border-bottom-left-radius: var(--radius-lg); 
-      border-bottom-right-radius: var(--radius-lg);
+      /* Rounded corners are applied by App.tsx, this was for global styling which is not needed */
     }
-
     
-    .dot { 
-      background-color: var(--color-dot-inactive-bg); 
-      transition: transform var(--duration-fast) var(--ease-ios), background-color var(--duration-fast) var(--ease-ios);
+    /* Card glass effect */
+    .card-glass {
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      box-shadow: 0 4px 12px var(--shadow-color-level-1), 0 1px 3px var(--shadow-color-level-2);
     }
-    input:checked + div + .dot, button[aria-checked="true"] .dot { 
-      background-color: var(--color-dot-active-bg);  
-      transform: translateX(calc(1.375rem - 0.125rem)); 
+    html.dark .card-glass {
+      background-color: rgba(30, 41, 59, 0.6) !important; /* slate-800 at 60% */
+      border: 1px solid rgba(51, 65, 85, 0.6) !important; /* slate-700 at 60% */
     }
-    button[aria-checked="false"] .dot {
-      transform: translateX(0.125rem);
+    html.light .card-glass {
+      background-color: rgba(255, 255, 255, 0.7) !important;
+      border: 1px solid rgba(226, 232, 240, 0.8) !important; /* slate-200 at 80% */
     }
 
+    /* Toggle component itself handles its styling using CSS variables */
+    /* Dot is styled by Toggle component using Tailwind bg-white */
     
     .sticky-review-actions {
       position: sticky;
       top: 4rem; 
       z-index: 40; 
+      background-color: var(--color-bg-surface-1); /* Changed from specific dark theme color */
+      border-bottom: 1px solid var(--color-border-default); /* Use default border for both themes */
     }
+    /* Removed html.light .sticky-review-actions override, handled by var now */
     @media (min-width: 768px) { 
       .sticky-review-actions { top: 4.5rem; }
     }
-
     
     .modal-backdrop-enhanced { 
       backdrop-filter: blur(8px);  
@@ -181,8 +268,7 @@
     .modal-backdrop-enhanced.open {
       opacity: 1; 
     }
-    
-    
+        
     .card-float-hover { 
       transition: transform var(--duration-normal) var(--ease-ios), box-shadow var(--duration-normal) var(--ease-ios);
       will-change: transform; 
@@ -190,9 +276,8 @@
     }
     .card-float-hover:hover {
       transform: translateY(-3px);
-      box-shadow: 0 8px 20px rgba(0,0,0,0.25), 0 0 0 1px rgba(128, 128, 128, 0.15); 
+      box-shadow: 0 8px 20px var(--shadow-color-level-3), 0 0 0 1px var(--color-border-interactive); /* Adjusted shadow for theme */
     }
-
     
     .mobile-nav-style {
       background-color: var(--color-mobile-nav-bg); 
@@ -205,15 +290,14 @@
     }
 
     .mobile-nav-item:active {
-      background-color: var(--color-mobile-nav-item-active-bg); /* e.g. slate-700 */
+      background-color: var(--color-mobile-nav-item-active-bg); 
     }
     
     .thin-scrollbar-horizontal::-webkit-scrollbar { height: 4px; cursor: default !important; }
     .thin-scrollbar-horizontal::-webkit-scrollbar-track { background: transparent; border-radius: 4px; cursor: default !important; }
     .thin-scrollbar-horizontal::-webkit-scrollbar-thumb { background-color: var(--color-scrollbar-thumb); border-radius: 4px; cursor: default !important; transition: background-color var(--duration-fast) var(--ease-ios); }
     .thin-scrollbar-horizontal::-webkit-scrollbar-thumb:hover { background-color: var(--color-scrollbar-thumb-hover); }
-    
-    
+        
     @keyframes fadeInUp {
       from { opacity: 0; transform: translateY(20px); }
       to { opacity: 1; transform: translateY(0); }
@@ -240,7 +324,7 @@
       animation: scaleIn var(--duration-normal) var(--ease-ios) forwards;
       will-change: transform, opacity;
     }
-
+    
     @keyframes fadeIn {
       from { opacity: 0; }
       to { opacity: 1; }
@@ -265,7 +349,6 @@
       will-change: transform, opacity;
     }
     
-    /* Custom Sheet Animation */
     .mobile-sheet-enter {
       transform: translateY(100%);
     }
@@ -289,11 +372,9 @@
       animation: scaleIn var(--duration-fast) var(--ease-ios) forwards; 
       will-change: transform, opacity;
     }
-    
-    
+        
     .opacity-0 { opacity: 0; } 
 
-    
     @keyframes modalPopIn {
       from { opacity: 0; transform: scale(0.9) translateY(15px); }
       to { opacity: 1; transform: scale(1) translateY(0); }
@@ -305,7 +386,13 @@
 
     .modal-container-base { 
       contain: layout style paint; 
+      background-color: var(--color-modal-content-bg-glass); /* Default to glass modal */
+      border: 1px solid var(--color-modal-border);
     }
+    .modal-container-base.solid-modal { /* Add this class to a modal if you want it solid */
+        background-color: var(--color-modal-content-bg);
+    }
+
     .modal-container-animate-enter { 
       opacity: 0;
       transform: scale(0.9) translateY(15px);
@@ -322,7 +409,6 @@
       animation: modalPopOut var(--duration-fast) var(--ease-ios) forwards;
       will-change: transform, opacity;
     }
-
     
     @keyframes shimmer {
       0% { background-position: -300px 0; } 
@@ -332,7 +418,7 @@
       position: relative; 
       overflow: hidden; 
     }
-    .progress-bar-shimmer::after {
+    html.dark .progress-bar-shimmer::after {
       content: '';
       position: absolute;
       top: 0;
@@ -352,11 +438,36 @@
       animation: shimmer 1.8s linear infinite; 
       will-change: background-position;
     }
+    html.light .progress-bar-shimmer::after {
+       content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+       background-image: linear-gradient(
+        to right,
+        transparent 0%,
+        rgba(0, 0, 0, 0.03) 30%, 
+        rgba(0, 0, 0, 0.06) 50%,
+        rgba(0, 0, 0, 0.03) 70%,
+        transparent 100%
+      );
+      background-size: 250px 100%; 
+      background-repeat: no-repeat;
+      animation: shimmer 1.8s linear infinite; 
+      will-change: background-position;
+    }
 
-    /* CSS Contain for specific components */
     .accordion-item-container {
       contain: layout style paint;
+      background-color: var(--color-bg-surface-1);
+      border: 1px solid var(--color-border-default);
     }
+    html.light .accordion-item-container {
+      box-shadow: var(--shadow-md); /* Keep light theme specific shadow if desired */
+    }
+
     .question-item-motion-wrapper { 
       contain: layout style paint;
     }
@@ -365,10 +476,11 @@
       min-height: 300px; 
     }
     
-    /* Sync Status Indicator Transitions */
     .sync-indicator-base {
       transition: opacity var(--duration-fast) var(--ease-ios), transform var(--duration-fast) var(--ease-ios);
       will-change: opacity, transform;
+      background-color: var(--color-bg-surface-2);
+      border: 1px solid var(--color-border-default);
     }
     .sync-indicator-visible {
       opacity: 1;
@@ -380,7 +492,6 @@
       pointer-events: none;
     }
 
-    /* Ripple Effect */
     .btn-ripple {
       position: relative;
       overflow: hidden;
@@ -392,13 +503,18 @@
       left: 50%;
       width: 5px;
       height: 5px;
-      background: rgba(255, 255, 255, 0.5);
       opacity: 0;
       border-radius: 100%;
       transform: scale(1, 1) translate(-50%);
       transform-origin: 50% 50%;
     }
-    .btn-ripple:focus:not(:active)::after { /* Consider if ripple should be on :active instead/also */
+    html.dark .btn-ripple:after {
+        background: rgba(255, 255, 255, 0.5);
+    }
+    html.light .btn-ripple:after {
+        background: rgba(0, 0, 0, 0.2);
+    }
+    .btn-ripple:focus:not(:active)::after { 
         animation: ripple 1s ease-out;
     }
     @keyframes ripple {
@@ -416,7 +532,6 @@
         }
     }
 
-    /* Dropdown Animation */
     @keyframes dropdownFadeIn {
         from {
             opacity: 0;
@@ -429,9 +544,7 @@
     }
     .dropdown-animation-active {
         animation: dropdownFadeIn 0.2s var(--ease-ios) forwards;
-        /* Removed pointer-events-auto and opacity/scale from here, handled by JS or Tailwind active classes */
     }
-
 
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after {
@@ -445,20 +558,23 @@
       .animate-page-slide-fade-in, .animate-element-fade-scale-in, .animate-slideInUp,
       .modal-container-animate-enter-active, .modal-container-animate-exit-active,
       .mobile-sheet-enter-active, .mobile-sheet-exit-active,
-      .dropdown-animation-active /* Added dropdown animation */ { 
+      .dropdown-animation-active 
+      { 
         animation: none !important; 
         opacity: 1 !important;
         transform: none !important;
       }
-      .progress-bar-shimmer::after, .btn-ripple:after /* Added ripple */ {
+      .progress-bar-shimmer::after, .btn-ripple:after 
+      {
         animation: none !important;
-        background-image: none !important; /* For shimmer */
-        opacity: 0 !important; /* For ripple */
+        background-image: none !important; 
+        opacity: 0 !important; 
       }
-      .modal-backdrop-enhanced, .dot, .card-float-hover, .thin-scrollbar-horizontal::-webkit-scrollbar-thumb,
+      .modal-backdrop-enhanced, .card-float-hover, .thin-scrollbar-horizontal::-webkit-scrollbar-thumb,
       button, a, input, select, textarea, [role="button"], [role="switch"], [role="tab"],
       .transition-all, .transition-colors, .transition-opacity, .transition-transform, .transition-width, .transition-shadow,
-      .sync-indicator-base { 
+      .sync-indicator-base
+      { 
         transition: none !important;
       }
        
@@ -466,7 +582,6 @@
         transform: none !important;
       }
     }
-
     
     @media (max-width: 767px) { 
       .grecaptcha-badge {
@@ -474,6 +589,49 @@
         transition: none !important; 
       }
     }
+
+    /* Global Input/Textarea/Select Styles based on Theme Variables */
+    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]), 
+    textarea, 
+    select {
+      background-color: var(--color-input-bg) !important; /* Important to override Tailwind */
+      color: var(--color-input-text) !important;
+      border-color: var(--color-input-border) !important;
+      border-width: 1px; /* Ensure border is visible */
+    }
+    
+    input::placeholder, 
+    textarea::placeholder {
+      color: var(--color-input-placeholder) !important;
+      opacity: 1; /* Ensure placeholder is visible */
+    }
+    
+    /* Focus styles will be handled by Tailwind utilities or component-specific styles for better control */
+    /* input:focus, textarea:focus, select:focus {
+      border-color: var(--color-input-focus-border) !important;
+      box-shadow: 0 0 0 2px var(--color-input-focus-ring) !important;
+      outline: none !important;
+    } */
+
+    html.light .mobile-nav-style {
+      background-color: rgba(255, 255, 255, 0.92); /* From step 10 */
+      border-top: 1px solid rgba(226, 232, 240, 0.7); /* From step 10 */
+      box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.03); /* From step 10 */
+    }
+    
+    html.light .mobile-nav-item:active {
+      background-color: var(--color-bg-surface-2); /* From step 10 */
+    }
+    
+    /* Add this for active NavLink items on mobile in light theme */
+    html.light .mobile-nav-item.active { 
+      /* Tailwind class for NavLink's activeClassName prop applies this */
+      /* Ensure NavLink uses a class that targets this or this is specific enough */
+       /* color: var(--color-primary-accent); */
+       /* background-color: var(--color-bg-surface-2); */ /*This is in NavLink itself*/
+    }
+
+
   </style>
 
 <script type="importmap">
@@ -504,7 +662,8 @@
   }
 }
 </script>
-  <script type="module" crossorigin src="/quizai/assets/index-nNLKeTiq.js"></script>
+  <script type="module" crossorigin src="/quizai/assets/index-BJ6IOBh1.js"></script>
+  <link rel="stylesheet" crossorigin href="/quizai/assets/index-BjjqHGyL.css">
 </head>
 <body>
   <div id="root"></div>
