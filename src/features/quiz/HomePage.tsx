@@ -8,7 +8,6 @@ import { Quiz } from '../../types';
 import { PlusIcon, UserCircleIcon, ChevronRightIcon } from '../../constants';
 import QuizCard from './components/QuizCard';
 
-import useIntersectionObserver from '../../hooks/useIntersectionObserver';
 import { translations } from '../../i18n';
 import MathText from '../../components/MathText';
 
@@ -72,78 +71,95 @@ const FeedbackSection: React.FC = () => {
       transition={{ duration: durationSlow, ease: easeIOS, delay: 0.2 }} 
     >
       <Card
-        className={`max-w-2xl mx-auto shadow-2xl !rounded-2xl glass-effect !border-slate-700/40`}
         useGlassEffect
+        className={`max-w-2xl mx-auto shadow-2xl !rounded-2xl !border-slate-700/40`}
       >
-        <div className="text-center mb-6 sm:mb-8">
-          <motion.h2
-            className={`text-2xl sm:text-3xl font-bold text-slate-50 mb-2.5 sm:mb-3`}
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: durationNormal, ease: easeIOS, delay: 0.1 }}
-          >
-            {t('feedbackSectionTitle')}
-          </motion.h2>
-          <motion.p
-            className={`text-slate-300/80 text-sm sm:text-base max-w-xl mx-auto`}
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: durationNormal, ease: easeIOS, delay: 0.2 }}
-          >
-            {t('feedbackSectionSubtitle')}
-          </motion.p>
-        </div>
-
-        <motion.div
+        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 sm:gap-8">
+          <div className="flex-1 text-center sm:text-left">
+            <motion.h2
+              className={`text-xl sm:text-2xl font-bold text-slate-50 mb-2 sm:mb-3`}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: durationNormal, ease: easeIOS, delay: 0.1 }}
+            >
+              {t('feedbackSectionTitle')}
+            </motion.h2>
+            <motion.p
+              className={`text-slate-300/80 text-sm sm:text-base mb-4 sm:mb-0`}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: durationNormal, ease: easeIOS, delay: 0.2 }}
+            >
+              {t('feedbackSectionSubtitle')}
+            </motion.p>
+          </div>
+          
+          <motion.div 
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: durationNormal, ease: easeIOS, delay: 0.3 }}
-        >
+            className="flex-1 w-full"
+          >
             {currentUser ? (
-            <div className="space-y-5">
-                <Textarea
-                label={<span className="text-sm font-medium text-slate-200">{t('feedbackTextareaLabel')}</span>}
-                value={feedbackText}
-                onChange={(e) => setFeedbackText(e.target.value)}
-                placeholder={t('feedbackTextareaPlaceholder')}
-                rows={4}
-                className="min-h-[100px] sm:min-h-[120px]"
+              <div className="space-y-4">
+                <Textarea // Changed from Input to Textarea for multi-line feedback
+                  label={<span className="text-sm font-medium text-slate-200">{t('feedbackTextareaLabel')}</span>}
+                  value={feedbackText}
+                  onChange={(e) => setFeedbackText(e.target.value)}
+                  placeholder={t('feedbackTextareaPlaceholder')}
+                  rows={4}
+                  className="min-h-[100px] sm:min-h-[120px]"
                 />
                 <Button
-                onClick={handleSendFeedback}
-                disabled={!feedbackText.trim()}
-                fullWidth
-                size="md"
-                variant="secondary"
-                className="py-2.5 sm:py-3 shadow-lg"
+                  onClick={handleSendFeedback}
+                  disabled={!feedbackText.trim()}
+                  fullWidth
+                  size="md"
+                  variant="secondary"
+                  className="py-2.5 sm:py-3 shadow-lg"
                 >
-                {t('feedbackSendButton')}
+                  {t('feedbackSendButton')}
                 </Button>
-            </div>
+              </div>
             ) : (
-            <div className="text-center bg-slate-700/50 p-5 sm:p-6 rounded-xl border border-slate-600/70 shadow-inner">
+              <div className="text-center bg-slate-700/50 p-5 sm:p-6 rounded-xl border border-slate-600/70 shadow-inner">
                 <UserCircleIcon className="w-12 h-12 sm:w-16 sm:h-16 text-slate-500 mx-auto mb-4 sm:mb-6" />
                 <p className="text-base sm:text-lg font-semibold text-slate-200 mb-2 sm:mb-3">{t('feedbackLoginPromptTitle')}</p>
                 <p className="text-slate-400 text-xs sm:text-sm mb-6 sm:mb-8 max-w-md mx-auto">{t('feedbackLoginPromptSubtitle')}</p>
                 <Button
-                onClick={() => setCurrentView('/signin')}
-                variant="primary"
-                size="sm"
-                className="py-2.5 px-5 sm:px-6 rounded-lg"
+                  onClick={() => setCurrentView('/signin')}
+                  variant="primary"
+                  size="sm"
+                  className="py-2.5 px-5 sm:px-6 rounded-lg"
                 >
-                {t('signIn')}
+                  {t('signIn')}
                 </Button>
-            </div>
+              </div>
             )}
-        </motion.div>
+          </motion.div>
+        </div>
       </Card>
     </motion.section>
   );
 };
 FeedbackSection.displayName = "FeedbackSection";
+
+// Define containerVariants for motion, if not already defined or if a specific one is needed here
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1, // Adjust stagger timing as needed
+      duration: 0.3,
+      ease: easeIOS,
+    },
+  },
+};
+
 
 const HomePage: React.FC = () => {
   const { quizzes: contextQuizzes, currentUser, setCurrentView, deleteQuiz, isLoading: contextIsLoading } = useAppContext();
@@ -156,8 +172,6 @@ const HomePage: React.FC = () => {
     if (!contextIsLoading) {
       setCurrentStableQuizzes([...contextQuizzes]);
     }
-    // If contextIsLoading is true, currentStableQuizzes remains unchanged,
-    // preserving the last stable UI state.
   }, [contextQuizzes, contextIsLoading]);
 
   const recentQuizzesForDisplay = useMemo(() => {
@@ -168,23 +182,18 @@ const HomePage: React.FC = () => {
 
   const quizCountForDisplay = useMemo(() => currentStableQuizzes.length, [currentStableQuizzes]);
 
-  const heroRef = useRef<HTMLElement>(null);
-  // Removed dashboardInfoCardRef and isDashboardInfoCardVisible
-  // Removed recentQuizzesSectionRef and isRecentQuizzesSectionVisible
-
   const heroButtonTextKey = quizCountForDisplay > 0 ? 'heroCTACreateAnother' : 'heroCTA';
   const heroButtonText = t(heroButtonTextKey);
 
   const handleDeleteQuiz = (quizId: string) => { deleteQuiz(quizId); };
   const handleEditQuiz = (quiz: Quiz) => { navigate(`/review/${quiz.id}`, { state: { existingQuiz: quiz } }); };
 
-  const renderContent = () => {
-    // Case 1: Big Hero section if no quizzes and not loading
+  const renderPageContent = () => {
+    // Case 1: Big Hero section if no quizzes and not loading context
     if (quizCountForDisplay === 0 && !contextIsLoading) {
       return (
-        <div className="space-y-12 md:space-y-16">
+        <>
           <section
-            ref={heroRef}
             className={`relative text-center py-20 md:py-28 rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl
             bg-gradient-to-br from-sky-600/20 via-slate-800/50 to-purple-600/20
             border border-slate-700/40`}
@@ -220,22 +229,21 @@ const HomePage: React.FC = () => {
               </motion.div>
             </motion.div>
           </section>
-          <FeedbackSection />
-        </div>
+        </>
       );
     }
 
-    // Case 2: Dashboard-like view (with potential loading overlay)
+    // Case 2: Dashboard-like view (with potential loading overlay) or loading state
     return (
-      <div className="relative space-y-12 md:space-y-16">
-        {contextIsLoading && quizCountForDisplay > 0 && (
+      <div className="relative"> {/* Wrapper for potential loading overlay */}
+        {contextIsLoading && quizCountForDisplay > 0 && ( // Loading overlay if quizzes exist but context is refreshing
           <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm rounded-xl z-10 flex items-center justify-center">
             <LoadingSpinner text={t('homeSyncingQuizzesMessage')} size="lg" />
           </div>
         )}
-        <div className={contextIsLoading && quizCountForDisplay > 0 ? 'opacity-50' : ''}>
+        <div className={contextIsLoading && quizCountForDisplay > 0 ? 'opacity-50' : ''}> {/* Apply opacity if overlay is active */}
           {quizCountForDisplay > 0 && (
-            <section className="animate-fadeInUp"> {/* Always animate */}
+            <section className="animate-fadeInUp">
               <Card useGlassEffect className={`!p-6 sm:!p-8 text-center sm:text-left !rounded-2xl shadow-2xl !border-slate-700/40`}>
                 <div className="flex flex-col sm:flex-row justify-between items-center gap-6">
                   <div>
@@ -263,7 +271,7 @@ const HomePage: React.FC = () => {
           )}
 
           {recentQuizzesForDisplay.length > 0 && (
-            <section className="animate-fadeInUp"> {/* Always animate */}
+            <section className="animate-fadeInUp">
               <div className={`flex flex-wrap justify-between items-center mb-6 sm:mb-8 gap-4`}>
                 <h2 className="text-2xl sm:text-3xl font-semibold text-slate-100">
                   {t('homeRecentQuizzesTitle')}
@@ -288,19 +296,30 @@ const HomePage: React.FC = () => {
               )}
             </section>
           )}
-           {(quizCountForDisplay === 0 && contextIsLoading) && ( // Case where buffer is empty and we are loading
+           {(quizCountForDisplay === 0 && contextIsLoading) && ( // Case where buffer is empty AND context is loading
               <div className="flex flex-col items-center justify-center min-h-[300px] text-center">
                 <LoadingSpinner text={t('loading')} size="xl" />
                 <p className="mt-4 text-slate-400">{t('homeInitialLoadMessage')}</p>
               </div>
             )}
-          <FeedbackSection />
         </div>
       </div>
     );
   };
   
-  return renderContent();
+  return (
+    <div className="container mx-auto px-4 sm:px-6 pb-16">
+      <motion.div 
+        initial="hidden"
+        animate="visible"
+        variants={containerVariants}
+        className="space-y-12 sm:space-y-16"
+      >
+        {renderPageContent()}
+        <FeedbackSection /> {/* FeedbackSection is now always rendered here */}
+      </motion.div>
+    </div>
+  );
 };
 HomePage.displayName = "HomePage";
 

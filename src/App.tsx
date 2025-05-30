@@ -3,8 +3,9 @@ import React, { useState, useCallback, useEffect, createContext, useContext, Rea
 import { HashRouter, Routes, Route, useNavigate, useLocation, NavLink as RouterNavLink } from 'react-router-dom';
 import { GoogleOAuthProvider, googleLogout } from '@react-oauth/google';
 import { Quiz, AppContextType, Language, QuizResult, UserProfile, SyncState } from './types';
-import { APP_NAME, UserCircleIcon, KeyIcon, LogoutIcon, HomeIcon, PlusCircleIcon, ChartBarIcon, SettingsIcon, InformationCircleIcon, XCircleIcon, RefreshIcon, CheckCircleIcon } from './constants'; 
+import { APP_NAME, KeyIcon, LogoutIcon, HomeIcon, PlusCircleIcon, ChartBarIcon, SettingsIcon, InformationCircleIcon, XCircleIcon, RefreshIcon, CheckCircleIcon } from './constants'; 
 import { Button, LoadingSpinner, Tooltip } from './components/ui';
+import { UserAvatar } from './components/UserAvatar'; // Added UserAvatar import
 import ErrorBoundary from './components/ErrorBoundary'; 
 import { getTranslator, translations } from './i18n';
 import useIntersectionObserver from './hooks/useIntersectionObserver';
@@ -97,7 +98,7 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     setCurrentUserInternal(user);
     logger.setUserId(user ? user.id : null);
     if (user) {
-      logger.info('User logged in', 'AuthContext', { userId: user.id, email: user.email });
+      logger.info('User logged in', 'AuthContext', { userId: user.id, email: user.email, hasPhotoUrl: !!user.imageUrl });
     } else {
       logger.info('User logged out', 'AuthContext');
     }
@@ -605,11 +606,12 @@ const UserDropdownMenu: React.FC = () => {
                 aria-expanded={isUserDropdownOpen}
                 aria-haspopup="true"
             >
-                {currentUser.imageUrl ? (
-                    <img src={currentUser.imageUrl} alt={currentUser.name || "User"} className="w-8 h-8 sm:w-9 sm:h-9 rounded-full border-2 border-slate-600 group-hover:border-sky-300 transition-colors var(--duration-fast) var(--ease-ios)" />
-                ) : (
-                    <UserCircleIcon className="w-8 h-8 sm:w-9 sm:h-9 text-slate-400 group-hover:text-sky-300 transition-colors var(--duration-fast) var(--ease-ios)" />
-                )}
+                <UserAvatar
+                  photoUrl={currentUser.imageUrl}
+                  userName={currentUser.name}
+                  size="sm" // Corresponds to w-8 h-8, sm:w-9 sm:h-9 is slightly different, but sm is closest UserAvatar size
+                  className="border-2 border-slate-600 group-hover:border-sky-300 transition-colors var(--duration-fast) var(--ease-ios)"
+                />
             </button>
             <div
                 className={`absolute right-0 mt-2.5 w-60 sm:w-64 glass-effect rounded-xl shadow-2xl py-2 z-50 origin-top-right
