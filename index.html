@@ -45,6 +45,7 @@
       --color-text-muted: rgb(100, 116, 139); /* slate-500 - Kept existing, user didn't specify */
       
       --color-primary-accent: rgb(56, 189, 248); /* sky-400 */
+      --color-primary-accent-rgb: 56, 189, 248; /* For animations */
       --color-primary-accent-hover: rgb(125, 211, 252); /* sky-300 */
       --color-primary-accent-text: #ffffff; 
 
@@ -53,7 +54,9 @@
       --color-secondary-accent-text: #e2e8f0; /* slate-200 */
 
       --color-danger-accent: rgb(248, 113, 113); /* red-400 */
+      --color-danger-accent-rgb: 248, 113, 113;
       --color-success-accent: #22c55e; /* green-500 */
+      --color-success-accent-rgb: 34, 197, 94;
       --color-warning-accent: #f59e0b; /* amber-500 */
       
       --color-border-default: rgba(100, 116, 139, 0.3); /* slate-500 at 30% */
@@ -67,8 +70,8 @@
       --color-modal-border: rgba(100, 116, 139, 0.3); /* slate-500 at 30% */
       
       /* Mobile nav styling */
-      --color-mobile-nav-bg: rgba(15, 23, 42, 0.88); /* slate-900 at 88% */
-      --color-mobile-nav-border: rgba(51, 65, 85, 0.5); /* slate-700 at 50% */
+      --color-mobile-nav-bg: rgba(15, 23, 42, 0.88); /* slate-900 at 88% (default, will be overridden by glass-effect for new nav) */
+      --color-mobile-nav-border: rgba(51, 65, 85, 0.5); /* slate-700 at 50% (default, will be overridden by glass-effect for new nav) */
       --color-mobile-nav-item-active-bg: rgb(51, 65, 85); /* slate-700 */
 
       /* Tooltip (Dark) */
@@ -130,6 +133,7 @@
       --color-text-muted: rgb(100, 116, 139); /* slate-500 */
       
       --color-primary-accent: rgb(14, 165, 233); /* sky-500 */
+      --color-primary-accent-rgb: 14, 165, 233; /* For animations */
       --color-primary-accent-hover: rgb(2, 132, 199); /* sky-600 */
       --color-primary-accent-text: #ffffff; /* Text on primary buttons */
 
@@ -138,7 +142,9 @@
       --color-secondary-accent-text: #1e293b; /* slate-800 */
 
       --color-danger-accent: rgb(239, 68, 68); /* red-500 */
+      --color-danger-accent-rgb: 239, 68, 68;
       --color-success-accent: #16a34a; /* green-600 for better contrast */
+      --color-success-accent-rgb: 22, 163, 74;
       --color-warning-accent: #d97706; /* amber-600 for better contrast */
       
       --color-border-default: rgba(203, 213, 225, 0.8); /* slate-300 at 80% */
@@ -152,8 +158,8 @@
       --color-modal-border: rgba(203, 213, 225, 0.5); /* slate-300 at 50% */
       
       /* Mobile nav styling */
-      --color-mobile-nav-bg: rgba(255, 255, 255, 0.92); /* white at 92% */
-      --color-mobile-nav-border: rgba(226, 232, 240, 0.7); /* slate-200 at 70% */
+      --color-mobile-nav-bg: rgba(255, 255, 255, 0.92); /* white at 92% (default, will be overridden by glass-effect for new nav) */
+      --color-mobile-nav-border: rgba(226, 232, 240, 0.7); /* slate-200 at 70% (default, will be overridden by glass-effect for new nav) */
       --color-mobile-nav-item-active-bg: rgb(241, 245, 249); /* slate-100 */
 
       /* Tooltip (Light) */
@@ -224,8 +230,7 @@
       backdrop-filter: blur(12px); 
       -webkit-backdrop-filter: blur(12px); 
       border-bottom: 1px solid var(--color-glass-border); 
-      box-shadow: 0 4px 12px var(--shadow-color-level-1), 0 1px 3px var(--shadow-color-level-2); 
-      /* Rounded corners are applied by App.tsx, this was for global styling which is not needed */
+      box-shadow: var(--shadow-sm); /* Changed from levels to direct shadow var */
     }
     
     /* Card glass effect */
@@ -255,7 +260,7 @@
     }
     /* Removed html.light .sticky-review-actions override, handled by var now */
     @media (min-width: 768px) { 
-      .sticky-review-actions { top: 4.5rem; }
+      .sticky-review-actions { top: 4rem; } /* Matched desktop header height */
     }
     
     .modal-backdrop-enhanced { 
@@ -279,17 +284,10 @@
       box-shadow: 0 8px 20px var(--shadow-color-level-3), 0 0 0 1px var(--color-border-interactive); /* Adjusted shadow for theme */
     }
     
-    .mobile-nav-style {
-      background-color: var(--color-mobile-nav-bg); 
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-      border-top: 1px solid var(--color-mobile-nav-border); 
-      box-shadow: 0 -4px 12px var(--shadow-color-level-1), 0 -1px 3px var(--shadow-color-level-2); 
-      border-top-left-radius: var(--radius-lg);
-      border-top-right-radius: var(--radius-lg);
-    }
+    /* New mobile nav styles will use glass-effect directly on the nav element */
+    /* .mobile-nav-style is deprecated with new design */
 
-    .mobile-nav-item:active {
+    .mobile-nav-item:active { /* Kept for potential direct use if NavLink is not customized enough */
       background-color: var(--color-mobile-nav-item-active-bg); 
     }
     
@@ -479,8 +477,8 @@
     .sync-indicator-base {
       transition: opacity var(--duration-fast) var(--ease-ios), transform var(--duration-fast) var(--ease-ios);
       will-change: opacity, transform;
-      background-color: var(--color-bg-surface-2);
-      border: 1px solid var(--color-border-default);
+      /* background-color will be set dynamically */
+      /* border color will be set dynamically */
     }
     .sync-indicator-visible {
       opacity: 1;
@@ -578,7 +576,7 @@
         transition: none !important;
       }
        
-      .hover\\:scale-\\[1\\.02\\]:hover, .active\\:scale-\\[0\\.98\\]:active {
+      .hover\\:scale-\\[1\\.02\\]:hover, .active\\:scale-\\[0\\.98\\]:active, .group-hover\\:scale-105:hover {
         transform: none !important;
       }
     }
@@ -606,31 +604,25 @@
       opacity: 1; /* Ensure placeholder is visible */
     }
     
-    /* Focus styles will be handled by Tailwind utilities or component-specific styles for better control */
-    /* input:focus, textarea:focus, select:focus {
-      border-color: var(--color-input-focus-border) !important;
-      box-shadow: 0 0 0 2px var(--color-input-focus-ring) !important;
-      outline: none !important;
-    } */
-
-    html.light .mobile-nav-style {
-      background-color: rgba(255, 255, 255, 0.92); /* From step 10 */
-      border-top: 1px solid rgba(226, 232, 240, 0.7); /* From step 10 */
-      box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.03); /* From step 10 */
+    /* New custom animations */
+    @keyframes subtle-glow {
+      0% { box-shadow: 0 0 0 0 rgba(var(--color-primary-accent-rgb), 0.4); }
+      70% { box-shadow: 0 0 0 6px rgba(var(--color-primary-accent-rgb), 0); }
+      100% { box-shadow: 0 0 0 0 rgba(var(--color-primary-accent-rgb), 0); }
     }
-    
-    html.light .mobile-nav-item:active {
-      background-color: var(--color-bg-surface-2); /* From step 10 */
-    }
-    
-    /* Add this for active NavLink items on mobile in light theme */
-    html.light .mobile-nav-item.active { 
-      /* Tailwind class for NavLink's activeClassName prop applies this */
-      /* Ensure NavLink uses a class that targets this or this is specific enough */
-       /* color: var(--color-primary-accent); */
-       /* background-color: var(--color-bg-surface-2); */ /*This is in NavLink itself*/
+    .animate-subtle-glow {
+      animation: subtle-glow 2s infinite;
     }
 
+    @keyframes gradient-shift {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+    .gradient-shift-bg {
+      background-size: 200% 200%;
+      animation: gradient-shift 3s ease-in-out infinite;
+    }
 
   </style>
 
@@ -663,7 +655,7 @@
   }
 }
 </script>
-  <script type="module" crossorigin src="/quizai/assets/index-CjXdMATJ.js"></script>
+  <script type="module" crossorigin src="/quizai/assets/index-DiPvQfa0.js"></script>
   <link rel="stylesheet" crossorigin href="/quizai/assets/index-BjjqHGyL.css">
 </head>
 <body>
