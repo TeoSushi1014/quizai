@@ -1,11 +1,12 @@
 
 
+
 import React, { useState, useCallback, useEffect, createContext, useContext, ReactNode, useMemo, useRef, lazy, Suspense, useId } from 'react';
 import { HashRouter, Routes, Route, useNavigate, useLocation, NavLink as RouterNavLink, Navigate } from 'react-router-dom'; 
 import { GoogleOAuthProvider, googleLogout } from '@react-oauth/google';
 import { useSwipeable } from 'react-swipeable';
 import { Quiz, AppContextType, Language, QuizResult, UserProfile, SyncState } from './types';
-import { APP_NAME, KeyIcon, LogoutIcon, HomeIcon, PlusCircleIcon, ChartBarIcon, SettingsIcon, SettingsIconMobileNav, InformationCircleIcon, XCircleIcon, RefreshIcon, CheckCircleIcon, ChevronDownIcon, UserCircleIcon, SunIcon, MoonIcon } from './constants'; 
+import { APP_NAME, KeyIcon, LogoutIcon, HomeIcon, PlusCircleIcon, ChartBarIcon, SettingsIcon, SettingsIconMobileNav, InformationCircleIcon, XCircleIcon, RefreshIcon, CheckCircleIcon, ChevronDownIcon, UserCircleIcon, SunIcon, MoonIcon, PlusIcon } from './constants'; 
 import { Button, LoadingSpinner, Tooltip, Toggle } from './components/ui';
 import { UserAvatar } from './components/UserAvatar'; 
 import ErrorBoundary from './components/ErrorBoundary'; 
@@ -614,16 +615,17 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
 };
 AppProvider.displayName = "AppProvider";
 
-const NavLink: React.FC<{ to: string; children: ReactNode; end?: boolean; className?: string; activeClassName?: string; inactiveClassName?: string; isMobile?: boolean; }> = 
-({ to, children, end = false, className = '', activeClassName = '', inactiveClassName = '', isMobile = false }) => {
-  const baseDesktopStyle = `px-3.5 py-2 rounded-lg text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-focus-ring-offset)] hover:bg-[var(--color-primary-accent)]/10 transition-colors var(--duration-fast) var(--ease-ios)`;
-  const activeDesktopStyle = `text-[var(--color-primary-accent)] font-semibold border-b-2 border-[var(--color-primary-accent)] bg-[var(--color-primary-accent)]/15`; // Added background for active desktop
-  const inactiveDesktopStyle = `text-[var(--color-text-secondary)] hover:text-[var(--color-primary-accent)] border-b-2 border-transparent hover:border-[var(--color-primary-accent)]/50`;
+const NavLink: React.FC<{ to: string; children: ReactNode; end?: boolean; className?: string; activeClassName?: string; inactiveClassName?: string; isMobile?: boolean; icon?: ReactNode; }> = 
+({ to, children, end = false, className = '', activeClassName = '', inactiveClassName = '', isMobile = false, icon }) => {
+  // Desktop styles (updated)
+  const baseDesktopStyle = `flex items-center px-4 py-2 rounded-lg text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-focus-ring-offset)] hover:bg-[var(--color-bg-surface-2)] transition-colors var(--duration-fast) var(--ease-ios)`;
+  const activeDesktopStyle = `bg-[var(--color-primary-accent)]/10 text-[var(--color-primary-accent)] font-medium`;
+  const inactiveDesktopStyle = `text-[var(--color-text-secondary)] hover:text-[var(--color-primary-accent)]`;
 
-  const baseMobileStyle = `flex flex-col items-center justify-center h-full w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-bg-surface-2)] rounded-lg hover:bg-[var(--color-bg-surface-3)] active:bg-[var(--color-bg-surface-3)] transition-colors var(--duration-fast) var(--ease-ios) ${isMobile ? 'mobile-nav-item' : ''}`;
-  const activeMobileStyle = `text-[var(--color-primary-accent)] font-semibold bg-[var(--color-mobile-nav-item-active-bg)] border-t-2 border-[var(--color-primary-accent)]`;
-  const inactiveMobileStyle = `text-[var(--color-text-muted)] hover:text-[var(--color-primary-accent)] border-t-2 border-transparent`;
-
+  // Mobile styles (updated)
+  const baseMobileStyle = `flex flex-col items-center justify-center w-full h-full focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-primary-accent)] focus-visible:ring-offset-1 focus-visible:ring-offset-[var(--color-bg-body)] rounded-md hover:bg-[var(--color-bg-surface-2)] transition-colors var(--duration-fast) var(--ease-ios)`;
+  const activeMobileStyle = `text-[var(--color-primary-accent)]`;
+  const inactiveMobileStyle = `text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]`;
 
   return (
     <RouterNavLink
@@ -636,6 +638,7 @@ const NavLink: React.FC<{ to: string; children: ReactNode; end?: boolean; classN
             : (inactiveClassName || (isMobile ? inactiveMobileStyle : inactiveDesktopStyle))}`
       }
     >
+      {icon && <span className={`items-center ${isMobile ? 'mb-0.5' : 'mr-2'}`}>{icon}</span>}
       {children}
     </RouterNavLink>
   );
@@ -680,8 +683,8 @@ const UserDropdownMenu: React.FC = () => {
         <div className="relative" ref={userDropdownRef}>
             <button
                 onClick={() => setIsUserDropdownOpen(prev => !prev)}
-                className={`flex items-center p-1.5 sm:p-2 rounded-full focus-visible:ring-2 focus-visible:ring-[var(--color-primary-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-bg-body)] group
-                            ${isUserDropdownOpen ? 'bg-[var(--color-primary-accent)]/10 ring-2 ring-[var(--color-primary-accent)]' : ''}`}
+                className={`flex items-center space-x-2 p-0.5 rounded-full hover:bg-[var(--color-bg-surface-2)] focus-visible:ring-2 focus-visible:ring-[var(--color-primary-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-bg-body)] group transition-colors var(--duration-fast) var(--ease-ios)
+                            ${isUserDropdownOpen ? 'bg-[var(--color-primary-accent)]/10 ring-1 ring-[var(--color-primary-accent)]' : ''}`}
                 aria-label="User menu"
                 aria-expanded={isUserDropdownOpen}
                 aria-haspopup="true"
@@ -693,7 +696,7 @@ const UserDropdownMenu: React.FC = () => {
                   size="sm" 
                   className={`border-2 ${isUserDropdownOpen ? 'border-[var(--color-primary-accent)]' : 'border-[var(--color-border-interactive)] group-hover:border-[var(--color-primary-accent)]'} transition-colors var(--duration-fast) var(--ease-ios)`}
                 />
-                <ChevronDownIcon className={`w-4 h-4 ml-1 text-[var(--color-text-muted)] transition-transform var(--duration-fast) var(--ease-ios) ${isUserDropdownOpen ? 'rotate-180' : ''}`} />
+                <ChevronDownIcon className={`w-4 h-4 text-[var(--color-text-muted)] transition-transform var(--duration-fast) var(--ease-ios) ${isUserDropdownOpen ? 'rotate-180' : ''} hidden sm:block`} />
             </button>
             <div
                 id="user-dropdown-menu"
@@ -822,28 +825,30 @@ const AppLayout: React.FC = () => {
 
   const SyncStatusIndicator: React.FC = () => {
     const { language: currentLang } = useTranslation(); 
-    let icon = null;
-    let text = "";
-    let tooltipText = "";
-    let baseClasses = "text-xs font-medium flex items-center";
-    let colorClasses = ""; 
-    let showIndicator = false;
+    let icon: ReactNode = null;
+    let text: string = "";
+    let tooltipText: string = "";
+    let containerColorClass: string = "";
+    let dotColorClass: string = "";
+    let showIndicator: boolean = false;
 
     switch (syncState) {
         case 'syncing':
             showIndicator = true;
-            icon = <RefreshIcon className="w-3.5 h-3.5 mr-1.5 animate-spin" />;
+            icon = <RefreshIcon className="w-3 h-3 mr-1.5 animate-spin" />;
             text = currentSyncActivityMessage || t('syncStatusInProgressShort'); 
-            colorClasses = "text-[var(--color-primary-accent)]";
+            containerColorClass = "bg-[var(--color-primary-accent)]/10 text-[var(--color-primary-accent)] border-[var(--color-primary-accent)]/20";
+            dotColorClass = "bg-[var(--color-primary-accent)]";
             tooltipText = currentSyncActivityMessage || t('syncStatusInProgress');
             break;
         case 'success':
             showIndicator = true;
-            icon = <CheckCircleIcon className="w-3.5 h-3.5 mr-1.5" />;
-            colorClasses = "text-[var(--color-success-accent)]";
+            icon = <CheckCircleIcon className="w-3 h-3 mr-1.5" />;
+            containerColorClass = "bg-[var(--color-success-accent)]/10 text-[var(--color-success-accent)] border-[var(--color-success-accent)]/20";
+            dotColorClass = "bg-[var(--color-success-accent)]";
              if (currentSyncActivityMessage) { 
-                text = currentSyncActivityMessage; // Already translated from AppContext
-                tooltipText = currentSyncActivityMessage; // Already translated
+                text = currentSyncActivityMessage;
+                tooltipText = currentSyncActivityMessage;
             } else if (lastDriveSync) {
                  text = t('syncStatusLastShort', { dateTime: lastDriveSync.toLocaleTimeString(currentLang, { hour: '2-digit', minute: '2-digit'}) });
                  tooltipText = t('syncStatusLast', { dateTime: lastDriveSync.toLocaleString(currentLang, { dateStyle: 'medium', timeStyle: 'short' }) });
@@ -854,8 +859,9 @@ const AppLayout: React.FC = () => {
             break;
         case 'error':
             showIndicator = true;
-            icon = <XCircleIcon className="w-3.5 h-3.5 mr-1.5" />;
-            colorClasses = "text-[var(--color-danger-accent)]";
+            icon = <XCircleIcon className="w-3 h-3 mr-1.5" />;
+            containerColorClass = "bg-[var(--color-danger-accent)]/10 text-[var(--color-danger-accent)] border-[var(--color-danger-accent)]/20";
+            dotColorClass = "bg-[var(--color-danger-accent)]";
             text = t('syncStatusErrorShort');
             tooltipText = driveSyncError || t('driveErrorGeneric');
             break;
@@ -863,14 +869,16 @@ const AppLayout: React.FC = () => {
         default:
             if (currentUser && lastDriveSync) {
                  showIndicator = true;
-                 icon = <CheckCircleIcon className="w-3.5 h-3.5 mr-1.5 text-[var(--color-text-muted)]" />;
-                 colorClasses = "text-[var(--color-text-muted)]";
+                 icon = <CheckCircleIcon className="w-3 h-3 mr-1.5" />;
+                 containerColorClass = "bg-[var(--color-success-accent)]/10 text-[var(--color-success-accent)] border-[var(--color-success-accent)]/20"; // Show as green if previously synced
+                 dotColorClass = "bg-[var(--color-success-accent)]";
                  text = t('syncStatusLastShort', { dateTime: lastDriveSync.toLocaleTimeString(currentLang, { hour: '2-digit', minute: '2-digit'}) });
                  tooltipText = t('syncStatusLast', { dateTime: lastDriveSync.toLocaleString(currentLang, { dateStyle: 'medium', timeStyle: 'short' }) });
             } else if (currentUser) { 
                 showIndicator = true;
-                icon = <InformationCircleIcon className="w-3.5 h-3.5 mr-1.5 text-[var(--color-text-muted)]" />;
-                colorClasses = "text-[var(--color-text-muted)]";
+                icon = <InformationCircleIcon className="w-3 h-3 mr-1.5" />;
+                containerColorClass = "bg-[var(--color-bg-surface-2)] text-[var(--color-text-muted)] border-[var(--color-border-default)]"; // Neutral if never synced
+                dotColorClass = "bg-[var(--color-text-muted)]";
                 text = t('syncStatusNeverShort');
                 tooltipText = t('syncStatusNever');
             } else { 
@@ -882,7 +890,8 @@ const AppLayout: React.FC = () => {
 
     return (
         <Tooltip content={tooltipText} placement="bottom-end">
-          <div className={`${baseClasses} ${colorClasses} px-2 py-1 rounded-md bg-[var(--color-bg-surface-2)] border border-[var(--color-border-default)] sync-indicator-base ${showIndicator ? 'sync-indicator-visible' : 'sync-indicator-hidden'}`}>
+          <div className={`text-xs font-medium flex items-center px-3 py-1.5 rounded-full border sync-indicator-base ${containerColorClass} ${showIndicator ? 'sync-indicator-visible' : 'sync-indicator-hidden'}`}>
+            <div className={`w-1.5 h-1.5 rounded-full mr-2 animate-pulse ${dotColorClass}`}></div>
             {icon}
             <span>{text}</span>
           </div>
@@ -1004,37 +1013,36 @@ const AppLayout: React.FC = () => {
   return (
     <div className="min-h-screen flex flex-col selection:bg-[var(--color-primary-accent)]/20 selection:text-[var(--color-primary-accent)] pb-16 md:pb-0"
          style={{ backgroundColor: 'var(--color-bg-body)', color: 'var(--color-text-body)' }}>
-      <header className="glass-effect sticky top-0 z-50">
+      <header className="sticky top-0 z-50 glass-effect"> {/* Use glass-effect directly */}
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16 md:h-[72px]">
-            <div className="flex items-center space-x-2 sm:space-x-3 cursor-pointer group" onClick={() => navigate('/')}>
-              <h1 className="text-xl sm:text-2xl font-bold text-[var(--color-text-primary)] group-hover:text-[var(--color-primary-accent)] tracking-tight transition-colors var(--duration-fast) var(--ease-ios)">
+          <div className="flex items-center justify-between h-16"> {/* Consistent header height */}
+            <div className="flex items-center space-x-2 sm:space-x-3 cursor-pointer" onClick={() => navigate('/')}>
+              {/* <img src="/path/to/logo.svg" alt={APP_NAME} className="h-8 w-8" /> Placeholder if logo exists */}
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight bg-gradient-to-r from-[var(--color-primary-accent)] to-blue-400 bg-clip-text text-transparent">
                 {APP_NAME} 
               </h1>
             </div>
-            <div className="flex items-center space-x-2 sm:space-x-3">
-              <nav className="hidden md:flex items-center space-x-1">
-                 <NavLink to="/" end>{t('navHome')}</NavLink>
-                <NavLink to="/dashboard">{t('navDashboard')}</NavLink>
-                <NavLink to="/create">{t('navCreateQuiz')}</NavLink>
+
+            {/* Desktop Controls */}
+            <div className="hidden md:flex items-center space-x-3">
+              <nav className="flex items-center space-x-1">
+                 <NavLink to="/" end icon={<HomeIcon className="w-4 h-4"/>}>{t('navHome')}</NavLink>
+                <NavLink to="/dashboard" icon={<ChartBarIcon className="w-4 h-4"/>}>{t('navDashboard')}</NavLink>
+                <NavLink to="/create" icon={<PlusCircleIcon className="w-4 h-4"/>}>{t('navCreateQuiz')}</NavLink>
               </nav>
               
               {currentUser && <SyncStatusIndicator />}
 
-              {!currentUser && (
-                <ThemeToggle compact={true} />
-              )}
+              {!currentUser && ( <ThemeToggle compact={true} /> )}
 
               <Tooltip content={t('languageSwitcherTooltip')} placement="bottom">
                 <Button 
                     variant="ghost" 
-                    size="md"
-                    className="!p-2 sm:!p-2.5 !text-[var(--color-text-secondary)] hover:!text-[var(--color-primary-accent)] hover:!bg-[var(--color-primary-accent)]/10 rounded-lg"
                     onClick={() => setLanguage(language === 'en' ? 'vi' : 'en')}
                     aria-label={language === 'en' ? "Switch to Vietnamese" : "Switch to English"}
+                    className="!p-2 !w-9 !h-9 !rounded-full bg-[var(--color-bg-surface-2)] hover:!bg-[var(--color-bg-surface-3)] !text-[var(--color-text-secondary)] hover:!text-[var(--color-primary-accent)]"
                 >
                     <img src="https://img.icons8.com/?size=48&id=fs8AdHsHlO36&format=png" alt="Language" className="w-5 h-5" />
-                    <span className="ml-1.5 sm:ml-2 text-xs font-semibold uppercase hidden lg:inline">{language}</span>
                 </Button>
               </Tooltip>
 
@@ -1051,27 +1059,63 @@ const AppLayout: React.FC = () => {
                 </Button>
               )}
             </div>
+
+            {/* Mobile Controls (Top Bar) */}
+            <div className="md:hidden flex items-center space-x-2">
+               <Tooltip content={t('languageSwitcherTooltip')} placement="bottom">
+                <Button 
+                    variant="ghost" 
+                    onClick={() => setLanguage(language === 'en' ? 'vi' : 'en')}
+                    aria-label={language === 'en' ? "Switch to Vietnamese" : "Switch to English"}
+                    className="!p-1.5 !w-8 !h-8 !rounded-full bg-[var(--color-bg-surface-2)] hover:!bg-[var(--color-bg-surface-3)] !text-[var(--color-text-secondary)] hover:!text-[var(--color-primary-accent)]"
+                >
+                    <img src="https://img.icons8.com/?size=48&id=fs8AdHsHlO36&format=png" alt="Language" className="w-5 h-5" />
+                </Button>
+              </Tooltip>
+              {currentUser && (
+                <button 
+                    onClick={() => setIsMobileProfileOpen(true)}
+                    className="flex items-center justify-center w-8 h-8 rounded-full hover:bg-[var(--color-bg-surface-2)] transition-colors"
+                    aria-label={t('profile')}
+                >
+                    <UserAvatar photoUrl={currentUser.imageUrl} userName={currentUser.name} size="sm" className="border-2 border-[var(--color-primary-accent)]"/>
+                </button>
+              )}
+              {!currentUser && <ThemeToggle compact={true} />}
+            </div>
           </div>
         </div>
       </header>
 
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 mobile-nav-style z-40 flex justify-around items-stretch h-16">
-          <NavLink to="/" end isMobile>
-            <HomeIcon className="w-5 h-5 mb-1"/> <span className="text-xs font-medium">{t('navHome')}</span>
-          </NavLink>
-          <NavLink to="/dashboard" isMobile>
-            <ChartBarIcon className="w-5 h-5 mb-1"/> <span className="text-xs font-medium">{t('navDashboard')}</span>
-          </NavLink>
-          <NavLink to="/create" isMobile>
-            <PlusCircleIcon className="w-5 h-5 mb-1"/> <span className="text-xs font-medium">{t('navCreateQuiz')}</span>
-          </NavLink>
-          
-           {currentUser && (
-            <NavLink to="/profile" isMobile>
-              <UserCircleIcon className="w-5 h-5 mb-1"/> <span className="text-xs font-medium">{t('profile')}</span>
+      {/* New Mobile Bottom Navigation */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 glass-effect z-40 border-t border-[var(--color-glass-border)]">
+          <div className="flex items-center justify-around h-16">
+            <NavLink to="/" end isMobile icon={<HomeIcon className="w-5 h-5"/>}>
+                <span className="text-xs mt-0.5">{t('navHome')}</span>
             </NavLink>
-          )}
+            <NavLink to="/dashboard" isMobile icon={<ChartBarIcon className="w-5 h-5"/>}>
+                <span className="text-xs mt-0.5">{t('navDashboard')}</span>
+            </NavLink>
+            
+            <div className="relative -mt-5">
+                <RouterNavLink 
+                    to="/create"
+                    className="flex items-center justify-center w-14 h-14 rounded-full bg-gradient-to-r from-[var(--color-primary-accent)] to-blue-400 text-white shadow-lg gradient-shift-bg hover:scale-105 active:scale-95 transition-transform var(--duration-fast) var(--ease-ios)"
+                    aria-label={t('navCreateQuiz')}
+                >
+                    <PlusIcon className="w-7 h-7" strokeWidth={2.5} />
+                </RouterNavLink>
+            </div>
+
+            <NavLink to="/settings" isMobile icon={<SettingsIconMobileNav className="w-5 h-5"/>}>
+                <span className="text-xs mt-0.5">{t('navSettings')}</span>
+            </NavLink>
+            <NavLink to="/profile" isMobile icon={<UserCircleIcon className="w-5 h-5"/>}>
+                <span className="text-xs mt-0.5">{t('profile')}</span>
+            </NavLink>
+          </div>
         </nav>
+
 
       <main key={location.pathname} className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 md:py-10 mb-20 md:mb-0"> 
         <Suspense fallback={<RouteLoadingFallback />}>
