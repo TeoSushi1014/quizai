@@ -1,4 +1,5 @@
 
+
 import React, { useState, useCallback, useEffect, createContext, useContext, ReactNode, useMemo, useRef, lazy, Suspense, useId } from 'react';
 import { HashRouter, Routes, Route, useNavigate, useLocation, NavLink as RouterNavLink, Navigate } from 'react-router-dom'; 
 import { GoogleOAuthProvider, googleLogout } from '@react-oauth/google';
@@ -133,12 +134,12 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
 
   useEffect(() => {
     logger.info('App initializing: Loading initial data', 'AppInit');
-    const hardcodedKey = 'AIzaSyDDcYcb1JB-NKFRDC28KK0yVH_Z3GX9lU0';
-    const apiKeyFromEnv = (typeof process !== 'undefined' && process.env) ? process.env.GEMINI_API_KEY : undefined;
-    const geminiKeyStatus = !!(apiKeyFromEnv || hardcodedKey);
+    // API_KEY is now sourced directly in geminiService.ts from process.env.API_KEY
+    // This check is for UI feedback only.
+    const geminiKeyStatus = !!process.env.API_KEY; 
     setIsGeminiKeyAvailable(geminiKeyStatus);
     if (!geminiKeyStatus) {
-        logger.warn('Gemini API key not available.', 'AppInit');
+        logger.warn('Gemini API key (process.env.API_KEY) not available to the client bundle.', 'AppInit');
     }
 
     const savedLanguage = localStorage.getItem(LOCALSTORAGE_LANGUAGE_KEY) as Language | null;
@@ -697,7 +698,7 @@ const UserDropdownMenu: React.FC = () => {
             <div
                 id="user-dropdown-menu"
                 role="menu"
-                className={`absolute right-0 mt-3 w-64 sm:w-72 bg-[var(--color-bg-surface-1)] border border-[var(--color-border-default)] rounded-xl shadow-2xl py-2 z-50 origin-top-right
+                className={`absolute right-0 mt-3 w-64 sm:w-72 bg-[var(--color-bg-surface-1)] border border-[var(--color-border-default)] rounded-xl shadow-2xl py-1 z-50 origin-top-right
                             ${isUserDropdownOpen ? 'dropdown-animation-active pointer-events-auto' : 'opacity-0 scale-95 pointer-events-none'}`}
             >
                 <div className="px-5 py-4 border-b border-[var(--color-border-default)]">
@@ -714,11 +715,14 @@ const UserDropdownMenu: React.FC = () => {
                         </div>
                     </div>
                 </div>
-                <div className="py-2">
+                
+                {/* Account Section */}
+                <div className="py-1.5">
+                    <div className="px-5 pt-2 pb-1 text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{t('account')}</div>
                     <button
                         onClick={() => { setCurrentView('/profile'); setIsUserDropdownOpen(false); }}
-                        className={`w-full text-left px-5 py-3.5 text-sm hover:bg-[var(--color-bg-surface-2)] active:bg-[var(--color-bg-surface-3)] flex items-center transition-colors var(--duration-fast) var(--ease-ios)
-                                    ${isProfileActive ? 'bg-[var(--color-primary-accent)]/20 text-[var(--color-primary-accent)]' : 'text-[var(--color-text-body)] hover:text-[var(--color-primary-accent)]'}`}
+                        className={`w-full text-left px-5 py-3 text-sm hover:bg-[var(--color-bg-surface-2)] active:bg-[var(--color-bg-surface-3)] flex items-center transition-colors var(--duration-fast) var(--ease-ios)
+                                    ${isProfileActive ? 'bg-[var(--color-primary-accent)]/20 text-[var(--color-primary-accent)] font-medium' : 'text-[var(--color-text-body)] hover:text-[var(--color-primary-accent)]'}`}
                         role="menuitem"
                     >
                         <UserCircleIcon className="w-4 h-4 mr-3 flex-shrink-0" />
@@ -726,8 +730,8 @@ const UserDropdownMenu: React.FC = () => {
                     </button>
                     <button
                         onClick={() => { setCurrentView('/settings'); setIsUserDropdownOpen(false); }}
-                        className={`w-full text-left px-5 py-3.5 text-sm hover:bg-[var(--color-bg-surface-2)] active:bg-[var(--color-bg-surface-3)] flex items-center transition-colors var(--duration-fast) var(--ease-ios) group
-                                    ${isSettingsActive ? 'bg-[var(--color-primary-accent)]/20 text-[var(--color-primary-accent)]' : 'text-[var(--color-text-body)] hover:text-[var(--color-primary-accent)]'}`}
+                        className={`w-full text-left px-5 py-3 text-sm hover:bg-[var(--color-bg-surface-2)] active:bg-[var(--color-bg-surface-3)] flex items-center transition-colors var(--duration-fast) var(--ease-ios) group
+                                    ${isSettingsActive ? 'bg-[var(--color-primary-accent)]/20 text-[var(--color-primary-accent)] font-medium' : 'text-[var(--color-text-body)] hover:text-[var(--color-primary-accent)]'}`}
                         role="menuitem"
                     >
                         <img 
@@ -737,11 +741,19 @@ const UserDropdownMenu: React.FC = () => {
                         />
                         {t('navSettings')}
                     </button>
+                </div>
+
+                {/* Theme Settings Section */}
+                <div className="py-1.5 border-t border-[var(--color-border-default)]">
+                     <div className="px-5 pt-2 pb-1 text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{t('themeSettings')}</div>
                     <ThemeToggleSwitch />
-                    <div className="h-px bg-[var(--color-border-default)] my-2 mx-5"></div>
+                </div>
+                
+                {/* Logout Section */}
+                <div className="py-1.5 border-t border-[var(--color-border-default)]">
                     <button
                         onClick={() => { logout(); setIsUserDropdownOpen(false); }}
-                        className="w-full text-left px-5 py-3.5 text-sm text-[var(--color-danger-accent)] hover:bg-[var(--color-danger-accent)]/15 active:bg-[var(--color-danger-accent)]/25 flex items-center hover:text-[var(--color-danger-accent)] transition-colors var(--duration-fast) var(--ease-ios)"
+                        className="w-full text-left px-5 py-3 text-sm text-[var(--color-danger-accent)] hover:bg-[var(--color-danger-accent)]/15 active:bg-[var(--color-danger-accent)]/25 flex items-center hover:text-[var(--color-danger-accent)] transition-colors var(--duration-fast) var(--ease-ios)"
                         role="menuitem"
                     >
                         <LogoutIcon className="w-4 h-4 mr-3 flex-shrink-0" />
@@ -796,7 +808,7 @@ const AppLayout: React.FC = () => {
   
   const apiKeyWarnings = [];
   if (!isGeminiKeyAvailable) {
-    apiKeyWarnings.push("Google Gemini API Key (process.env.GEMINI_API_KEY)");
+    apiKeyWarnings.push("Google Gemini API Key (process.env.API_KEY)");
   }
   
   const appInitialized = true; 
@@ -830,8 +842,8 @@ const AppLayout: React.FC = () => {
             icon = <CheckCircleIcon className="w-3.5 h-3.5 mr-1.5" />;
             colorClasses = "text-[var(--color-success-accent)]";
              if (currentSyncActivityMessage) { 
-                text = currentSyncActivityMessage;
-                tooltipText = currentSyncActivityMessage;
+                text = currentSyncActivityMessage; // Already translated from AppContext
+                tooltipText = currentSyncActivityMessage; // Already translated
             } else if (lastDriveSync) {
                  text = t('syncStatusLastShort', { dateTime: lastDriveSync.toLocaleTimeString(currentLang, { hour: '2-digit', minute: '2-digit'}) });
                  tooltipText = t('syncStatusLast', { dateTime: lastDriveSync.toLocaleString(currentLang, { dateStyle: 'medium', timeStyle: 'short' }) });

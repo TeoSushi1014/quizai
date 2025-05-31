@@ -6,43 +6,21 @@ import { logger } from './logService';
 
 let geminiAI: GoogleGenAI | null = null;
 
-// Hardcoded API key for direct deployment
-const HARDCODED_API_KEY = 'AIzaSyDDcYcb1JB-NKFRDC28KK0yVH_Z3GX9lU0';
-
 const initializeGeminiAI = (): GoogleGenAI => {
   if (!geminiAI) {
-    let apiKey: string | undefined = HARDCODED_API_KEY; 
+    // API_KEY is now sourced directly from process.env.API_KEY.
+    // This environment variable is made available to the client-side bundle via vite.config.ts.
+    const apiKeyFromEnv = process.env.API_KEY;
     
-    if (!apiKey) {
-      try {
-        // @ts-ignore 
-        apiKey = import.meta?.env?.VITE_GEMINI_API_KEY || import.meta?.env?.GEMINI_API_KEY;
-      } catch (e) {
-        logger.debug("Unable to access import.meta.env for Gemini API Key", "GeminiServiceInit", { error: e as Error });
-      }
-      if (!apiKey && typeof window !== 'undefined') {
-        try { // @ts-ignore
-          if (window.__ENV__) { // @ts-ignore
-            apiKey = window.__ENV__.GEMINI_API_KEY || window.__ENV__.VITE_GEMINI_API_KEY;
-          }
-        } catch (e) { 
-          logger.debug("Unable to access window.__ENV__ for Gemini API Key", "GeminiServiceInit", { error: e as Error });
-        }
-      }
-      if (!apiKey && typeof process !== 'undefined' && process.env) {
-        apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
-      }
-    }
-    
-    if (typeof apiKey !== 'string' || !apiKey) {
-      const errorMessage = "Google Gemini API Key environment variable not set. Quiz generation may fail.";
+    if (typeof apiKeyFromEnv !== 'string' || !apiKeyFromEnv) {
+      const errorMessage = "Google Gemini API Key (process.env.API_KEY) not set or not available to the client. Quiz generation may fail.";
       logger.error(errorMessage, "GeminiServiceInit");
-      
-      // Visual alert is in App.tsx now based on isGeminiKeyAvailable context value
-      throw new Error(errorMessage);
+      // Visual alert is in App.tsx based on isGeminiKeyAvailable context value,
+      // which should reflect if process.env.API_KEY was successfully passed.
+      throw new Error(errorMessage); 
     }
-    logger.info("Gemini AI SDK Initializing with API Key.", "GeminiServiceInit");
-    geminiAI = new GoogleGenAI({ apiKey });
+    logger.info("Gemini AI SDK Initializing with API Key from process.env.API_KEY.", "GeminiServiceInit");
+    geminiAI = new GoogleGenAI({ apiKey: apiKeyFromEnv });
   }
   return geminiAI;
 };
@@ -290,8 +268,8 @@ export const generateQuizWithGemini = async (
     if (error instanceof Error) {
         const errorMessage = error.message; 
         const lowerErrorMessage = errorMessage.toLowerCase();
-        if (lowerErrorMessage.includes("api key not valid") || lowerErrorMessage.includes("api_key_invalid") || lowerErrorMessage.includes("api_key is not configured") || lowerErrorMessage.includes("process.env.gemini_api_key")) {
-            detailedMessage = "Invalid or Missing Gemini API Key (process.env.GEMINI_API_KEY). Please ensure the environment variable is correctly configured and accessible.";
+        if (lowerErrorMessage.includes("api key not valid") || lowerErrorMessage.includes("api_key_invalid") || lowerErrorMessage.includes("process.env.api_key not set") || lowerErrorMessage.includes("api_key is not configured") || lowerErrorMessage.includes("process.env.gemini_api_key")) {
+            detailedMessage = "Invalid or Missing Gemini API Key (process.env.API_KEY). Please ensure the environment variable is correctly configured and accessible.";
         } else if (lowerErrorMessage.includes("deadline exceeded")) {
             detailedMessage = "The Gemini AI took too long to respond. This might be due to complex content or a temporary issue. Please try again or simplify the content.";
         } else if (lowerErrorMessage.includes("quota")) {
@@ -317,7 +295,7 @@ export const extractTextFromImageWithGemini = async (
 
   try {
     const response: GenerateContentResponse = await genAIInstance.models.generateContent({
-      model: GEMINI_TEXT_MODEL,
+      model: GEMINI_TEXT_MODEL, // Standard model for text extraction as well
       contents: contents,
     });
     const textResponse = response.text || '';
@@ -327,8 +305,8 @@ export const extractTextFromImageWithGemini = async (
     logger.error("Error extracting text from image with Gemini", "GeminiServiceImage", undefined, error as Error);
     if (error instanceof Error) {
         const lowerErrorMessage = error.message.toLowerCase();
-        if (lowerErrorMessage.includes("api key not valid") || lowerErrorMessage.includes("api_key_invalid") || lowerErrorMessage.includes("api_key is not configured") || lowerErrorMessage.includes("process.env.gemini_api_key")) {
-            throw new Error("Invalid or Missing Gemini API Key (process.env.GEMINI_API_KEY) for text extraction. Please ensure the environment variable is correctly configured and accessible.");
+        if (lowerErrorMessage.includes("api key not valid") || lowerErrorMessage.includes("api_key_invalid") || lowerErrorMessage.includes("api_key is not configured") || lowerErrorMessage.includes("process.env.api_key not set") || lowerErrorMessage.includes("process.env.gemini_api_key")) {
+            throw new Error("Invalid or Missing Gemini API Key (process.env.API_KEY) for text extraction. Please ensure the environment variable is correctly configured and accessible.");
         } else if (lowerErrorMessage.includes("500") || lowerErrorMessage.includes("unknown") || lowerErrorMessage.includes("rpc failed") || lowerErrorMessage.includes("xhr error")) {
             throw new Error("Failed to extract text from image due to a server or network error. Please try again.");
         }
@@ -336,3 +314,4 @@ export const extractTextFromImageWithGemini = async (
     return null; 
   }
 };
+

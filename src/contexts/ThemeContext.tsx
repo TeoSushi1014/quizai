@@ -86,8 +86,35 @@ export const ThemeProvider: React.FC<{children: ReactNode}> = ({ children }) => 
   }, []);
 
   const toggleTheme = useCallback(() => {
+    const currentTheme = theme; // Theme before toggle
+    
+    // Visual feedback flash
+    const feedbackEl = document.createElement('div');
+    feedbackEl.className = 'theme-change-feedback-flash';
+    feedbackEl.style.position = 'fixed';
+    feedbackEl.style.inset = '0';
+    feedbackEl.style.backgroundColor = currentTheme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'; // Subtle flash color
+    feedbackEl.style.opacity = '0';
+    feedbackEl.style.pointerEvents = 'none';
+    feedbackEl.style.zIndex = '99999'; // Ensure it's on top
+    feedbackEl.style.transition = 'opacity 150ms ease-out';
+    document.body.appendChild(feedbackEl);
+
+    requestAnimationFrame(() => {
+        feedbackEl.style.opacity = '1';
+        setTimeout(() => {
+            feedbackEl.style.opacity = '0';
+            setTimeout(() => {
+                if (document.body.contains(feedbackEl)) {
+                    document.body.removeChild(feedbackEl);
+                }
+            }, 150); // Match transition duration
+        }, 150); // Duration of flash visibility
+    });
+    
+    // Actual theme change
     setThemeState(prev => (prev === 'dark' ? 'light' : 'dark'));
-  }, []);
+  }, [theme]); // Depend on current theme to determine flash color
 
   return (
     <ThemeContext.Provider value={{ theme, setTheme, toggleTheme }}>
@@ -103,3 +130,4 @@ export const useTheme = (): ThemeContextType => {
   }
   return context;
 };
+
