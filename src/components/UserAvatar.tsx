@@ -1,6 +1,6 @@
 
-import React, { useState, useEffect } from 'react';
-import { useTranslation } from '../App'; 
+import React, { useState, useEffect, useRef } from 'react';
+import { useTranslation } from '../App';
 import { LoadingSpinner } from './ui';
 
 type UserAvatarProps = {
@@ -10,6 +10,8 @@ type UserAvatarProps = {
   className?: string;
 };
 
+const IMAGE_LOAD_TIMEOUT_MS = 10000; // 10 seconds
+
 export const UserAvatar: React.FC<UserAvatarProps> = ({
   photoUrl,
   userName,
@@ -17,82 +19,117 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
   className = ''
 }) => {
   const { t } = useTranslation();
-  const [currentImageUrl, setCurrentImageUrl] = useState(photoUrl || '');
-  const [imageError, setImageError] = useState(false);
-  const [isLoadingImage, setIsLoadingImage] = useState(true); // True if photoUrl exists
+  const [isLoading, setIsLoading] = useState(!!photoUrl); // Start loading only if photoUrl is initially present
+  const [hasError, setHasError] = useState(false);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    if (photoUrl) {
-      setCurrentImageUrl(photoUrl);
-      setImageError(false);
-      setIsLoadingImage(true); // Start loading new image
-    } else {
-      setCurrentImageUrl('');
-      setImageError(false); // Reset error if photoUrl is removed
-      setIsLoadingImage(false); // No image to load
+    // Clear any existing timeout when photoUrl changes or component unmounts
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
     }
-  }, [photoUrl]);
+
+    if (photoUrl) {
+      setIsLoading(true);
+      setHasError(false);
+
+      timeoutRef.current = setTimeout(() => {
+        if (isLoading) { // Check if still loading when timeout fires
+          console.warn('UserAvatar: Image loading timed out for URL:', photoUrl);
+          setIsLoading(false);
+          setHasError(true);
+        }
+      }, IMAGE_LOAD_TIMEOUT_MS);
+
+    } else {
+      setIsLoading(false);
+      setHasError(false);
+    }
+
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, [photoUrl]); // isLoading is intentionally not in dependencies here to avoid resetting timeout on its change
+
+  const clearLoadTimeout = () => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+  };
+
+  const handleImageLoad = () => {
+    clearLoadTimeout();
+    setIsLoading(false);
+    setHasError(false);
+  };
+
+  const handleImageError = () => {
+    clearLoadTimeout();
+    console.error('UserAvatar: Failed to load image from URL:', photoUrl);
+    setIsLoading(false);
+    setHasError(true);
+  };
 
   const sizeClasses = {
     sm: 'w-8 h-8',
     md: 'w-10 h-10',
     lg: 'w-12 h-12'
   };
+  const initialsFontSizeClasses = {
+    sm: 'text-sm',
+    md: 'text-base',
+    lg: 'text-lg'
+  };
+  const spinnerSizeMapping = {
+    sm: 'xs',
+    md: 'sm',
+    lg: 'sm'
+  } as const;
 
   const sizeClass = sizeClasses[size];
+  const initialsFontSizeClass = initialsFontSizeClasses[size];
+  const currentSpinnerSize = spinnerSizeMapping[size];
+  
   const initials = userName?.charAt(0).toUpperCase() || '?';
   const avatarGenericAlt = t('userAvatarGeneric');
   const avatarWithNameAlt = userName ? t('userAvatarAlt', { name: userName }) : avatarGenericAlt;
   const avatarFallbackAriaLabel = userName ? t('userAvatarWithName', { name: userName }) : t('userAvatar');
 
-  if (currentImageUrl && !imageError && isLoadingImage) {
+  // Fallback 1: No photo URL provided at all OR error occurred
+  if (!photoUrl || hasError) {
     return (
       <div
-        className={`${sizeClass} rounded-full bg-[var(--color-bg-surface-2)] flex items-center justify-center text-[var(--color-text-primary)] ${className}`}
-        aria-label={avatarFallbackAriaLabel} // Still provide label for spinner container
-      >
-        <LoadingSpinner size={size === 'lg' ? 'sm' : 'sm'} /> 
-        {/* Hidden image to trigger load/error */}
-        <img
-          src={currentImageUrl}
-          alt="" // Decorative for this hidden image
-          className="hidden"
-          onLoad={() => setIsLoadingImage(false)}
-          onError={() => {
-            console.error('Failed to load avatar image from URL:', currentImageUrl);
-            setImageError(true);
-            setIsLoadingImage(false);
-          }}
-          referrerPolicy="no-referrer"
-        />
-      </div>
-    );
-  }
-  
-  if (!currentImageUrl || imageError) {
-    return (
-      <div
-        className={`${sizeClass} rounded-full bg-[var(--color-primary-accent)] flex items-center justify-center text-[var(--color-primary-accent-text)] font-semibold text-lg ${className}`}
+        className={`${sizeClass} rounded-full bg-[var(--color-primary-accent)] flex items-center justify-center text-[var(--color-primary-accent-text)] font-semibold ${initialsFontSizeClass} ${className}`}
         aria-label={avatarFallbackAriaLabel}
+        role="img" // Indicate it's an image replacement
       >
         {initials}
       </div>
     );
   }
 
+  // Attempt to load and display the image
   return (
-    <img
-      src={currentImageUrl}
-      alt={avatarWithNameAlt}
-      className={`${sizeClass} rounded-full object-cover ${className}`}
-      onLoad={() => setIsLoadingImage(false)} // Should already be false if we reach here, but good practice
-      onError={() => { // Fallback again if it somehow reaches here and errors
-        console.error('Failed to load avatar image from URL (direct render):', currentImageUrl);
-        setImageError(true);
-        setIsLoadingImage(false);
-      }}
-      referrerPolicy="no-referrer" 
-    />
+    <div className={`${sizeClass} rounded-full bg-[var(--color-bg-surface-2)] flex items-center justify-center text-[var(--color-text-primary)] relative overflow-hidden ${className}`}>
+      {isLoading && (
+        <div className="absolute inset-0 flex items-center justify-center bg-[var(--color-bg-surface-2)]">
+          <LoadingSpinner size={currentSpinnerSize} />
+        </div>
+      )}
+      <img
+        key={photoUrl} 
+        src={photoUrl}
+        alt={avatarWithNameAlt}
+        className={`${sizeClass} rounded-full object-cover transition-opacity duration-300 ${isLoading || hasError ? 'opacity-0' : 'opacity-100'}`}
+        onLoad={handleImageLoad}
+        onError={handleImageError}
+        referrerPolicy="no-referrer"
+      />
+    </div>
   );
 };
 

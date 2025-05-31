@@ -480,9 +480,9 @@ export const Modal: React.FC<ModalProps> = ({
 };
 Modal.displayName = "Modal";
 
-export const LoadingSpinner: React.FC<{text?: string; size?: 'sm' | 'md' | 'lg' | 'xl'; className?: string; textClassName?: string;}> = ({ text, size = 'md', className, textClassName }) => {
-  const sizeClasses = { sm: 'w-7 h-7', md: 'w-10 h-10', lg: 'w-14 h-14', xl: 'w-20 h-20' };
-  const textClasses = { sm: 'text-sm', md: 'text-base', lg: 'text-lg', xl: 'text-xl' };
+export const LoadingSpinner: React.FC<{text?: string; size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl'; className?: string; textClassName?: string;}> = ({ text, size = 'md', className, textClassName }) => {
+  const sizeClasses = { xs: 'w-5 h-5', sm: 'w-7 h-7', md: 'w-10 h-10', lg: 'w-14 h-14', xl: 'w-20 h-20' };
+  const textClasses = { xs: 'text-xs', sm: 'text-sm', md: 'text-base', lg: 'text-lg', xl: 'text-xl' };
   return (
     <div className={`flex flex-col items-center justify-center space-y-3.5 p-4 animate-fadeIn ${className || ''}`}>
       <svg className={`animate-spin text-[var(--color-primary-accent)] ${sizeClasses[size]}`} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
