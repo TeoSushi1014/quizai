@@ -128,6 +128,30 @@ export const en = {
   // Test keys
   testString: "This is a test string.",
   stringWithParam: "Hello {name}!",
+
+  // Share Feature Keys
+  shareQuizTitle: "Share Quiz",
+  shareQuizDescription: "Share this quiz with others using the link below:",
+  shareOnSocial: "Or share on social media:",
+  generatingShareLink: "Generating share link...",
+  shareUrlPlaceholder: "Share URL will appear here",
+  copy: "Copy",
+  copied: "Copied!",
+  sharedQuizNotFound: "The shared quiz could not be found or is no longer available.",
+  sharedQuizLoadError: "There was a problem loading this shared quiz. Please try again later.",
+  goToDashboard: "Go to Dashboard",
+  copyShareLink: "Copy Link",
+  linkCopied: "Link Copied!",
+  quizDetails: "Quiz Details",
+  numberOfQuestions: "Number of Questions",
+  difficulty: "Difficulty",
+  notSpecified: "Not Specified",
+  previewQuestions: "Preview Questions",
+  moreQuestionsInQuiz: "Answer this question in the full quiz...",
+  andMoreQuestions: "And {count} more questions",
+  takeQuizNow: "Take Quiz Now",
+  unknownCreator: "Anonymous User",
+  sharedQuizError: "Error Loading Quiz", // Generic error for shared quiz page
 };
 
 export const vi = {
@@ -259,4 +283,28 @@ export const vi = {
   // Test keys
   testString: "Đây là một chuỗi kiểm tra.",
   stringWithParam: "Xin chào {name}!",
+
+  // Share Feature Keys
+  shareQuizTitle: "Chia sẻ Quiz",
+  shareQuizDescription: "Chia sẻ quiz này với người khác bằng liên kết dưới đây:",
+  shareOnSocial: "Hoặc chia sẻ trên mạng xã hội:",
+  generatingShareLink: "Đang tạo liên kết chia sẻ...",
+  shareUrlPlaceholder: "URL chia sẻ sẽ xuất hiện ở đây",
+  copy: "Sao chép",
+  copied: "Đã sao chép!",
+  sharedQuizNotFound: "Không tìm thấy quiz được chia sẻ hoặc quiz không còn khả dụng.",
+  sharedQuizLoadError: "Đã có lỗi xảy ra khi tải quiz được chia sẻ này. Vui lòng thử lại sau.",
+  goToDashboard: "Về Bảng Điều Khiển",
+  copyShareLink: "Sao chép Liên kết",
+  linkCopied: "Đã sao chép Liên kết!",
+  quizDetails: "Chi tiết Quiz",
+  numberOfQuestions: "Số lượng Câu hỏi",
+  difficulty: "Độ Khó",
+  notSpecified: "Không xác định",
+  previewQuestions: "Xem trước Câu hỏi",
+  moreQuestionsInQuiz: "Trả lời câu hỏi này trong quiz đầy đủ...",
+  andMoreQuestions: "Và {count} câu hỏi khác",
+  takeQuizNow: "Làm Quiz Ngay",
+  unknownCreator: "Người dùng Ẩn danh",
+  sharedQuizError: "Lỗi Tải Quiz", // Generic error for shared quiz page
 };

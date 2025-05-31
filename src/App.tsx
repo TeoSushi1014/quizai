@@ -1,6 +1,5 @@
 
 
-
 import React, { useState, useCallback, useEffect, createContext, useContext, ReactNode, useMemo, useRef, lazy, Suspense, useId } from 'react';
 import { HashRouter, Routes, Route, useNavigate, useLocation, NavLink as RouterNavLink, Navigate } from 'react-router-dom'; 
 import { GoogleOAuthProvider, googleLogout } from '@react-oauth/google';
@@ -27,6 +26,7 @@ const SignInPage = lazy(() => import('./features/auth/SignInPage'));
 const QuizPracticePage = lazy(() => import('./features/quiz/QuizPracticePage'));
 const SyncSettingsPage = lazy(() => import('./features/settings/SyncSettingsPage'));
 const ProfilePage = lazy(() => import('./features/user/ProfilePage'));
+const SharedQuizPage = lazy(() => import('./features/quiz/SharedQuizPage')); // New Import
 
 import { loadQuizDataFromDrive, saveQuizDataToDrive } from './services/driveService';
 import { quizStorage } from './services/storageService'; 
@@ -1131,6 +1131,7 @@ const AppLayout: React.FC = () => {
             <Route path="/results/:quizId" element={<ResultsPage />} />
             <Route path="/settings" element={currentUser ? <SyncSettingsPage /> : <Navigate to="/signin" state={{ from: location }} replace />} />
             <Route path="/profile" element={currentUser ? <ProfilePage /> : <Navigate to="/signin" state={{ from: location }} replace />} />
+            <Route path="/shared/:quizId" element={<SharedQuizPage />} /> {/* New Route */}
             <Route path="*" element={<HomePage />} /> 
           </Routes>
         </Suspense>

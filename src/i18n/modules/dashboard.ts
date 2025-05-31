@@ -1,3 +1,4 @@
+
 // src/i18n/modules/dashboard.ts
 export const en = {
   dashboardTitle: "My Quizzes", // Page title - Kept for potential use in browser tab, but can be same as myQuizzesTitle
@@ -13,10 +14,11 @@ export const en = {
   dashboardQuizCardCreated: "Created: {date}",
   dashboardQuizCardLastModified: "Modified: {date}", 
   dashboardQuizCardTakeQuiz: "Take Quiz", 
-  dashboardShareAlert: "Share link: (Conceptual) quiz-ai.com/share/{quizId}",
-  dashboardShareLinkCopied: "Link Copied!",
-  dashboardShareLinkFailed: "Failed to copy!",
+  dashboardShareAlert: "Share link: (Conceptual) quiz-ai.com/share/{quizId}", // This might be deprecated by modal
+  dashboardShareLinkCopied: "Link Copied to Clipboard!", // Feedback for direct copy, modal might have its own
+  dashboardShareLinkFailed: "Failed to copy link!", // Feedback for direct copy
   practiceModeCardButton: "Practice",
+  sharingQuiz: "Preparing to share...", // New key for QuizCard feedback
 };
 
 export const vi = {
@@ -33,8 +35,9 @@ export const vi = {
   dashboardQuizCardCreated: "Tạo lúc: {date}",
   dashboardQuizCardLastModified: "Sửa đổi: {date}", 
   dashboardQuizCardTakeQuiz: "Làm Quiz", 
-  dashboardShareAlert: "Liên kết chia sẻ: (Mang tính khái niệm) quiz-ai.com/share/{quizId}",
-  dashboardShareLinkCopied: "Đã sao chép liên kết!",
-  dashboardShareLinkFailed: "Sao chép thất bại!",
+  dashboardShareAlert: "Liên kết chia sẻ: (Mang tính khái niệm) quiz-ai.com/share/{quizId}", // Might be deprecated
+  dashboardShareLinkCopied: "Đã sao chép liên kết vào clipboard!", // Feedback for direct copy
+  dashboardShareLinkFailed: "Sao chép liên kết thất bại!", // Feedback for direct copy
   practiceModeCardButton: "Luyện tập",
+  sharingQuiz: "Đang chuẩn bị chia sẻ...", // New key for QuizCard feedback
 };

@@ -224,3 +224,42 @@ export const MoonIcon: React.FC<IconProps> = ({ className = "w-5 h-5" }) => (
   <img src="https://img.icons8.com/?size=256&id=Opvt5B6x4fI4&format=png" alt="Dark Mode" className={className} />
 );
 MoonIcon.displayName = "MoonIcon";
+
+// User Icon (alternative to UserCircleIcon if needed)
+export const UserIcon: React.FC<IconProps> = ({ className = "w-6 h-6" }) => (
+  <img src="https://img.icons8.com/?size=256&id=7820&format=png" alt="User" className={className} />
+);
+UserIcon.displayName = "UserIcon";
+
+// Play Icon
+export const PlayIcon: React.FC<IconProps> = ({ className = "w-6 h-6", strokeWidth = 1.5 }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24" strokeWidth={strokeWidth} stroke="currentColor" className={className}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z" />
+  </svg>
+);
+PlayIcon.displayName = "PlayIcon";
+
+// Social Media Icons
+export const FacebookIcon: React.FC<IconProps> = ({ className = "w-6 h-6" }) => (
+  <img src="https://img.icons8.com/?size=256&id=uLWV5A9vXIPu&format=png" alt="Facebook" className={className} />
+);
+FacebookIcon.displayName = "FacebookIcon";
+
+export const XIcon: React.FC<IconProps> = ({ className = "w-6 h-6" }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    className={className}
+    fill="currentColor" 
+    aria-label="X logo" 
+  >
+    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+  </svg>
+);
+XIcon.displayName = "XIcon";
+
+
+export const LinkedInIcon: React.FC<IconProps> = ({ className = "w-6 h-6" }) => (
+  <img src="https://img.icons8.com/?size=256&id=xuvGCOXi8Wyg&format=png" alt="LinkedIn" className={className} />
+);
+LinkedInIcon.displayName = "LinkedInIcon";

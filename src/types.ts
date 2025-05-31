@@ -1,5 +1,4 @@
 
-
 export interface Question {
   id: string;
   questionText: string;
@@ -19,6 +18,9 @@ export interface Quiz {
   sourceContentSnippet?: string; 
   config?: QuizConfig; 
   userId?: string; 
+  creator?: { name: string; email?: string }; // Added for shared quiz creator
+  isShared?: boolean; // Flag if this quiz object is a shared representation
+  sharedTimestamp?: string; // Timestamp of when it was shared
 }
 
 export interface QuizConfig {

@@ -4,11 +4,13 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Quiz } from '../../../types';
-import { Button, Card, Tooltip, Modal, Toggle, Input } from '../../../components/ui';
+import { Button, Card, Tooltip, Modal, Toggle, Input, LoadingSpinner } from '../../../components/ui'; // Added LoadingSpinner
 import MathText from '../../../components/MathText';
 import { EditIcon, DeleteIcon, ShareIcon, XCircleIcon, CheckCircleIcon } from '../../../constants';
 import { useTranslation, useAppContext } from '../../../App';
 import { translations } from '../../../i18n';
+import ShareModal from './ShareModal'; // Import the new ShareModal
+import { logger } from '../../../services/logService';
 
 
 export interface AttemptSettings {
@@ -39,9 +41,12 @@ export const QuizCard: React.FC<QuizCardProps> = ({ quiz, onDelete, onEditQuiz, 
   const [isConfirmDeleteModalOpen, setIsConfirmDeleteModalOpen] = useState(false);
   const [isAttemptSettingsModalOpen, setIsAttemptSettingsModalOpen] = useState(false);
   const [currentAttemptSettings, setCurrentAttemptSettings] = useState<AttemptSettings>(DEFAULT_ATTEMPT_SETTINGS);
-  const [shareFeedback, setShareFeedback] = useState<{ type: 'idle' | 'copied' | 'failed'; message: string }>({ type: 'idle', message: t('share') });
+  
+  // Updated shareFeedback state to include 'sharing'
+  const [shareFeedback, setShareFeedback] = useState<{ type: 'idle' | 'sharing' | 'copied' | 'failed'; message: string }>({ type: 'idle', message: t('share') });
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false); // State for ShareModal
 
-  const { setActiveQuiz, setQuizResult } = useAppContext();
+  const { setActiveQuiz, setQuizResult, currentUser } = useAppContext(); // Added currentUser
   const navigate = useNavigate();
 
   
@@ -68,7 +73,7 @@ export const QuizCard: React.FC<QuizCardProps> = ({ quiz, onDelete, onEditQuiz, 
       try {
         return JSON.parse(storedSettings) as AttemptSettings;
       } catch (e) {
-        console.error("Failed to parse stored attempt settings:", e);
+        logger.error("Failed to parse stored attempt settings:", 'QuizCard', { quizId }, e as Error);
         return DEFAULT_ATTEMPT_SETTINGS;
       }
     }
@@ -106,7 +111,7 @@ export const QuizCard: React.FC<QuizCardProps> = ({ quiz, onDelete, onEditQuiz, 
     try {
       localStorage.setItem(`attemptSettings_${quiz.id}`, JSON.stringify(currentAttemptSettings));
     } catch (e) {
-      console.error("Failed to save attempt settings to localStorage:", e);
+      logger.error("Failed to save attempt settings to localStorage:", 'QuizCard', { quizId: quiz.id }, e as Error);
     }
     setIsAttemptSettingsModalOpen(false);
   };
@@ -122,30 +127,41 @@ export const QuizCard: React.FC<QuizCardProps> = ({ quiz, onDelete, onEditQuiz, 
     }
   };
 
-  const handleShareQuiz = async () => {
-    const shareUrl = `https://teosushi1014.github.io/quizai/#/quiz/${quiz.id}`;
-    try {
-      await navigator.clipboard.writeText(shareUrl);
-      setShareFeedback({ type: 'copied', message: t('dashboardShareLinkCopied') });
-    } catch (err) {
-      console.error('Failed to copy share link:', err);
-      setShareFeedback({ type: 'failed', message: t('dashboardShareLinkFailed') });
-    } finally {
-      setTimeout(() => setShareFeedback({ type: 'idle', message: t('share') }), 2500);
-    }
+  // Updated handleShareQuiz to open the modal
+  const handleShareQuiz = () => {
+    setIsShareModalOpen(true);
+    // Reset feedback message if needed, or let modal handle its own feedback
+    setShareFeedback({ type: 'idle', message: t('share') }); 
   };
+
 
   const settingsIconUrl = "https://img.icons8.com/?size=256&id=s5NUIabJrb4C&format=png";
   
   let shareButtonIcon;
   let shareButtonCustomClass = "text-[var(--color-text-secondary)] opacity-80 hover:text-[var(--color-success-accent)] hover:bg-[var(--color-success-accent)]/10 hover:!border-[var(--color-success-accent)]/70";
 
-  switch (shareFeedback.type) {
-    case 'copied':
+  // The shareFeedback state might be managed by the ShareModal itself now.
+  // If QuizCard still needs to show feedback based on modal actions, it would need callbacks from the modal.
+  // For simplicity, we assume the modal handles its own feedback, and QuizCard's button just opens it.
+  // If the button itself should change based on modal actions, that requires more complex state management.
+  // For now, keeping the icon logic simple for the button that opens the modal.
+  // The 'sharing', 'copied', 'failed' states are now primarily for the modal's internal UI.
+  // The QuizCard button icon can remain the standard ShareIcon.
+  // However, if the user's plan implies the QuizCard button *itself* shows these states, we need to adjust.
+  // The user's plan says "Thêm case mới vào switch" referring to the QuizCard's share button icon logic.
+  // This implies the QuizCard button should reflect the 'sharing' state perhaps before modal is fully ready.
+  // For this implementation, shareFeedback in QuizCard will reflect the *intent* or modal opening.
+
+  switch (shareFeedback.type) { // This feedback might be less relevant if modal handles it.
+    case 'sharing': // This state might be set when opening modal, before URL is ready.
+      shareButtonIcon = <LoadingSpinner size="sm" className="w-4 h-4 !p-0" textClassName="!hidden" />; // Use LoadingSpinner
+      shareButtonCustomClass = "text-[var(--color-primary-accent)] bg-[var(--color-primary-accent)]/10 !border-[var(--color-primary-accent)]/70 cursor-default";
+      break;
+    case 'copied': // Likely handled by modal now
       shareButtonIcon = <CheckCircleIcon className="w-4 h-4 text-[var(--color-success-accent)]" />;
       shareButtonCustomClass = "text-[var(--color-success-accent)] bg-[var(--color-success-accent)]/10 !border-[var(--color-success-accent)]/70 hover:!border-[var(--color-success-accent)]";
       break;
-    case 'failed':
+    case 'failed': // Likely handled by modal now
       shareButtonIcon = <XCircleIcon className="w-4 h-4 text-[var(--color-danger-accent)]" />;
       shareButtonCustomClass = "text-[var(--color-danger-accent)] bg-[var(--color-danger-accent)]/10 !border-[var(--color-danger-accent)]/70 hover:!border-[var(--color-danger-accent)]";
       break;
@@ -210,7 +226,7 @@ export const QuizCard: React.FC<QuizCardProps> = ({ quiz, onDelete, onEditQuiz, 
               </Button>
               <Button
                 size="sm" 
-                variant="secondary" // Consider making a new "practice" variant or styling more distinctively
+                variant="secondary" 
                 onClick={() => handleStartQuiz('practice')}
                 className="flex-grow sm:flex-grow-0 py-2.5 px-4 sm:py-2 sm:px-4 rounded-lg bg-purple-500/80 hover:bg-purple-500 text-white hover:shadow-purple-400/40 min-h-[44px]"
               >
@@ -244,13 +260,14 @@ export const QuizCard: React.FC<QuizCardProps> = ({ quiz, onDelete, onEditQuiz, 
                 </Tooltip>
               </div>
               <div className="flex items-center gap-x-2">
-                <Tooltip content={shareFeedback.message} placement="top" wrapperClassName="inline-flex">
+                <Tooltip content={shareFeedback.type === 'idle' ? t('share') : shareFeedback.message} placement="top" wrapperClassName="inline-flex">
                     <Button
                         size="sm"
                         variant="outline"
-                        onClick={handleShareQuiz}
+                        onClick={handleShareQuiz} // Changed to open modal
                         className={`!p-2.5 rounded-lg !border-[var(--color-border-interactive)] transition-all var(--duration-fast) var(--ease-ios) min-w-[40px] min-h-[40px] ${shareButtonCustomClass}`}
                         aria-label={t('share')}
+                        disabled={shareFeedback.type === 'sharing'}
                     >
                         {shareButtonIcon}
                     </Button>
@@ -332,17 +349,13 @@ export const QuizCard: React.FC<QuizCardProps> = ({ quiz, onDelete, onEditQuiz, 
           </div>
         </Modal>
       )}
+      {isShareModalOpen && (
+        <ShareModal 
+            isOpen={isShareModalOpen} 
+            onClose={() => setIsShareModalOpen(false)} 
+            quiz={quiz} 
+        />
+      )}
     </>
   );
 };
-// QuizCard.displayName = "QuizCard"; // This line can be removed if not strictly needed by other tools
-// export default QuizCard; // Removed to keep it as a named export
-// The component is already defined as `export const QuizCard ...`
-
-// Removed `export default QuizCard;` as it should be `export const QuizCard` for named imports.
-// The error "does not provide an export named 'QuizCard'" means the named export is missing.
-// If the intent was default export, then imports should be `import QuizCard from ...`.
-// Since imports are `import { QuizCard }`, the export MUST be named.
-// The change `export const QuizCard: React.FC<QuizCardProps> = ...` handles this.
-// No need for QuizCard.displayName explicitly if function name is QuizCard.
-// This file should now correctly provide a named export 'QuizCard'.
