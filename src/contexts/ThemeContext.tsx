@@ -1,5 +1,6 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import { logger } from '../services/logService'; // Import logger
 
 export type ThemeType = 'dark' | 'light';
 
@@ -13,43 +14,69 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export const ThemeProvider: React.FC<{children: ReactNode}> = ({ children }) => {
   const [theme, setThemeState] = useState<ThemeType>(() => {
+    let initialTheme: ThemeType = 'dark'; // Default to dark
     if (typeof window !== 'undefined') {
-      const savedTheme = localStorage.getItem('quizai-theme') as ThemeType | null;
-      if (savedTheme && (savedTheme === 'light' || savedTheme === 'dark')) {
-        return savedTheme;
-      }
-      // Respect user's OS preference if no localStorage item is set
-      if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
-        return 'light';
+      try {
+        const savedTheme = localStorage.getItem('quizai-theme') as ThemeType | null;
+        if (savedTheme && (savedTheme === 'light' || savedTheme === 'dark')) {
+          initialTheme = savedTheme;
+        } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
+          // Respect user's OS preference if no localStorage item is set AND no savedTheme
+          initialTheme = 'light';
+        }
+      } catch (error) {
+        logger.warn('Error accessing localStorage for theme preference', 'ThemeContext', undefined, error as Error);
+        // Fallback to OS preference if localStorage fails
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
+          initialTheme = 'light';
+        }
       }
     }
-    return 'dark'; // Default to dark
+    return initialTheme;
   });
 
   useEffect(() => {
     const root = window.document.documentElement;
-    // Set the class directly
     root.className = theme;
     
     if (typeof window !== 'undefined') {
-      localStorage.setItem('quizai-theme', theme);
+      try {
+        localStorage.setItem('quizai-theme', theme);
+      } catch (error) {
+        logger.warn('Error saving theme to localStorage', 'ThemeContext', { theme }, error as Error);
+      }
     }
-    // Removed direct input styling. This is now handled by global CSS variables in index.html
-    // and specific !important overrides in theme-fixes.css.
   }, [theme]);
 
-  // Listen for OS theme changes if no theme is explicitly set in localStorage
   useEffect(() => {
-    if (typeof window !== 'undefined' && !localStorage.getItem('quizai-theme')) {
-      const mediaQuery = window.matchMedia('(prefers-color-scheme: light)');
-      const handleChange = (e: MediaQueryListEvent) => {
-        // Only update if no theme is in localStorage (respect explicit user choice)
+    if (typeof window !== 'undefined') {
+      let noThemeStored = false;
+      try {
         if (!localStorage.getItem('quizai-theme')) {
-          setThemeState(e.matches ? 'light' : 'dark');
+          noThemeStored = true;
         }
-      };
-      mediaQuery.addEventListener('change', handleChange);
-      return () => mediaQuery.removeEventListener('change', handleChange);
+      } catch (error) {
+        logger.warn('Error checking localStorage for theme preference during OS listener setup', 'ThemeContext', undefined, error as Error);
+        noThemeStored = true; // Assume not stored if access fails, to allow OS preference
+      }
+
+      if (noThemeStored) {
+        const mediaQuery = window.matchMedia('(prefers-color-scheme: light)');
+        const handleChange = (e: MediaQueryListEvent) => {
+          let stillNoThemeStored = false;
+          try {
+            if (!localStorage.getItem('quizai-theme')) {
+              stillNoThemeStored = true;
+            }
+          } catch (error) { /* ignore */ }
+
+          if (stillNoThemeStored) {
+            setThemeState(e.matches ? 'light' : 'dark');
+          }
+        };
+        mediaQuery.addEventListener('change', handleChange);
+        return () => mediaQuery.removeEventListener('change', handleChange);
+      }
     }
   }, []);
 

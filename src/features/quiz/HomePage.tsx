@@ -1,5 +1,4 @@
 
-
 import React, { useState, useRef, ReactNode, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -7,7 +6,8 @@ import { Button, Card, Textarea, Tooltip, LoadingSpinner } from '../../component
 import { useAppContext, useTranslation } from '../../App';
 import { Quiz } from '../../types';
 import { PlusIcon, UserCircleIcon, ChevronRightIcon } from '../../constants';
-import { QuizCard } from './components/QuizCard'; // Changed default to named import
+import { QuizCard } from './components/QuizCard'; 
+import useShouldReduceMotion from '../../hooks/useShouldReduceMotion';
 
 import { translations } from '../../i18n';
 import MathText from '../../components/MathText';
@@ -20,35 +20,36 @@ const easeIOS = [0.25, 0.1, 0.25, 1];
 const durationNormal = 0.35;
 const durationSlow = 0.4;
 
-const heroContainerVariants = {
-  hidden: { opacity: 0 },
+const heroContainerVariantsFactory = (shouldReduceMotion: boolean) => ({
+  hidden: { opacity: shouldReduceMotion ? 1: 0 },
   visible: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.15,
-      duration: durationNormal,
+      staggerChildren: shouldReduceMotion ? 0 : 0.15,
+      duration: shouldReduceMotion ? 0.001 : durationNormal,
       ease: easeIOS,
     },
   },
-};
+});
 
-const heroItemVariants = {
-  hidden: { opacity: 0, y: 20 },
+const heroItemVariantsFactory = (shouldReduceMotion: boolean) => ({
+  hidden: { opacity: shouldReduceMotion ? 1 : 0, y: shouldReduceMotion ? 0 : 20 },
   visible: {
     opacity: 1,
     y: 0,
     transition: {
-      duration: durationSlow,
+      duration: shouldReduceMotion ? 0.001 : durationSlow,
       ease: easeIOS,
     },
   },
-};
+});
 
 
 const FeedbackSection: React.FC = () => {
   const { currentUser, setCurrentView } = useAppContext();
   const { t } = useTranslation();
   const [feedbackText, setFeedbackText] = useState('');
+  const shouldReduceMotion = useShouldReduceMotion();
 
   const handleSendFeedback = () => {
     if (!currentUser || !feedbackText.trim()) return;
@@ -66,10 +67,10 @@ const FeedbackSection: React.FC = () => {
   return (
     <motion.section
       className="py-12 md:py-16"
-      initial={{ opacity: 0, y: 20 }}
+      initial={shouldReduceMotion ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
-      transition={{ duration: durationSlow, ease: easeIOS, delay: 0.2 }} 
+      transition={{ duration: shouldReduceMotion ? 0.001 : durationSlow, ease: easeIOS, delay: 0.2 }} 
     >
       <Card
         useGlassEffect
@@ -79,29 +80,29 @@ const FeedbackSection: React.FC = () => {
           <div className="flex-1 text-center sm:text-left">
             <motion.h2
               className={`text-xl sm:text-2xl font-bold text-[var(--color-text-primary)] mb-2 sm:mb-3`}
-              initial={{ opacity: 0, y: 20 }}
+              initial={shouldReduceMotion ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ duration: durationNormal, ease: easeIOS, delay: 0.1 }}
+              transition={{ duration: shouldReduceMotion ? 0.001 : durationNormal, ease: easeIOS, delay: 0.1 }}
             >
               {t('feedbackSectionTitle')}
             </motion.h2>
             <motion.p
               className={`text-[var(--color-text-secondary)] text-sm sm:text-base mb-4 sm:mb-0`}
-              initial={{ opacity: 0, y: 20 }}
+              initial={shouldReduceMotion ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ duration: durationNormal, ease: easeIOS, delay: 0.2 }}
+              transition={{ duration: shouldReduceMotion ? 0.001 : durationNormal, ease: easeIOS, delay: 0.2 }}
             >
               {t('feedbackSectionSubtitle')}
             </motion.p>
           </div>
           
           <motion.div 
-            initial={{ opacity: 0, y: 20 }}
+            initial={shouldReduceMotion ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            transition={{ duration: durationNormal, ease: easeIOS, delay: 0.3 }}
+            transition={{ duration: shouldReduceMotion ? 0.001 : durationNormal, ease: easeIOS, delay: 0.3 }}
             className="flex-1 w-full"
           >
             {currentUser ? (
@@ -148,24 +149,24 @@ const FeedbackSection: React.FC = () => {
 };
 FeedbackSection.displayName = "FeedbackSection";
 
-// Define containerVariants for motion, if not already defined or if a specific one is needed here
-const containerVariants = {
-  hidden: { opacity: 0 },
+const containerVariantsFactory = (shouldReduceMotion: boolean) => ({
+  hidden: { opacity: shouldReduceMotion ? 1 : 0 },
   visible: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.1, // Adjust stagger timing as needed
-      duration: 0.3,
+      staggerChildren: shouldReduceMotion ? 0 : 0.1, 
+      duration: shouldReduceMotion ? 0.001 : 0.3,
       ease: easeIOS,
     },
   },
-};
+});
 
 
 const HomePage: React.FC = () => {
   const { quizzes: contextQuizzes, currentUser, setCurrentView, deleteQuiz, isLoading: contextIsLoading } = useAppContext();
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const shouldReduceMotion = useShouldReduceMotion();
 
   const [currentStableQuizzes, setCurrentStableQuizzes] = useState<Quiz[]>([]);
 
@@ -189,6 +190,11 @@ const HomePage: React.FC = () => {
   const handleDeleteQuiz = (quizId: string) => { deleteQuiz(quizId); };
   const handleEditQuiz = (quiz: Quiz) => { navigate(`/review/${quiz.id}`, { state: { existingQuiz: quiz } }); };
 
+  const currentHeroContainerVariants = useMemo(() => heroContainerVariantsFactory(shouldReduceMotion), [shouldReduceMotion]);
+  const currentHeroItemVariants = useMemo(() => heroItemVariantsFactory(shouldReduceMotion), [shouldReduceMotion]);
+  const currentContainerVariants = useMemo(() => containerVariantsFactory(shouldReduceMotion), [shouldReduceMotion]);
+
+
   const renderPageContent = () => {
     // Case 1: Big Hero section if no quizzes and not loading context
     if (quizCountForDisplay === 0 && !contextIsLoading) {
@@ -203,21 +209,21 @@ const HomePage: React.FC = () => {
               className="relative z-10 container mx-auto px-4"
               initial="hidden"
               animate="visible" 
-              variants={heroContainerVariants}
+              variants={currentHeroContainerVariants}
             >
               <motion.h1
-                variants={heroItemVariants}
+                variants={currentHeroItemVariants}
                 className={`text-3xl sm:text-4xl md:text-5xl xl:text-6xl font-extrabold text-[var(--color-text-primary)] leading-tight mb-6 sm:mb-8`}
               >
                 {t('heroTitle').split(': ')[0]}: <br className="sm:hidden" /> <span className="text-transparent bg-clip-text bg-gradient-to-r from-[var(--color-primary-accent)] via-indigo-400 to-purple-400">{t('heroTitle').split(': ')[1]}</span>
               </motion.h1>
               <motion.p
-                variants={heroItemVariants}
+                variants={currentHeroItemVariants}
                 className={`text-sm sm:text-base md:text-lg text-[var(--color-text-secondary)] max-w-xl md:max-w-2xl xl:max-w-3xl mx-auto mb-10 sm:mb-12`}
               >
                 {t('heroSubtitle')}
               </motion.p>
-              <motion.div variants={heroItemVariants}>
+              <motion.div variants={currentHeroItemVariants}>
                 <Button
                   size="md"
                   variant="primary"
@@ -244,7 +250,7 @@ const HomePage: React.FC = () => {
         )}
         <div className={contextIsLoading && quizCountForDisplay > 0 ? 'opacity-50' : ''}> {/* Apply opacity if overlay is active */}
           {quizCountForDisplay > 0 && (
-            <section className="animate-fadeInUp">
+            <section className={shouldReduceMotion ? '' : 'animate-fadeInUp'}>
               <Card useGlassEffect className={`!p-6 sm:!p-8 text-center sm:text-left !rounded-2xl shadow-2xl`}> 
                 <div className="flex flex-col sm:flex-row justify-between items-center gap-6">
                   <div>
@@ -272,7 +278,7 @@ const HomePage: React.FC = () => {
           )}
 
           {recentQuizzesForDisplay.length > 0 && (
-            <section className="animate-fadeInUp">
+            <section className={shouldReduceMotion ? '' : 'animate-fadeInUp'}>
               <div className={`flex flex-wrap justify-between items-center mb-6 sm:mb-8 gap-4`}>
                 <h2 className="text-2xl sm:text-3xl font-semibold text-[var(--color-text-primary)]">
                   {t('homeRecentQuizzesTitle')}
@@ -285,7 +291,7 @@ const HomePage: React.FC = () => {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 xl:gap-8">
                 {recentQuizzesForDisplay.map((quiz, index) => (
-                  <QuizCard key={quiz.id} quiz={quiz} onDelete={handleDeleteQuiz} onEditQuiz={handleEditQuiz} animationDelay={index * 0.1} />
+                  <QuizCard key={quiz.id} quiz={quiz} onDelete={handleDeleteQuiz} onEditQuiz={handleEditQuiz} animationDelay={shouldReduceMotion ? 0 : index * 0.1} />
                 ))}
               </div>
               {quizCountForDisplay > 0 && quizCountForDisplay <= MAX_RECENT_QUIZZES_HOME && (
@@ -313,7 +319,7 @@ const HomePage: React.FC = () => {
       <motion.div 
         initial="hidden"
         animate="visible"
-        variants={containerVariants}
+        variants={currentContainerVariants}
         className="space-y-12 sm:space-y-16"
       >
         {renderPageContent()}

@@ -1,5 +1,6 @@
 
-import React, { useEffect, useRef, useState } from 'react';
+
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAppContext, useTranslation } from '../../App';
@@ -7,7 +8,8 @@ import { Quiz, Question } from '../../types';
 import { Button, Card, Accordion, ProgressBar, LoadingSpinner, Tooltip } from '../../components/ui';
 import MathText from '../../components/MathText';
 import { CheckCircleIcon, XCircleIcon, DocumentTextIcon, ArrowUturnLeftIcon, PlusCircleIcon, HomeIcon } from '../../constants';
-// Removed useIntersectionObserver import as framer-motion will handle animations
+import useShouldReduceMotion from '../../hooks/useShouldReduceMotion';
+
 
 interface QuestionResultItemProps {
   question: Question;
@@ -41,12 +43,14 @@ const QuestionResultItem: React.FC<QuestionResultItemProps> = ({
   initiallyOpen,
 }) => {
   const { t } = useTranslation();
-  // Removed accordionRef and isAccordionVisible as framer-motion handles animation
+  const shouldReduceMotion = useShouldReduceMotion();
 
   return (
     <motion.div
       variants={questionItemVariants}
-      // Removed style={{ animationDelay ... }} as staggerChildren will handle it
+      initial={shouldReduceMotion ? { opacity: 1, y: 0 } : questionItemVariants.hidden}
+      animate={questionItemVariants.visible}
+      transition={{ duration: shouldReduceMotion ? 0.001 : 0.4, ease: [0.25, 0.1, 0.25, 1]}}
     >
       <Accordion
         initiallyOpen={initiallyOpen}
@@ -101,39 +105,39 @@ const QuestionResultItem: React.FC<QuestionResultItemProps> = ({
 };
 QuestionResultItem.displayName = "QuestionResultItem";
 
-const pageContainerVariants = {
-  hidden: { opacity: 0 },
+const pageContainerVariantsFactory = (shouldReduceMotion: boolean) => ({
+  hidden: { opacity: shouldReduceMotion ? 1 : 0 },
   visible: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.1,
-      duration: 0.3,
+      staggerChildren: shouldReduceMotion ? 0 : 0.1,
+      duration: shouldReduceMotion ? 0.001 : 0.3,
       ease: [0.25, 0.1, 0.25, 1],
     },
   },
-};
+});
 
-const itemVariants = {
-  hidden: { opacity: 0, y: 20 },
+const itemVariantsFactory = (shouldReduceMotion: boolean) => ({
+  hidden: { opacity: shouldReduceMotion ? 1 : 0, y: shouldReduceMotion ? 0 : 20 },
   visible: {
     opacity: 1,
     y: 0,
     transition: {
-      duration: 0.4,
+      duration: shouldReduceMotion ? 0.001 : 0.4,
       ease: [0.25, 0.1, 0.25, 1],
     },
   },
-};
+});
 
-const listContainerVariants = {
-  hidden: { opacity: 0 },
+const listContainerVariantsFactory = (shouldReduceMotion: boolean) => ({
+  hidden: { opacity: shouldReduceMotion ? 1 : 0 },
   visible: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.075, // Stagger for individual question items
+      staggerChildren: shouldReduceMotion ? 0 : 0.075, 
     },
   },
-};
+});
 
 
 const ResultsPage: React.FC = () => {
@@ -146,10 +150,16 @@ const ResultsPage: React.FC = () => {
   const { t } = useTranslation();
   const { quizId: paramQuizId } = useParams<{ quizId: string }>();
   const navigate = useNavigate();
+  const shouldReduceMotion = useShouldReduceMotion();
 
   const [currentDisplayQuiz, setCurrentDisplayQuiz] = useState<Quiz | null>(null);
   const [isLoadingQuizData, setIsLoadingQuizData] = useState(true);
   const [errorState, setErrorState] = useState<string | null>(null);
+
+  const pageVariants = useMemo(() => pageContainerVariantsFactory(shouldReduceMotion), [shouldReduceMotion]);
+  const generalItemVariants = useMemo(() => itemVariantsFactory(shouldReduceMotion), [shouldReduceMotion]);
+  const listVariants = useMemo(() => listContainerVariantsFactory(shouldReduceMotion), [shouldReduceMotion]);
+
 
   useEffect(() => {
     setIsLoadingQuizData(true);
@@ -201,12 +211,12 @@ const ResultsPage: React.FC = () => {
   if (errorState) {
     return (
      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
+        initial={shouldReduceMotion ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
+        transition={{ duration: shouldReduceMotion ? 0.001 : 0.4, ease: [0.25, 0.1, 0.25, 1] }}
         className="flex flex-col items-center justify-center min-h-[calc(100vh-380px)] text-center p-5"
       >
-        <XCircleIcon className="w-16 h-16 text-red-400/80 mb-6" />
+        <XCircleIcon className="w-16 h-16 mb-6 text-[var(--color-danger-accent)]" />
         <p className="text-xl font-semibold text-[var(--color-text-primary)] mb-3">{t('error')}</p>
         <p className="text-base text-[var(--color-text-secondary)] mb-10 max-w-md">{errorState}</p>
         <Button onClick={() => navigate('/dashboard')} variant="secondary" size="lg" className="py-3 px-7 rounded-xl"> {t('resultsGoToDashboard')} </Button>
@@ -218,12 +228,12 @@ const ResultsPage: React.FC = () => {
     console.error("ResultsPage: Reached render stage where quizResult or currentDisplayQuiz is unexpectedly null despite no explicit error state and not loading.");
     return (
      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
+        initial={shouldReduceMotion ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
+        transition={{ duration: shouldReduceMotion ? 0.001 : 0.4, ease: [0.25, 0.1, 0.25, 1] }}
         className="flex flex-col items-center justify-center min-h-[calc(100vh-380px)] text-center p-5"
       >
-        <XCircleIcon className="w-16 h-16 text-red-400/80 mb-6" />
+        <XCircleIcon className="w-16 h-16 mb-6 text-[var(--color-danger-accent)]" />
         <p className="text-xl font-semibold text-[var(--color-text-primary)] mb-3">{t('error')}</p>
         <p className="text-base text-[var(--color-text-secondary)] mb-10 max-w-md">{t('resultsErrorNotFound', { quizId: paramQuizId || "unknown" })} (Unexpected)</p>
         <Button onClick={() => navigate('/dashboard')} variant="secondary" size="lg" className="py-3.5 px-8 rounded-xl"> {t('resultsGoToDashboard')} </Button>
@@ -235,13 +245,13 @@ const ResultsPage: React.FC = () => {
    console.error("ResultsPage: Mismatch between currentDisplayQuiz.id and quizResult.quizId. This indicates a critical state inconsistency.");
     return (
      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
+        initial={shouldReduceMotion ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
+        transition={{ duration: shouldReduceMotion ? 0.001 : 0.4, ease: [0.25, 0.1, 0.25, 1] }}
         className="flex flex-col items-center justify-center min-h-[calc(100vh-380px)] text-center p-5"
       >
-        <XCircleIcon className="w-16 h-16 text-red-400/80 mb-6" />
-        <p className="text-xl font-semibold text-red-400 mb-4">Critical Error: Data Mismatch</p>
+        <XCircleIcon className="w-16 h-16 mb-6 text-[var(--color-danger-accent)]" />
+        <p className="text-xl font-semibold mb-4 text-[var(--color-danger-accent)]">Critical Error: Data Mismatch</p>
         <p className="text-sm text-[var(--color-text-muted)]">Displayed Quiz ID: {currentDisplayQuiz.id}, Result Quiz ID: {quizResult.quizId}</p>
         <Button onClick={() => navigate('/dashboard')} variant="secondary" size="lg" className="py-3.5 px-8 rounded-xl mt-6"> {t('resultsGoToDashboard')} </Button>
      </motion.div>
@@ -269,17 +279,17 @@ const ResultsPage: React.FC = () => {
     <motion.div 
       initial="hidden"
       animate="visible"
-      variants={pageContainerVariants}
+      variants={pageVariants}
     >
       <Card className="max-w-4xl mx-auto shadow-2xl !rounded-2xl" useGlassEffect>
-        <motion.h1 variants={itemVariants} className="text-3xl sm:text-4xl font-bold text-[var(--color-text-primary)] mb-4 text-center leading-tight tracking-tight line-clamp-2" title={currentDisplayQuiz.title}>
+        <motion.h1 variants={generalItemVariants} className="text-3xl sm:text-4xl font-bold text-[var(--color-text-primary)] mb-4 text-center leading-tight tracking-tight line-clamp-2" title={currentDisplayQuiz.title}>
           <MathText text={pageTitle} />
         </motion.h1>
-        <motion.p variants={itemVariants} className="text-base text-[var(--color-text-secondary)] mb-12 text-center">
+        <motion.p variants={generalItemVariants} className="text-base text-[var(--color-text-secondary)] mb-12 text-center">
             {sourceMode === 'practice' ? t('practiceSummarySubtitle') : t('resultsSubtitle')}
         </motion.p>
 
-        <motion.div variants={itemVariants}>
+        <motion.div variants={generalItemVariants}>
           <Card className={`mb-12 !bg-[var(--color-bg-surface-2)]/70 shadow-xl !border-[var(--color-border-default)] p-0 overflow-hidden !rounded-2xl`} useGlassEffect={false}>
             <div className={`flex flex-col md:flex-row justify-around items-center text-center gap-8 p-6 sm:p-10 !bg-[var(--color-bg-surface-1)]/60`}>
               <div className="flex flex-col items-center">
@@ -296,10 +306,10 @@ const ResultsPage: React.FC = () => {
           </Card>
         </motion.div>
 
-        <motion.h2 variants={itemVariants} className={`text-2xl sm:text-3xl font-semibold text-[var(--color-text-primary)] mb-8 sm:mb-10`}>{t('resultsBreakdownTitle')}</motion.h2>
+        <motion.h2 variants={generalItemVariants} className={`text-2xl sm:text-3xl font-semibold text-[var(--color-text-primary)] mb-8 sm:mb-10`}>{t('resultsBreakdownTitle')}</motion.h2>
         
         <motion.div 
-            variants={listContainerVariants} // This will stagger its children (QuestionResultItem)
+            variants={listVariants} 
             initial="hidden"
             animate="visible"
             className="space-y-5"
@@ -324,7 +334,7 @@ const ResultsPage: React.FC = () => {
           })}
         </motion.div>
 
-        <motion.div variants={itemVariants} className={`mt-14 flex flex-col sm:flex-row justify-center items-center gap-4 sm:gap-5`}>
+        <motion.div variants={generalItemVariants} className={`mt-14 flex flex-col sm:flex-row justify-center items-center gap-4 sm:gap-5`}>
           {sourceMode === 'practice' ? (
             <Button onClick={() => navigate(`/practice/${currentDisplayQuiz.id}`)} variant="outline" size="lg" leftIcon={<ArrowUturnLeftIcon className="w-5 h-5"/>} className="w-full sm:w-auto py-3 px-8 rounded-xl">
               {t('practiceAgain')}

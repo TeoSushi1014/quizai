@@ -69,7 +69,6 @@ export const en = {
   savingButton: "Saving...",
   languageSwitcherTooltip: "Change Language / Đổi Ngôn Ngữ",
 
-
   // Header & Navigation
   navHome: "Home",
   navDashboard: "Dashboard",
@@ -117,6 +116,14 @@ export const en = {
   feedbackMailSubject: "Feedback for {appName}",
   feedbackMailBodyUser: "User: {userName} ({userEmail})",
   feedbackMailBodyContentLabel: "Feedback:",
+
+  // New keys from UI/UX improvements
+  userAvatar: "User avatar",
+  userAvatarWithName: "{name}'s avatar",
+  userAvatarAlt: "{name}'s avatar", // For img alt
+  userAvatarGeneric: "User avatar", // For img alt, generic
+  errorBoundaryTitle: "Oops! Something went wrong.",
+  errorBoundaryMessage: "We're sorry, but an unexpected error occurred. You can try refreshing the page or clicking the button below.",
 
   // Test keys
   testString: "This is a test string.",
@@ -192,7 +199,6 @@ export const vi = {
   savingButton: "Đang lưu...",
   languageSwitcherTooltip: "Đổi Ngôn Ngữ / Change Language",
 
-
   // Header & Navigation
   navHome: "Trang chủ",
   navDashboard: "Bảng điều khiển",
@@ -240,6 +246,15 @@ export const vi = {
   feedbackMailSubject: "Góp ý cho {appName}",
   feedbackMailBodyUser: "Người dùng: {userName} ({userEmail})",
   feedbackMailBodyContentLabel: "Nội dung góp ý:",
+
+  // New keys from UI/UX improvements
+  userAvatar: "Ảnh đại diện người dùng",
+  userAvatarWithName: "Ảnh đại diện của {name}",
+  userAvatarAlt: "Ảnh đại diện của {name}", // For img alt
+  userAvatarGeneric: "Ảnh đại diện người dùng", // For img alt, generic
+  errorBoundaryTitle: "Ối! Có lỗi xảy ra.",
+  errorBoundaryMessage: "Chúng tôi rất tiếc, nhưng đã xảy ra lỗi không mong muốn. Bạn có thể thử làm mới trang hoặc nhấp vào nút bên dưới.",
+
 
   // Test keys
   testString: "Đây là một chuỗi kiểm tra.",

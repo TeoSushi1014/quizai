@@ -41,7 +41,11 @@ const ProfilePage: React.FC = () => {
             <p className="text-base text-[var(--color-text-secondary)] mb-8">
                 User not found. Please sign in to view your profile.
             </p>
-            <Button onClick={() => window.location.hash = '/signin'} variant="primary">
+            <Button 
+                onClick={() => window.location.hash = '/signin'} 
+                variant="primary"
+                className="py-2.5 px-5 sm:px-6 rounded-lg transform transition-transform hover:scale-[1.03] active:scale-[0.98]"
+            >
                 {t('signIn')}
             </Button>
         </div>

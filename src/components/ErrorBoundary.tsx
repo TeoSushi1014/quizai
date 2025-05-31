@@ -1,9 +1,12 @@
+
 import React, { Component, ErrorInfo, ReactNode } from 'react';
+import { TranslationKey } from '../i18n'; // Assuming TranslationKey type is exported
 
 interface Props {
   children: ReactNode;
   fallback?: ReactNode;
   onError?: (error: Error, errorInfo: ErrorInfo) => void;
+  t: (key: TranslationKey | string) => string; // Accept t function as a prop
 }
 
 interface State {
@@ -31,6 +34,8 @@ class ErrorBoundary extends Component<Props, State> {
 
   public render() {
     if (this.state.hasError) {
+      const { t } = this.props; // Use t from props
+
       if (this.props.fallback) {
         return this.props.fallback;
       }
@@ -47,15 +52,15 @@ class ErrorBoundary extends Component<Props, State> {
           <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-[var(--color-primary-accent-text)] opacity-80 mb-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
-          <h2 className="text-2xl font-semibold text-[var(--color-primary-accent-text)] mb-3">Oops! Something went wrong.</h2>
+          <h2 className="text-2xl font-semibold text-[var(--color-primary-accent-text)] mb-3">{t('errorBoundaryTitle')}</h2>
           <p className="mb-6 text-[var(--color-primary-accent-text)] opacity-90 max-w-md">
-            We're sorry, but an unexpected error occurred. You can try refreshing the page or clicking the button below.
+            {t('errorBoundaryMessage')}
           </p>
           <button
             className="px-6 py-2.5 bg-white/20 text-white rounded-lg hover:bg-white/30 focus:outline-none focus:ring-2 focus:ring-white/70 focus:ring-offset-2 focus:ring-offset-[var(--color-danger-accent)] transition-colors"
             onClick={() => window.location.reload()}
           >
-            Refresh Page
+            {t('refresh')} 
           </button>
           {process.env.NODE_ENV !== 'production' && this.state.error && (
             <details className="mt-6 p-3 bg-black/20 rounded-md text-sm w-full max-w-xl text-left">

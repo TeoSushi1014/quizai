@@ -1,6 +1,4 @@
 
-
-
 import React, { useState, useCallback, useEffect, createContext, useContext, ReactNode, useMemo, useRef, lazy, Suspense, useId } from 'react';
 import { HashRouter, Routes, Route, useNavigate, useLocation, NavLink as RouterNavLink, Navigate } from 'react-router-dom'; 
 import { GoogleOAuthProvider, googleLogout } from '@react-oauth/google';
@@ -884,6 +882,17 @@ const AppLayout: React.FC = () => {
     const sheetId = useId(); 
     const { t } = useTranslation(); 
     const { logout, setCurrentView, currentUser } = useAppContext();
+    const [avatarSize, setAvatarSize] = useState<'md' | 'lg'>('lg');
+
+    useEffect(() => {
+        const updateSize = () => {
+            setAvatarSize(window.innerWidth < 375 ? 'md' : 'lg'); // Example breakpoint
+        };
+        window.addEventListener('resize', updateSize);
+        updateSize(); // Initial check
+        return () => window.removeEventListener('resize', updateSize);
+    }, []);
+
 
     if (!currentUser || !isMobileProfileOpen) return null;
     
@@ -917,7 +926,7 @@ const AppLayout: React.FC = () => {
             <UserAvatar
               photoUrl={currentUser.imageUrl}
               userName={currentUser.name}
-              size="lg" 
+              size={avatarSize}
               className="border-2 border-[var(--color-primary-accent)]"
             />
             <div className="flex-1 min-w-0">
@@ -1137,14 +1146,23 @@ const AppLayout: React.FC = () => {
 };
 AppLayout.displayName = "AppLayout";
 
+// New AppContent component to consume context for ErrorBoundary's t prop
+const AppContent: React.FC = () => {
+  const { t } = useTranslation();
+  return (
+    <ErrorBoundary t={t}>
+      <AppLayout />
+    </ErrorBoundary>
+  );
+};
+AppContent.displayName = "AppContent";
+
 const App: React.FC = () => {
   return (
     <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
       <HashRouter>
         <AppProvider>
-          <ErrorBoundary>
-            <AppLayout />
-          </ErrorBoundary>
+          <AppContent />
         </AppProvider>
       </HashRouter>
     </GoogleOAuthProvider>

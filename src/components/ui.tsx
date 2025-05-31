@@ -1,5 +1,4 @@
 
-
 import React, { ReactNode, useState, useRef, useEffect, Children, cloneElement, ReactElement, useId } from 'react'; // Added useId
 import ReactDOM from 'react-dom'; 
 import { ChevronDownIcon, UploadIcon as DefaultUploadIcon, InformationCircleIcon, XCircleIcon as CloseIcon, CheckCircleIcon, XCircleIcon as ErrorIcon } from '../constants'; 
@@ -748,6 +747,7 @@ interface NotificationDisplayProps {
 }
 
 export const NotificationDisplay: React.FC<NotificationDisplayProps> = ({ notification, onClose }) => {
+  const { t } = useTranslation(); // Added for aria-label
   if (!notification) return null;
 
   const { type, message } = notification;
@@ -818,7 +818,7 @@ export const NotificationDisplay: React.FC<NotificationDisplayProps> = ({ notifi
             onClick={onClose}
             className={`p-1 rounded-md hover:bg-black/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70 transition-colors var(--duration-fast) var(--ease-ios)`}
             style={{ color: textColorVar }}
-            aria-label="Close notification"
+            aria-label={t('close')}
           >
             <CloseIcon className="w-5 h-5" />
           </button>
