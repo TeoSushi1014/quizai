@@ -1,4 +1,5 @@
 
+
 import React, { ReactNode, useState, useRef, useEffect, Children, cloneElement, ReactElement, useId } from 'react'; // Added useId
 import ReactDOM from 'react-dom'; 
 import { ChevronDownIcon, UploadIcon as DefaultUploadIcon, InformationCircleIcon, XCircleIcon as CloseIcon, CheckCircleIcon, XCircleIcon as ErrorIcon } from '../constants'; 
@@ -332,7 +333,7 @@ export const Select: React.FC<SelectProps> = ({ label, name, error, options, cla
           {...props}
         >
           {options.map(opt => (
-            <option key={opt.value} value={opt.value} style={{ backgroundColor: 'var(--color-bg-surface-1)', color: 'var(--color-text-primary)' }}>{opt.label}</option>
+            <option key={opt.value} value={opt.value} className="!bg-[var(--color-bg-surface-1)] !text-[var(--color-text-primary)]">{opt.label}</option>
           ))}
         </select>
         <ChevronDownIcon className={`absolute right-4 top-1/2 transform -translate-y-1/2 w-5 h-5 ${disabled ? 'text-[var(--color-text-muted)]/50' : 'text-[var(--color-text-muted)]'} pointer-events-none transition-transform var(--duration-fast) var(--ease-ios)`} />

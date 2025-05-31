@@ -49,8 +49,11 @@ const formatQuestionTextAndOptions = (question: Question, questionIndex: number,
 
 // Common function to format an explanation block for Azota
 const formatExplanationBlock = (question: Question, questionIndex: number, t: TFunction, overallDifficultyAbbr: string, includeAnswerInExplanation: boolean = false): string => {
-  const explanationParts = question.explanation.split('Cách giải:');
-  const phuongPhap = (explanationParts[0]?.replace('Phương pháp:', '').trim()) || "";
+  const explanationSolutionMarker = t('azotaFormatExplanationSolutionMarker');
+  const explanationMethodMarker = t('azotaFormatExplanationMethodMarker');
+  
+  const explanationParts = question.explanation.split(explanationSolutionMarker);
+  const phuongPhap = (explanationParts[0]?.replace(explanationMethodMarker, '').trim()) || "";
   const cachGiai = (explanationParts[1]?.trim()) || (!phuongPhap ? question.explanation.trim() : "");
 
   let explanationText = `${t('azotaFormatQuestionPrefix')} ${questionIndex} (${overallDifficultyAbbr}):\n`;

@@ -11,6 +11,8 @@ export const en = {
   step1ProcessingFile: "Processing file...",
   step1ErrorProcessingFile: "Failed to process file.",
   step1ErrorUnsupportedFile: "Unsupported file type. Please upload PDF, DOCX, TXT, JPG, or PNG.",
+  step1ErrorUnsupportedFileTypeDynamic: "Unsupported file type. Accepted types: {acceptedFileTypes}",
+  step1ErrorFileTooLarge: "Error: Maximum file size is {maxFileSizeMB}MB.",
   step1ErrorPasteText: "Please paste some text.",
   step2Title: "Configure Quiz",
   step2BackButton: "Back to Content",
@@ -126,6 +128,8 @@ export const en = {
   azotaFormatChooseAnswer: "Chọn",
   azotaFormatExplanationMethod: "Phương pháp:",
   azotaFormatExplanationSolution: "Cách giải:",
+  azotaFormatExplanationMethodMarker: "Phương pháp:",
+  azotaFormatExplanationSolutionMarker: "Cách giải:",
 };
 
 export const vi = {
@@ -139,6 +143,8 @@ export const vi = {
   step1ProcessingFile: "Đang xử lý tệp...",
   step1ErrorProcessingFile: "Không thể xử lý tệp.",
   step1ErrorUnsupportedFile: "Loại tệp không được hỗ trợ. Vui lòng tải lên PDF, DOCX, TXT, JPG, hoặc PNG.",
+  step1ErrorUnsupportedFileTypeDynamic: "Loại tệp không được hỗ trợ. Các loại được chấp nhận: {acceptedFileTypes}",
+  step1ErrorFileTooLarge: "Lỗi: Kích thước tệp tối đa là {maxFileSizeMB}MB.",
   step1ErrorPasteText: "Vui lòng dán một ít văn bản.",
   step2Title: "Cấu hình Quiz",
   step2BackButton: "Quay lại Nội dung",
@@ -222,7 +228,7 @@ export const vi = {
   reviewDiscardRegenerate: "Hủy & Tạo lại",
   reviewDiscardRegenerateShort: "Tạo lại",
   reviewDiscardToDashboard: "Hủy & Về Bảng điều khiển",
-  reviewDiscardToDashboardShort: "Về Bảng DK",
+  reviewDiscardToDashboardShort: "Về Bảng điều khiển",
   reviewCancel: "Hủy",
   reviewErrorNoQuizData: "Không tìm thấy dữ liệu quiz để xem lại hoặc chỉnh sửa. Vui lòng thử tạo lại quiz.",
   reviewErrorQuizNotFound: "Không tìm thấy quiz để chỉnh sửa.",
@@ -254,4 +260,6 @@ export const vi = {
   azotaFormatChooseAnswer: "Chọn",
   azotaFormatExplanationMethod: "Phương pháp:",
   azotaFormatExplanationSolution: "Cách giải:",
+  azotaFormatExplanationMethodMarker: "Phương pháp:",
+  azotaFormatExplanationSolutionMarker: "Cách giải:",
 };

@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useEffect, useCallback, useRef, ReactNode, useReducer } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -379,12 +380,7 @@ const QuizReviewPage: React.FC = () => {
         // addQuiz would typically be for a brand new quiz. If it's an unsaved quiz being edited,
         // the 'editableQuiz' in the reducer is the source of truth. The final save will use addQuiz.
         // For now, the local state update is primary. The main 'Save Quiz' button will handle persistence.
-        // However, to ensure Drive sync is aware of changes even before full save for new quizzes:
-        // We can consider `addQuiz` here too, but it means potentially creating quiz records earlier than desired.
-        // Let's ensure `updateQuiz` handles a quiz that might not yet be in `allQuizzes` gracefully,
-        // or `addQuiz` is smart enough to replace if ID matches.
-        // For simplicity and aligning with main save, if it's not an existing quiz, this deletion is only local until final save.
-        // BUT, to trigger sync, we must call updateQuiz or addQuiz from context.
+        // However, to trigger sync, we must call updateQuiz or addQuiz from context.
         // If it's a new quiz being edited, addQuiz would create it.
         // If it's an existing quiz, updateQuiz updates it.
         // Let's assume any quiz being edited to this point has an ID and can be 'updated'.
@@ -473,10 +469,10 @@ const QuizReviewPage: React.FC = () => {
                      {isEditingExisting ? t('reviewEditQuizTitle') : t('reviewFinalizeQuizTitle')}
                 </h1>
                 <div className="flex flex-wrap justify-center sm:justify-end items-center gap-2.5">
-                    {!isEditingExisting && (<Button variant="outline" size="sm" onClick={() => navigate('/create')} leftIcon={<ArrowUturnLeftIcon className="w-4 h-4"/>} className="py-2.5 px-4 rounded-lg"> {t('reviewDiscardRegenerateShort')} </Button>)}
-                    <Button variant="secondary" size="sm" onClick={() => navigate('/dashboard')} leftIcon={<HomeIcon className="w-4 h-4"/>} className="py-2.5 px-4 rounded-lg"> {isEditingExisting ? t('cancel') : t('reviewDiscardToDashboardShort')} </Button>
-                    <Button variant="outline" size="sm" onClick={() => setIsAzotaExportModalOpen(true)} leftIcon={<ExportIcon className="w-4 h-4"/>} className="py-2.5 px-4 rounded-lg border-sky-400/70 text-sky-300 hover:bg-sky-400/15" disabled={!editableQuiz || editableQuiz.questions.length === 0}> {t('azotaExportButton')} </Button>
-                    <Button variant="primary" size="sm" onClick={handleSaveQuiz} isLoading={isSaving} disabled={isSaving || !editableQuiz.questions.length} leftIcon={<SaveIcon className="w-4 h-4"/>} className="bg-gradient-to-r from-green-500 to-teal-500 hover:from-green-600 hover:to-teal-600 text-white py-2.5 px-4 rounded-lg"> {isSaving ? t('reviewSavingButton') : (isEditingExisting ? t('reviewSaveChangesButton') : t('reviewSaveButton'))} </Button>
+                    {!isEditingExisting && (<Button variant="outline" size="sm" onClick={() => navigate('/create')} leftIcon={<ArrowUturnLeftIcon className="w-4 h-4"/>}> {t('reviewDiscardRegenerateShort')} </Button>)}
+                    <Button variant="secondary" size="sm" onClick={() => navigate('/dashboard')} leftIcon={<HomeIcon className="w-4 h-4"/>}> {isEditingExisting ? t('cancel') : t('reviewDiscardToDashboardShort')} </Button>
+                    <Button variant="outline" size="sm" onClick={() => setIsAzotaExportModalOpen(true)} leftIcon={<ExportIcon className="w-4 h-4"/>} className="border-sky-400/70 text-sky-300 hover:bg-sky-400/15" disabled={!editableQuiz || editableQuiz.questions.length === 0}> {t('azotaExportButton')} </Button>
+                    <Button variant="primary" size="sm" onClick={handleSaveQuiz} isLoading={isSaving} disabled={isSaving || !editableQuiz.questions.length} leftIcon={<SaveIcon className="w-4 h-4"/>} className="bg-gradient-to-r from-green-500 to-teal-500 hover:from-green-600 hover:to-teal-600 text-white"> {isSaving ? t('reviewSavingButton') : (isEditingExisting ? t('reviewSaveChangesButton') : t('reviewSaveButton'))} </Button>
                 </div>
             </div>
             {error && <p role="alert" className={`text-xs text-red-300 mt-4 bg-red-500/20 p-3 rounded-lg text-center sm:text-left shadow animate-fadeIn`}>{error}</p>}

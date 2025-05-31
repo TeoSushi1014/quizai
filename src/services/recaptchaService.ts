@@ -3,10 +3,10 @@
 import { logger } from './logService';
 
 /**
- * Gửi yêu cầu đánh giá reCAPTCHA Enterprise đến Google
- * @param {string} token - Token được trả về từ grecaptcha.enterprise.execute()
- * @param {string} [userAction] - Hành động người dùng (tùy chọn)
- * @returns {Promise<any>} Kết quả đánh giá từ Google
+ * Sends a reCAPTCHA Enterprise assessment request to Google.
+ * @param {string} token - Token returned from grecaptcha.enterprise.execute()
+ * @param {string} [userAction] - User action (optional)
+ * @returns {Promise<any>} Assessment result from Google
  */
 export const sendRecaptchaAssessment = async (token: string, userAction: string | null = null): Promise<any> => {
   try {
@@ -66,9 +66,9 @@ export const sendRecaptchaAssessment = async (token: string, userAction: string 
 }
 
 /**
- * Xử lý kết quả đánh giá reCAPTCHA
- * @param {any} assessmentResult - Kết quả đánh giá từ Google
- * @returns {boolean} true nếu đánh giá thành công, false nếu không
+ * Processes the reCAPTCHA assessment result.
+ * @param {any} assessmentResult - Assessment result from Google
+ * @returns {boolean} true if the assessment is successful, false otherwise
  */
 export const validateRecaptchaAssessment = (assessmentResult: any): boolean => {
   if (!assessmentResult || !assessmentResult.tokenProperties || !assessmentResult.tokenProperties.valid) {

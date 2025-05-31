@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useCallback, useEffect, createContext, useContext, ReactNode, useMemo, useRef, lazy, Suspense, useId } from 'react';
 import { HashRouter, Routes, Route, useNavigate, useLocation, NavLink as RouterNavLink, Navigate } from 'react-router-dom'; 
 import { GoogleOAuthProvider, googleLogout } from '@react-oauth/google';
@@ -1003,7 +1004,7 @@ const AppLayout: React.FC = () => {
                 <ThemeToggle compact={true} />
               )}
 
-              <Tooltip content={language === 'en' ? "Change Language / Đổi Ngôn Ngữ" : "Đổi Ngôn Ngữ / Change Language"} placement="bottom">
+              <Tooltip content={t('languageSwitcherTooltip')} placement="bottom">
                 <Button 
                     variant="ghost" 
                     size="md"

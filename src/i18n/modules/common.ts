@@ -67,6 +67,7 @@ export const en = {
   currentlyUsingDarkTheme: "Currently using dark theme.",
   currentlyUsingLightTheme: "Currently using light theme.",
   savingButton: "Saving...",
+  languageSwitcherTooltip: "Change Language / Đổi Ngôn Ngữ",
 
 
   // Header & Navigation
@@ -184,15 +185,17 @@ export const vi = {
   new: "Mới",
   appVersion: "Phiên bản ứng dụng",
   themeSettings: "Cài đặt Giao diện",
-  darkMode: "Chế đô tối",
+  darkMode: "Chế độ tối",
   lightMode: "Chế độ sáng",
   currentlyUsingDarkTheme: "Đang sử dụng giao diện tối.",
   currentlyUsingLightTheme: "Đang sử dụng giao diện sáng.",
   savingButton: "Đang lưu...",
+  languageSwitcherTooltip: "Đổi Ngôn Ngữ / Change Language",
+
 
   // Header & Navigation
   navHome: "Trang chủ",
-  navDashboard: "Bảng DK",
+  navDashboard: "Bảng điều khiển",
   navCreateQuiz: "Tạo Quiz",
   navSettings: "Cài đặt",
   languageSwitcherLabel: "Ngôn ngữ:",
