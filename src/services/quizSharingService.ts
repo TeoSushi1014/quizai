@@ -1,40 +1,30 @@
 
-import { Quiz, Question, UserProfile } from '../types'; // Added UserProfile
+import { Quiz, Question, UserProfile } from '../types'; 
 import { logger } from './logService';
 
 interface QuizForSharing extends Quiz {
-  creator?: { name: string, email?: string }; // Make email optional
+  creator?: { name: string, email?: string }; 
   isShared?: boolean;
   sharedTimestamp?: string;
 }
 
-/**
- * Chuẩn bị Quiz để chia sẻ - xóa bớt dữ liệu nhạy cảm nếu cần
- */
-export const prepareQuizForSharing = (quiz: Quiz, currentUser?: UserProfile | null): QuizForSharing => { // Added currentUser
+export const prepareQuizForSharing = (quiz: Quiz, currentUser?: UserProfile | null): QuizForSharing => { 
   const sharedQuiz: QuizForSharing = {
     ...quiz,
     creator: currentUser ? { name: currentUser.name || 'Anonymous' } : { name: 'Anonymous' },
     isShared: true,
     sharedTimestamp: new Date().toISOString()
   };
-  
-  // Example: remove internal notes or sensitive config if they existed
-  // delete sharedQuiz.internalNotes; 
-
   return sharedQuiz;
 };
 
-/**
- * Chia sẻ quiz qua API (nếu có API server)
- */
-export const shareQuizViaAPI = async (quiz: Quiz, currentUser?: UserProfile | null): Promise<string> => { // Added currentUser
+export const shareQuizViaAPI = async (quiz: Quiz, currentUser?: UserProfile | null): Promise<{ shareUrl: string; isDemo: boolean }> => { 
   try {
     const quizForSharing = prepareQuizForSharing(quiz, currentUser);
     
-    // Hypothetical API server integration
     // @ts-ignore
-    const apiUrl = typeof import.meta.env !== 'undefined' ? import.meta.env.VITE_API_URL : process.env.REACT_APP_API_URL;
+    const apiUrl = typeof import.meta.env !== 'undefined' ? import.meta.env.VITE_API_URL : undefined;
+    
     if (apiUrl) {
       logger.info('Sharing quiz via API', 'quizSharingService', { quizId: quiz.id, apiUrl });
       const response = await fetch(`${apiUrl}/api/shared-quizzes`, {
@@ -53,30 +43,28 @@ export const shareQuizViaAPI = async (quiz: Quiz, currentUser?: UserProfile | nu
       
       const data = await response.json();
       logger.info('Quiz shared via API successfully', 'quizSharingService', { quizId: quiz.id, shareUrl: data.shareUrl });
-      return data.shareUrl || `${window.location.origin}/#/shared/${quiz.id}`; // Fallback to local URL format
+      return { shareUrl: data.shareUrl || `${window.location.origin}${window.location.pathname}#/shared/${quiz.id}`, isDemo: false }; 
     }
     
-    // If no API server, simulate by saving to localStorage (for demo purposes on same browser)
     logger.info('No API_URL configured, using localStorage for sharing simulation', 'quizSharingService', { quizId: quiz.id });
     const sharedQuizzes = JSON.parse(localStorage.getItem('quizai_shared_quizzes') || '{}');
     sharedQuizzes[quiz.id] = quizForSharing;
     localStorage.setItem('quizai_shared_quizzes', JSON.stringify(sharedQuizzes));
     
-    return `${window.location.origin}/#/shared/${quiz.id}`;
+    return { 
+      shareUrl: `${window.location.origin}${window.location.pathname}#/shared/${quiz.id}`, 
+      isDemo: true 
+    };
   } catch (error) {
     logger.error('Failed to share quiz', 'quizSharingService', { quizId: quiz.id }, error as Error);
     throw error;
   }
 };
 
-/**
- * Lấy quiz từ dữ liệu chia sẻ
- */
 export const getSharedQuiz = async (quizId: string): Promise<QuizForSharing | null> => {
   try {
-    // Hypothetical API server integration
     // @ts-ignore
-    const apiUrl = typeof import.meta.env !== 'undefined' ? import.meta.env.VITE_API_URL : process.env.REACT_APP_API_URL;
+    const apiUrl = typeof import.meta.env !== 'undefined' ? import.meta.env.VITE_API_URL : undefined;
     if (apiUrl) {
       logger.info('Fetching shared quiz via API', 'quizSharingService', { quizId, apiUrl });
       const response = await fetch(`${apiUrl}/api/shared-quizzes/${quizId}`);
@@ -96,7 +84,6 @@ export const getSharedQuiz = async (quizId: string): Promise<QuizForSharing | nu
       return parseQuizFromSharedJson(data);
     }
     
-    // If no API server, lấy từ localStorage chung
     logger.info('No API_URL configured, fetching shared quiz from localStorage simulation', 'quizSharingService', { quizId });
     const sharedQuizzes = JSON.parse(localStorage.getItem('quizai_shared_quizzes') || '{}');
     const quizData = sharedQuizzes[quizId];
@@ -112,11 +99,7 @@ export const getSharedQuiz = async (quizId: string): Promise<QuizForSharing | nu
   }
 };
 
-/**
- * Parse quiz từ dữ liệu JSON được chia sẻ
- */
 export const parseQuizFromSharedJson = (data: any): QuizForSharing => {
-  // Validate dữ liệu và đảm bảo có đủ trường cần thiết
   if (!data || typeof data !== 'object' || !data.id || !data.title || !data.questions || !Array.isArray(data.questions)) {
     logger.error('Invalid shared quiz data structure', 'quizSharingService', { dataPreview: JSON.stringify(data).substring(0,100) });
     throw new Error('Invalid shared quiz data structure');
@@ -125,7 +108,7 @@ export const parseQuizFromSharedJson = (data: any): QuizForSharing => {
   return {
     id: data.id,
     title: data.title,
-    questions: data.questions.map((q: any) => ({ // Basic validation for questions
+    questions: data.questions.map((q: any) => ({ 
         id: q.id || `q-${Math.random().toString(36).substr(2,9)}`,
         questionText: q.questionText || "",
         options: Array.isArray(q.options) ? q.options : [],
@@ -136,13 +119,13 @@ export const parseQuizFromSharedJson = (data: any): QuizForSharing => {
     lastModified: data.lastModified || new Date().toISOString(),
     config: data.config || {
       difficulty: 'Medium',
-      language: 'English', // Default language
+      language: 'English', 
       numQuestions: data.questions.length,
-      selectedModel: 'gemini' // Default model
+      selectedModel: 'gemini' 
     },
     sourceContentSnippet: data.sourceContentSnippet || '',
-    creator: data.creator || { name: 'Unknown' }, // Ensure creator field exists
-    isShared: true, // Mark as shared
+    creator: data.creator || { name: 'Unknown' }, 
+    isShared: true, 
     sharedTimestamp: data.sharedTimestamp || new Date().toISOString(),
   };
 };

@@ -117,11 +117,11 @@ export const en = {
   feedbackMailBodyUser: "User: {userName} ({userEmail})",
   feedbackMailBodyContentLabel: "Feedback:",
 
-  // New keys from UI/UX improvements
+  // User Avatar
   userAvatar: "User avatar",
   userAvatarWithName: "{name}'s avatar",
-  userAvatarAlt: "{name}'s avatar", // For img alt
-  userAvatarGeneric: "User avatar", // For img alt, generic
+  userAvatarAlt: "{name}'s avatar", 
+  userAvatarGeneric: "User avatar", 
   errorBoundaryTitle: "Oops! Something went wrong.",
   errorBoundaryMessage: "We're sorry, but an unexpected error occurred. You can try refreshing the page or clicking the button below.",
 
@@ -151,7 +151,18 @@ export const en = {
   andMoreQuestions: "And {count} more questions",
   takeQuizNow: "Take Quiz Now",
   unknownCreator: "Anonymous User",
-  sharedQuizError: "Error Loading Quiz", // Generic error for shared quiz page
+  sharedQuizError: "Error Loading Quiz", 
+  shareQuizDemoModeTitle: "Demo Sharing Mode",
+  shareQuizDemoModeMessage: "Note: This share link is for demonstration purposes and currently only works reliably on the same browser and device. For full sharing capabilities across different users and devices, a server-side implementation is required.",
+  
+  // Friendly Sync Error Messages
+  driveErrorUnauthorizedFriendly: "Session expired. Click to sign in again.",
+  driveErrorNetworkFriendly: "Connection error. Check your network and try again.",
+  driveErrorRateLimitFriendly: "Too many sync attempts. Please try again later.",
+  syncErrorGenericFriendly: "Error syncing data. Click to try again.",
+  sessionExpiredNotification: "Your session has expired. Please sign in again to continue syncing.",
+  retryingSync: "Retrying sync ({attempt}/{maxAttempts})...",
+  syncErrorsHidden: "Some sync errors were suppressed. Click for details.",
 };
 
 export const vi = {
@@ -271,11 +282,11 @@ export const vi = {
   feedbackMailBodyUser: "Người dùng: {userName} ({userEmail})",
   feedbackMailBodyContentLabel: "Nội dung góp ý:",
 
-  // New keys from UI/UX improvements
+  // User Avatar
   userAvatar: "Ảnh đại diện người dùng",
   userAvatarWithName: "Ảnh đại diện của {name}",
-  userAvatarAlt: "Ảnh đại diện của {name}", // For img alt
-  userAvatarGeneric: "Ảnh đại diện người dùng", // For img alt, generic
+  userAvatarAlt: "Ảnh đại diện của {name}", 
+  userAvatarGeneric: "Ảnh đại diện người dùng", 
   errorBoundaryTitle: "Ối! Có lỗi xảy ra.",
   errorBoundaryMessage: "Chúng tôi rất tiếc, nhưng đã xảy ra lỗi không mong muốn. Bạn có thể thử làm mới trang hoặc nhấp vào nút bên dưới.",
 
@@ -306,5 +317,16 @@ export const vi = {
   andMoreQuestions: "Và {count} câu hỏi khác",
   takeQuizNow: "Làm Quiz Ngay",
   unknownCreator: "Người dùng Ẩn danh",
-  sharedQuizError: "Lỗi Tải Quiz", // Generic error for shared quiz page
+  sharedQuizError: "Lỗi Tải Quiz", 
+  shareQuizDemoModeTitle: "Chế độ Chia sẻ Demo",
+  shareQuizDemoModeMessage: "Lưu ý: Liên kết chia sẻ này dành cho mục đích minh họa và hiện chỉ hoạt động đáng tin cậy trên cùng một trình duyệt và thiết bị. Để có đầy đủ chức năng chia sẻ cho nhiều người dùng và thiết bị khác nhau, cần phải triển khai phía máy chủ.",
+
+  // Friendly Sync Error Messages
+  driveErrorUnauthorizedFriendly: "Phiên đăng nhập hết hạn. Nhấp để đăng nhập lại.",
+  driveErrorNetworkFriendly: "Lỗi kết nối. Kiểm tra mạng và thử lại.",
+  driveErrorRateLimitFriendly: "Đã đồng bộ quá nhiều. Hãy thử lại sau.",
+  syncErrorGenericFriendly: "Đã có lỗi khi đồng bộ. Nhấp để thử lại.",
+  sessionExpiredNotification: "Phiên của bạn đã hết hạn. Vui lòng đăng nhập lại để tiếp tục đồng bộ.",
+  retryingSync: "Đang thử lại đồng bộ ({attempt}/{maxAttempts})...",
+  syncErrorsHidden: "Một số lỗi đồng bộ đã được ẩn. Nhấp để xem chi tiết.",
 };

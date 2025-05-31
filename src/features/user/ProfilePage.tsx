@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useAppContext, useTranslation } from '../../App';
@@ -107,8 +108,7 @@ const ProfilePage: React.FC = () => {
           <Card useGlassEffect className="p-6 sm:p-8 flex flex-col items-center justify-center text-center !rounded-2xl shadow-xl">
             <div className="mb-5">
               <UserAvatar 
-                photoUrl={currentUser.imageUrl}
-                userName={currentUser.name}
+                user={currentUser}
                 size="lg"
                 className="border-4 border-[var(--color-primary-accent)] shadow-lg"
               />

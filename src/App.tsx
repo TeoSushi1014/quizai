@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback, useEffect, createContext, useContext, ReactNode, useMemo, useRef, lazy, Suspense, useId } from 'react';
 import { HashRouter, Routes, Route, useNavigate, useLocation, NavLink as RouterNavLink, Navigate } from 'react-router-dom'; 
-import { GoogleOAuthProvider, googleLogout } from '@react-oauth/google';
+import { GoogleOAuthProvider, googleLogout, TokenResponse } from '@react-oauth/google';
 import { useSwipeable } from 'react-swipeable';
 import { Quiz, AppContextType, Language, QuizResult, UserProfile, SyncState } from './types';
 import { APP_NAME, KeyIcon, LogoutIcon, HomeIcon, PlusCircleIcon, ChartBarIcon, SettingsIcon, SettingsIconMobileNav, InformationCircleIcon, XCircleIcon, RefreshIcon, CheckCircleIcon, ChevronDownIcon, UserCircleIcon, SunIcon, MoonIcon, PlusIcon } from './constants'; 
@@ -26,7 +26,7 @@ const SignInPage = lazy(() => import('./features/auth/SignInPage'));
 const QuizPracticePage = lazy(() => import('./features/quiz/QuizPracticePage'));
 const SyncSettingsPage = lazy(() => import('./features/settings/SyncSettingsPage'));
 const ProfilePage = lazy(() => import('./features/user/ProfilePage'));
-const SharedQuizPage = lazy(() => import('./features/quiz/SharedQuizPage')); // New Import
+const SharedQuizPage = lazy(() => import('./features/quiz/SharedQuizPage')); 
 
 import { loadQuizDataFromDrive, saveQuizDataToDrive } from './services/driveService';
 import { quizStorage } from './services/storageService'; 
@@ -50,10 +50,31 @@ export const useTranslation = () => {
 };
 
 const GOOGLE_CLIENT_ID = "486123633428-14f8o50husb82sho688e0qvc962ucr4n.apps.googleusercontent.com"; 
-const LOCALSTORAGE_USER_KEY = 'currentUser'; 
+const LOCALSTORAGE_USER_KEY = 'quizai_currentUser_v2'; // Updated key for new structure
 const LOCALSTORAGE_LANGUAGE_KEY = 'appLanguage';
 const LOCALSTORAGE_DRIVE_SYNC_KEY = 'driveLastSyncTimestamp';
 const LOCALSTORAGE_QUIZ_RESULT_KEY = 'quizResult';
+const LOCALSTORAGE_AUTH_TOKEN_KEY = 'quizai_accessToken_v2';
+const LOCALSTORAGE_AUTH_EXPIRY_KEY = 'quizai_accessTokenExpiry_v2';
+
+
+// Configuration for sync behavior (merged from user's suggestion and existing)
+const SYNC_CONFIG = {
+  BACKGROUND_SYNC: true,
+  QUIET_SUCCESS: true,
+  DEBOUNCE_BACKGROUND_SYNC_MS: 1000,
+  DEBOUNCE_FOREGROUND_SYNC_MS: 3000, 
+  MIN_SYNC_INTERVAL_MS: 10000,
+  AUTO_SYNC_ATTEMPT_WINDOW_MS: 60000,
+  AUTO_SYNC_ATTEMPT_LIMIT: 5,
+  MANUAL_SYNC_ATTEMPT_WINDOW_MS: 30000,
+  MANUAL_SYNC_ATTEMPT_LIMIT: 3,
+  MESSAGE_DISPLAY_DURATION_MS: 2000,
+  MAX_RETRIES: 3, // Max retries for a sync operation
+  RETRY_DELAY_MS: 3000, // Initial delay before retrying
+  QUIET_ERRORS: true, // Suppress non-critical errors in background sync
+};
+
 
 const mergeQuizzes = (localQuizzes: Quiz[], driveQuizzes: Quiz[]): Quiz[] => {
   logger.info('Merging local and Drive quizzes', 'MergeUtils', { localCount: localQuizzes.length, driveCount: driveQuizzes.length });
@@ -102,7 +123,7 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
   const { showSuccess: showSuccessNotification, showError: showErrorNotification } = useNotification();
 
 
-  const setCurrentUser = useCallback((user: UserProfile | null) => {
+  const setCurrentUser = useCallback((user: UserProfile | null, tokenInfo?: { token: string; expires_in: number }) => {
     if (user) {
         const userWithDefaults: UserProfile = {
             ...user,
@@ -110,12 +131,31 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
             quizCount: user.quizCount || 0,
             completionCount: user.completionCount || 0,
             averageScore: user.averageScore || null,
+            accessToken: tokenInfo?.token || user.accessToken, // Prioritize new token
         };
         setCurrentUserInternal(userWithDefaults);
+        localStorage.setItem(LOCALSTORAGE_USER_KEY, JSON.stringify(userWithDefaults));
+        if (tokenInfo) {
+          localStorage.setItem(LOCALSTORAGE_AUTH_TOKEN_KEY, tokenInfo.token);
+          // expires_in is in seconds, convert to ms for Date
+          const expiryTime = new Date().getTime() + (tokenInfo.expires_in * 1000); 
+          localStorage.setItem(LOCALSTORAGE_AUTH_EXPIRY_KEY, expiryTime.toString());
+        } else if (user.accessToken) { // If user object already has a token (e.g. from restoration)
+          localStorage.setItem(LOCALSTORAGE_AUTH_TOKEN_KEY, user.accessToken);
+          // Assume expiry is already set or try to get it if available
+          const existingExpiry = localStorage.getItem(LOCALSTORAGE_AUTH_EXPIRY_KEY);
+          if (!existingExpiry) { // If no expiry, set a default (e.g. 1 hour)
+             const expiryTime = new Date().getTime() + (3600 * 1000);
+             localStorage.setItem(LOCALSTORAGE_AUTH_EXPIRY_KEY, expiryTime.toString());
+          }
+        }
         logger.setUserId(userWithDefaults.id);
         logger.info('User logged in or updated', 'AuthContext', { userId: userWithDefaults.id, email: userWithDefaults.email, hasPhotoUrl: !!userWithDefaults.imageUrl });
     } else {
         setCurrentUserInternal(null);
+        localStorage.removeItem(LOCALSTORAGE_USER_KEY);
+        localStorage.removeItem(LOCALSTORAGE_AUTH_TOKEN_KEY);
+        localStorage.removeItem(LOCALSTORAGE_AUTH_EXPIRY_KEY);
         logger.setUserId(null);
         logger.info('User logged out', 'AuthContext');
     }
@@ -126,55 +166,88 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
         setDriveSyncErrorState(null);
     } else {
         const errorMessage = tForProvider(errorKey as keyof typeof translations.en) || tForProvider('driveErrorGeneric');
-        setDriveSyncErrorState(errorMessage);
+        setDriveSyncErrorState(errorMessage); // Store the raw message for internal use, SyncStatusIndicator will translate
         setSyncState('error'); 
         setCurrentSyncActivityMessage(null); 
         logger.warn(`Drive Sync Error set: ${errorMessage}`, 'DriveContext', { errorKey });
     }
   }, [tForProvider]);
 
+  const isTokenStillValid = useCallback(() => {
+    const expiryTimeStr = localStorage.getItem(LOCALSTORAGE_AUTH_EXPIRY_KEY);
+    if (!expiryTimeStr) return false;
+    const expiryTime = parseInt(expiryTimeStr, 10);
+    return new Date().getTime() < expiryTime;
+  }, []);
+
+
   useEffect(() => {
-    logger.info('App initializing: Loading initial data', 'AppInit');
-    // API_KEY is now sourced directly in geminiService.ts from process.env.API_KEY
-    // This check is for UI feedback only.
-    const geminiKeyStatus = !!process.env.API_KEY; 
-    setIsGeminiKeyAvailable(geminiKeyStatus);
-    if (!geminiKeyStatus) {
-        logger.warn('Gemini API key (process.env.API_KEY) not available to the client bundle.', 'AppInit');
-    }
+    const initializeApp = async () => {
+        logger.info('App initializing: Loading initial data', 'AppInit');
+        const geminiKeyStatus = !!process.env.API_KEY;
+        setIsGeminiKeyAvailable(geminiKeyStatus);
+        if (!geminiKeyStatus) {
+            logger.warn('Gemini API key (process.env.API_KEY) not available to the client bundle.', 'AppInit');
+        }
 
-    const savedLanguage = localStorage.getItem(LOCALSTORAGE_LANGUAGE_KEY) as Language | null;
-    if (savedLanguage && translations[savedLanguage]) {
-      setLanguageState(savedLanguage);
-    }
-    
-    const savedUserJson = localStorage.getItem(LOCALSTORAGE_USER_KEY);
-    if (savedUserJson) {
-      try {
-        const user = JSON.parse(savedUserJson) as UserProfile;
-        setCurrentUser(user); 
-      } catch (e) { 
-        logger.error("Failed to parse current user from localStorage", 'AppInit', undefined, e as Error);
-        localStorage.removeItem(LOCALSTORAGE_USER_KEY); 
-      }
-    }
+        const savedLanguage = localStorage.getItem(LOCALSTORAGE_LANGUAGE_KEY) as Language | null;
+        if (savedLanguage && translations[savedLanguage]) {
+            setLanguageState(savedLanguage);
+        }
 
-    const savedResultJson = localStorage.getItem(LOCALSTORAGE_QUIZ_RESULT_KEY);
-    if (savedResultJson) {
-      try {
-        setQuizResult(JSON.parse(savedResultJson) as QuizResult);
-      } catch (e) {
-        logger.error("Failed to parse quiz result from localStorage", 'AppInit', undefined, e as Error);
-        localStorage.removeItem(LOCALSTORAGE_QUIZ_RESULT_KEY);
-      }
-    }
-    
-    const lastSyncTimestamp = localStorage.getItem(LOCALSTORAGE_DRIVE_SYNC_KEY);
-    if (lastSyncTimestamp) setLastDriveSync(new Date(lastSyncTimestamp));
+        const savedUserJson = localStorage.getItem(LOCALSTORAGE_USER_KEY);
+        const savedToken = localStorage.getItem(LOCALSTORAGE_AUTH_TOKEN_KEY);
 
-    setAppInitialized(true); 
-    logger.info('App initialization complete.', 'AppInit');
-  }, [setCurrentUser, tForProvider]); 
+        if (savedToken && isTokenStillValid()) {
+            logger.info('Attempting to restore session with stored token.', 'AppInit');
+            try {
+                const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                    headers: { Authorization: `Bearer ${savedToken}` },
+                });
+                if (userInfoResponse.ok) {
+                    const userInfo = await userInfoResponse.json();
+                    const userProfile: UserProfile = {
+                        id: userInfo.sub,
+                        name: userInfo.name,
+                        email: userInfo.email,
+                        imageUrl: userInfo.picture,
+                        accessToken: savedToken, // Important: carry over the valid token
+                    };
+                    // Merge with any other locally stored profile details if needed
+                    const locallyStoredUser = savedUserJson ? JSON.parse(savedUserJson) as UserProfile : {};
+                    setCurrentUser({ ...locallyStoredUser, ...userProfile });
+                    logger.info('Session restored successfully using stored token.', 'AppInit', { userId: userProfile.id });
+                } else {
+                    logger.warn('Stored token invalid or userinfo fetch failed. Clearing token.', 'AppInit', { status: userInfoResponse.status });
+                    setCurrentUser(null); // This will clear tokens via its own logic
+                }
+            } catch (e) {
+                logger.error("Error restoring session with token", 'AppInit', undefined, e as Error);
+                setCurrentUser(null);
+            }
+        } else if (savedUserJson && !savedToken) { // Legacy: user stored but no separate token
+            logger.info('Found legacy user data, but no separate token. Clearing for re-auth.', 'AppInit');
+            setCurrentUser(null); 
+        } else if (!savedToken) {
+            logger.info('No stored token found. User is not logged in.', 'AppInit');
+            // No user to set
+        }
+
+
+        const savedResultJson = localStorage.getItem(LOCALSTORAGE_QUIZ_RESULT_KEY);
+        if (savedResultJson) {
+            try { setQuizResult(JSON.parse(savedResultJson) as QuizResult); }
+            catch (e) { logger.error("Failed to parse quiz result from localStorage", 'AppInit', undefined, e as Error); localStorage.removeItem(LOCALSTORAGE_QUIZ_RESULT_KEY); }
+        }
+
+        const lastSyncTimestamp = localStorage.getItem(LOCALSTORAGE_DRIVE_SYNC_KEY);
+        if (lastSyncTimestamp) setLastDriveSync(new Date(lastSyncTimestamp));
+
+        setAppInitialized(true);
+        logger.info('App initialization complete.', 'AppInit');
+    };
+    initializeApp();
+  }, [setCurrentUser, isTokenStillValid]); 
 
   useEffect(() => {
     if (!appInitialized) return;
@@ -219,7 +292,7 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
           logger.error("Initial load: Failed to load or sync quizzes with Google Drive.", 'QuizLoading', { errorMsg: error.message }, error);
           const errorKey = error.message as keyof typeof translations.en;
           const knownError = translations.en[errorKey] ? errorKey : 'driveErrorLoading';
-          setDriveSyncError(knownError);
+          setDriveSyncError(knownError); // Use the key from driveService directly
           finalQuizzesToSet = await quizStorage.getAllQuizzes(); 
           logger.info("Initial load: Fell back to local storage due to Drive error.", 'QuizLoading', { count: finalQuizzesToSet.length });
           operationSuccessful = false; 
@@ -230,7 +303,7 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
              if ((syncState === 'success' && operationSuccessful) || (syncState === 'error' && !operationSuccessful)) {
                setCurrentSyncActivityMessage(null);
              }
-          }, 3000);
+          }, SYNC_CONFIG.MESSAGE_DISPLAY_DURATION_MS);
         }
       } else { 
         finalQuizzesToSet = await quizStorage.getAllQuizzes();
@@ -246,59 +319,115 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     loadInitialQuizzesAndSync();
   }, [appInitialized, currentUser?.accessToken, setDriveSyncError, tForProvider]);
 
-  const triggerSaveToDrive = useCallback((quizzesToSave: Quiz[]) => {
-    if (Date.now() - saveToDriveMinIntervalRef.current < 10000) { 
-        logger.debug("triggerSaveToDrive: Skipping schedule, too soon since last actual save initiation.", 'DriveSync');
-        return;
-    }
 
+  // Updated triggerSaveToDrive based on user's prompt, integrating retry logic.
+  const triggerSaveToDrive = useCallback((quizzesToSave: Quiz[]) => {
+    if (Date.now() - saveToDriveMinIntervalRef.current < SYNC_CONFIG.MIN_SYNC_INTERVAL_MS) {
+      logger.debug("triggerSaveToDrive: Skipping schedule, too soon since last save.", 'DriveSync');
+      return;
+    }
+  
     if (saveToDriveTimeoutRef.current) {
       clearTimeout(saveToDriveTimeoutRef.current);
     }
+    
     saveToDriveTimeoutRef.current = setTimeout(async () => {
-      saveToDriveMinIntervalRef.current = Date.now(); 
-
+      saveToDriveMinIntervalRef.current = Date.now();
+  
       const now = Date.now();
-      if (now - autoSyncAttemptLimitRef.current.lastWindowStart < 60000) { 
-          autoSyncAttemptLimitRef.current.count++;
-          if (autoSyncAttemptLimitRef.current.count > 5) { 
-              logger.warn("triggerSaveToDrive: Too many auto-sync attempts in a short period. Aborting this attempt.", 'DriveSyncRateLimit');
-              setIsDriveLoading(false); 
-              setSyncState('error'); 
-              setDriveSyncError('driveErrorRateLimit'); 
-              return;
+      if (now - autoSyncAttemptLimitRef.current.lastWindowStart < SYNC_CONFIG.AUTO_SYNC_ATTEMPT_WINDOW_MS) {
+        autoSyncAttemptLimitRef.current.count++;
+        if (autoSyncAttemptLimitRef.current.count > SYNC_CONFIG.AUTO_SYNC_ATTEMPT_LIMIT) {
+          logger.warn("triggerSaveToDrive: Auto-sync rate limit reached", 'DriveSyncRateLimit');
+          if (!SYNC_CONFIG.BACKGROUND_SYNC) {
+            setIsDriveLoading(false);
+            setSyncState('error');
+            setDriveSyncError('driveErrorRateLimit');
           }
-      } else {
-          autoSyncAttemptLimitRef.current.lastWindowStart = now;
-          autoSyncAttemptLimitRef.current.count = 1;
-      }
-
-      if (currentUser?.accessToken) {
-        setIsDriveLoading(true);
-        setDriveSyncError(null); 
-        setSyncState('syncing');
-        setCurrentSyncActivityMessage(tForProvider('syncStatusInProgress')); 
-        logger.info("Debounced: Attempting to save to Google Drive...", 'DriveSync', { quizCount: quizzesToSave.length });
-        try {
-          await saveQuizDataToDrive(currentUser.accessToken, quizzesToSave);
-          setLastDriveSync(new Date());
-          localStorage.setItem(LOCALSTORAGE_DRIVE_SYNC_KEY, new Date().toISOString());
-          logger.info("Debounced: Successfully saved quizzes to Google Drive.", 'DriveSync');
-          setSyncState('success');
-          setCurrentSyncActivityMessage(tForProvider('autoSyncCompleteMessage')); 
-        } catch (error: any) {
-          logger.error("Debounced: Failed to save quizzes to Google Drive.", 'DriveSync', { errorMsg: error.message }, error);
-          const errorKey = error.message as keyof typeof translations.en;
-          setDriveSyncError(translations.en[errorKey] ? errorKey : 'driveErrorSaving');
-        } finally {
-          setIsDriveLoading(false);
-          setTimeout(() => { 
-            if (syncState === 'success' || syncState === 'error') setCurrentSyncActivityMessage(null);
-          }, 3000);
+          return;
         }
+      } else {
+        autoSyncAttemptLimitRef.current.lastWindowStart = now;
+        autoSyncAttemptLimitRef.current.count = 1;
       }
-    }, 3000); 
+  
+      if (currentUser?.accessToken) {
+        let retries = 0;
+        let success = false;
+        
+        if (!SYNC_CONFIG.BACKGROUND_SYNC) {
+          setIsDriveLoading(true);
+          setSyncState('syncing');
+          setCurrentSyncActivityMessage(tForProvider('syncStatusInProgress'));
+        }
+        setDriveSyncError(null);
+        logger.info(`${SYNC_CONFIG.BACKGROUND_SYNC ? 'Background' : 'Debounced'} sync: Attempting to save to Google Drive...`, 'DriveSync', { quizCount: quizzesToSave.length });
+
+        while(retries < SYNC_CONFIG.MAX_RETRIES && !success) {
+            try {
+              // Placeholder for checkGoogleDriveAuth if needed, current driveService handles errors
+              // const isAuthValid = await checkGoogleDriveAuth(currentUser.accessToken); // Example
+              // if(!isAuthValid) throw new Error('driveErrorUnauthorized');
+
+              await saveQuizDataToDrive(currentUser.accessToken, quizzesToSave);
+              setLastDriveSync(new Date());
+              localStorage.setItem(LOCALSTORAGE_DRIVE_SYNC_KEY, new Date().toISOString());
+              logger.info(`${SYNC_CONFIG.BACKGROUND_SYNC ? 'Background' : 'Debounced'} sync: Successfully saved to Google Drive.`, 'DriveSync');
+              setSyncState('success');
+              success = true;
+              
+              if (!SYNC_CONFIG.BACKGROUND_SYNC || !SYNC_CONFIG.QUIET_SUCCESS) {
+                setCurrentSyncActivityMessage(tForProvider('autoSyncCompleteMessage'));
+              } else {
+                setCurrentSyncActivityMessage(null); 
+              }
+              break; // Exit retry loop on success
+            } catch (error: any) {
+              retries++;
+              const errorKey = error.message as keyof typeof translations.en;
+              const isSpecificError = translations.en[errorKey];
+              const currentErrorToSet = isSpecificError ? errorKey : 'driveErrorSaving';
+
+              logger.error(`${SYNC_CONFIG.BACKGROUND_SYNC ? 'Background' : 'Debounced'} sync: Failed attempt ${retries}/${SYNC_CONFIG.MAX_RETRIES}.`, 'DriveSync', { errorMsg: error.message }, error);
+
+              if (retries >= SYNC_CONFIG.MAX_RETRIES) {
+                logger.error(`${SYNC_CONFIG.BACKGROUND_SYNC ? 'Background' : 'Debounced'} sync: Max retries reached. Failed to save.`, 'DriveSync', { errorMsg: error.message });
+                if (!SYNC_CONFIG.QUIET_ERRORS || !SYNC_CONFIG.BACKGROUND_SYNC) {
+                  setSyncState('error');
+                  setDriveSyncError(currentErrorToSet);
+                }
+              } else {
+                // Non-retryable errors like 'driveErrorUnauthorized' should break loop immediately if not handled by refresh.
+                if (currentErrorToSet === 'driveErrorUnauthorized' || currentErrorToSet === 'driveErrorForbidden') {
+                   if (!SYNC_CONFIG.QUIET_ERRORS || !SYNC_CONFIG.BACKGROUND_SYNC) {
+                     setSyncState('error');
+                     setDriveSyncError(currentErrorToSet);
+                   }
+                   break; // Stop retrying for auth errors
+                }
+                if (!SYNC_CONFIG.BACKGROUND_SYNC || !SYNC_CONFIG.QUIET_ERRORS) {
+                  setCurrentSyncActivityMessage(tForProvider('retryingSync', { attempt: retries, maxAttempts: SYNC_CONFIG.MAX_RETRIES }));
+                }
+                await new Promise(r => setTimeout(r, SYNC_CONFIG.RETRY_DELAY_MS * Math.pow(2, retries -1) )); // Exponential backoff
+              }
+            }
+        } // end while loop
+  
+        if (!SYNC_CONFIG.BACKGROUND_SYNC || (!success && !SYNC_CONFIG.QUIET_ERRORS) ) {
+          setTimeout(() => {
+            if (syncState === 'success' || syncState === 'error') { // Clear message unless it's an active sync
+              setCurrentSyncActivityMessage(null);
+            }
+          }, SYNC_CONFIG.MESSAGE_DISPLAY_DURATION_MS);
+        }
+        if (!SYNC_CONFIG.BACKGROUND_SYNC) {
+          setIsDriveLoading(false); // Always turn off foreground loading spinner
+        }
+
+      }
+    }, SYNC_CONFIG.BACKGROUND_SYNC ? SYNC_CONFIG.DEBOUNCE_BACKGROUND_SYNC_MS : SYNC_CONFIG.DEBOUNCE_FOREGROUND_SYNC_MS);
   }, [currentUser?.accessToken, setDriveSyncError, tForProvider, syncState]);
+
 
   useEffect(() => {
     if (appInitialized && !isLoading && currentUser?.accessToken && allQuizzes.length >= 0) {
@@ -309,9 +438,9 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
   useEffect(() => {
     if (appInitialized) { 
       if (currentUser) {
-        localStorage.setItem(LOCALSTORAGE_USER_KEY, JSON.stringify(currentUser));
+        // Handled by setCurrentUser
       } else {
-        localStorage.removeItem(LOCALSTORAGE_USER_KEY);
+        // Handled by setCurrentUser(null)
         localStorage.removeItem(LOCALSTORAGE_DRIVE_SYNC_KEY); 
         setLastDriveSync(null);
         setSyncState('idle');
@@ -411,16 +540,25 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     setQuizResult(result);
   }, []);
 
-  const login = useCallback((user: UserProfile, token?: string) => {
+  const login = useCallback((user: UserProfile, tokenResponse?: TokenResponse ) => { // Modified to accept TokenResponse
+    let tokenInfo: { token: string; expires_in: number } | undefined = undefined;
+    if (tokenResponse) {
+        tokenInfo = {
+            token: tokenResponse.access_token,
+            // Safely access expires_in, default to 3600 (1hr) if not present or if TokenResponse is CredentialResponse
+            expires_in: (typeof (tokenResponse as any).expires_in === 'number') ? (tokenResponse as any).expires_in : 3600,
+        };
+    }
+    
     const userWithTokenAndDefaults: UserProfile = {
         ...user,
-        accessToken: token || user.accessToken,
+        accessToken: tokenInfo?.token || user.accessToken, // Prioritize new token from TokenResponse
         bio: user.bio || null,
         quizCount: user.quizCount || 0,
         completionCount: user.completionCount || 0,
         averageScore: user.averageScore || null,
     };
-    setCurrentUser(userWithTokenAndDefaults); 
+    setCurrentUser(userWithTokenAndDefaults, tokenInfo); 
     setDriveSyncError(null); 
     setSyncState('idle'); 
     setCurrentSyncActivityMessage(null);
@@ -432,7 +570,7 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     if (saveToDriveTimeoutRef.current) {
       clearTimeout(saveToDriveTimeoutRef.current); 
     }
-    setCurrentUser(null); 
+    setCurrentUser(null); // This will clear tokens from localStorage
     setActiveQuiz(null); 
     setQuizResult(null);
     setAllQuizzes([]); 
@@ -455,27 +593,24 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
       ...currentUser,
       name: updatedProfileData.name !== undefined ? updatedProfileData.name : currentUser.name,
       bio: updatedProfileData.bio !== undefined ? updatedProfileData.bio : currentUser.bio,
-      // Keep existing stats, they are not updated here
+      imageUrl: updatedProfileData.imageUrl !== undefined ? updatedProfileData.imageUrl : currentUser.imageUrl, // Keep imageUrl if not changed
       quizCount: currentUser.quizCount,
       completionCount: currentUser.completionCount,
       averageScore: currentUser.averageScore,
+      accessToken: currentUser.accessToken, // Preserve access token
     };
 
     try {
-      setCurrentUserInternal(updatedUser); // Update state, which triggers localStorage update via useEffect
-      // No Drive sync for profile data implemented yet as per instruction.
-      // If Drive sync were implemented for profile data, it would go here.
-      // For now, local storage is the persistence layer.
-      localStorage.setItem(LOCALSTORAGE_USER_KEY, JSON.stringify(updatedUser));
-
+      // No separate tokenInfo to pass here, as profile update doesn't change auth token
+      setCurrentUserInternal(updatedUser); // Update internal state first
+      localStorage.setItem(LOCALSTORAGE_USER_KEY, JSON.stringify(updatedUser)); // Persist updated profile
       showSuccessNotification(tForProvider('profileSaveSuccess'), 3000);
       logger.info("User profile updated successfully in AppContext.", 'UserProfile', { userId: updatedUser.id });
       return true;
     } catch (error) {
       logger.error('Error updating profile in AppContext:', 'UserProfile', { userId: currentUser.id }, error as Error);
       showErrorNotification(tForProvider('profileSaveError'), 5000);
-      // Revert to previous state if saving to localStorage fails (though unlikely for localStorage)
-      setCurrentUserInternal(currentUser); 
+      setCurrentUserInternal(currentUser); // Revert to old state on error
       return false;
     }
   }, [currentUser, setCurrentUserInternal, showSuccessNotification, showErrorNotification, tForProvider]);
@@ -483,9 +618,9 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
 
   const syncWithGoogleDrive = useCallback(async () => {
     const nowMs = Date.now();
-    if (nowMs - manualSyncAttemptLimitRef.current.lastWindowStart < 30000) { 
+    if (nowMs - manualSyncAttemptLimitRef.current.lastWindowStart < SYNC_CONFIG.MANUAL_SYNC_ATTEMPT_WINDOW_MS) { 
         manualSyncAttemptLimitRef.current.count++;
-        if (manualSyncAttemptLimitRef.current.count > 3) { 
+        if (manualSyncAttemptLimitRef.current.count > SYNC_CONFIG.MANUAL_SYNC_ATTEMPT_LIMIT) { 
             logger.warn("syncWithGoogleDrive: Too many manual sync attempts in a short period. Aborting.", 'DriveSyncRateLimit');
             setDriveSyncError('driveErrorRateLimit');
             setIsLoading(false); setIsDriveLoading(false); setSyncState('error');
@@ -546,7 +681,7 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
       setIsLoading(false);
       setTimeout(() => { 
          if (syncState === 'success' || syncState === 'error') setCurrentSyncActivityMessage(null);
-      }, 3000);
+      }, SYNC_CONFIG.MESSAGE_DISPLAY_DURATION_MS);
     }
   }, [currentUser?.accessToken, setDriveSyncError, tForProvider, syncState]);
 
@@ -583,12 +718,14 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     setDriveSyncError,
     syncState,
     currentSyncActivityMessage,
+    showSuccessNotification,
+    showErrorNotification,
   }), [
     location.pathname, setCurrentView, language, setLanguage, quizzesForContext, 
     addQuiz, deleteQuiz, updateQuiz, getQuizByIdFromAll, activeQuiz, setActiveQuiz, quizResult, 
     setQuizResultWithPersistence, currentUser, login, handleLogout, updateUserProfile, isGeminiKeyAvailable, combinedIsLoading,
     isDriveLoading, driveSyncError, lastDriveSync, syncWithGoogleDrive, setDriveSyncError, 
-    syncState, currentSyncActivityMessage, appInitialized, 
+    syncState, currentSyncActivityMessage, showSuccessNotification, showErrorNotification,
   ]);
 
   if (!appInitialized) {
@@ -617,12 +754,10 @@ AppProvider.displayName = "AppProvider";
 
 const NavLink: React.FC<{ to: string; children: ReactNode; end?: boolean; className?: string; activeClassName?: string; inactiveClassName?: string; isMobile?: boolean; icon?: ReactNode; }> = 
 ({ to, children, end = false, className = '', activeClassName = '', inactiveClassName = '', isMobile = false, icon }) => {
-  // Desktop styles (updated)
   const baseDesktopStyle = `flex items-center px-4 py-2 rounded-lg text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-focus-ring-offset)] hover:bg-[var(--color-bg-surface-2)] transition-colors var(--duration-fast) var(--ease-ios)`;
   const activeDesktopStyle = `bg-[var(--color-primary-accent)]/10 text-[var(--color-primary-accent)] font-medium`;
   const inactiveDesktopStyle = `text-[var(--color-text-secondary)] hover:text-[var(--color-primary-accent)]`;
 
-  // Mobile styles (updated)
   const baseMobileStyle = `flex flex-col items-center justify-center w-full h-full focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-primary-accent)] focus-visible:ring-offset-1 focus-visible:ring-offset-[var(--color-bg-body)] rounded-md hover:bg-[var(--color-bg-surface-2)] transition-colors var(--duration-fast) var(--ease-ios)`;
   const activeMobileStyle = `text-[var(--color-primary-accent)]`;
   const inactiveMobileStyle = `text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]`;
@@ -690,9 +825,8 @@ const UserDropdownMenu: React.FC = () => {
                 aria-haspopup="true"
                 aria-controls="user-dropdown-menu"
             >
-                <UserAvatar
-                  photoUrl={currentUser.imageUrl}
-                  userName={currentUser.name}
+                <UserAvatar // Updated to pass user object
+                  user={currentUser}
                   size="sm" 
                   className={`border-2 ${isUserDropdownOpen ? 'border-[var(--color-primary-accent)]' : 'border-[var(--color-border-interactive)] group-hover:border-[var(--color-primary-accent)]'} transition-colors var(--duration-fast) var(--ease-ios)`}
                 />
@@ -706,9 +840,8 @@ const UserDropdownMenu: React.FC = () => {
             >
                 <div className="px-5 py-4 border-b border-[var(--color-border-default)]">
                     <div className="flex items-center gap-3">
-                        <UserAvatar
-                          photoUrl={currentUser.imageUrl}
-                          userName={currentUser.name}
+                        <UserAvatar // Updated to pass user object
+                          user={currentUser}
                           size="md" 
                           className="border-2 border-[var(--color-border-interactive)]"
                         />
@@ -719,7 +852,6 @@ const UserDropdownMenu: React.FC = () => {
                     </div>
                 </div>
                 
-                {/* Account Section */}
                 <div className="py-1.5">
                     <div className="px-5 pt-2 pb-1 text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{t('account')}</div>
                     <button
@@ -746,13 +878,11 @@ const UserDropdownMenu: React.FC = () => {
                     </button>
                 </div>
 
-                {/* Theme Settings Section */}
                 <div className="py-1.5 border-t border-[var(--color-border-default)]">
                      <div className="px-5 pt-2 pb-1 text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{t('themeSettings')}</div>
                     <ThemeToggleSwitch />
                 </div>
                 
-                {/* Logout Section */}
                 <div className="py-1.5 border-t border-[var(--color-border-default)]">
                     <button
                         onClick={() => { logout(); setIsUserDropdownOpen(false); }}
@@ -800,7 +930,7 @@ const AppLayout: React.FC = () => {
     language, setLanguage, currentUser, isGeminiKeyAvailable, 
     isLoading: globalIsLoading, isDriveLoading, driveSyncError, 
     lastDriveSync, setDriveSyncError, syncState, currentSyncActivityMessage,
-    logout, setCurrentView
+    logout, setCurrentView, syncWithGoogleDrive // Added syncWithGoogleDrive
   } = useAppContext(); 
   const { t } = useTranslation();
   const { theme } = useTheme(); 
@@ -823,14 +953,48 @@ const AppLayout: React.FC = () => {
     );
   }
 
+  // Updated SyncStatusIndicator with friendly error messages and click handler
   const SyncStatusIndicator: React.FC = () => {
     const { language: currentLang } = useTranslation(); 
+    const { logout, syncWithGoogleDrive, driveSyncError, showSuccessNotification } = useAppContext(); // Get showSuccessNotification
+
     let icon: ReactNode = null;
     let text: string = "";
     let tooltipText: string = "";
     let containerColorClass: string = "";
     let dotColorClass: string = "";
     let showIndicator: boolean = false;
+    let isErrorClickable = false;
+
+    const getFriendlyErrorMessage = (errorKey: string | null): string => {
+      if (!errorKey) return t('driveErrorGeneric'); // Fallback
+      
+      const knownErrorKey = errorKey as keyof typeof translations.en; // Cast to known keys
+      if (translations.en[knownErrorKey] && knownErrorKey.endsWith('Friendly')) {
+          return t(knownErrorKey);
+      }
+      if (translations.en[knownErrorKey]) { // If it's a direct error key like 'driveErrorSaving'
+          // Try to find a "Friendly" version or default
+          const friendlyVersionKey = `${knownErrorKey}Friendly` as keyof typeof translations.en;
+          if (translations.en[friendlyVersionKey]) return t(friendlyVersionKey);
+          
+          // Fallback for specific non-friendly error keys
+          if (errorKey === 'driveErrorUnauthorized') return t('driveErrorUnauthorizedFriendly');
+          if (errorKey === 'driveErrorNetwork') return t('driveErrorNetworkFriendly');
+          if (errorKey === 'driveErrorRateLimit') return t('driveErrorRateLimitFriendly');
+          return t('syncErrorGenericFriendly'); // General friendly error
+      }
+      return t('syncErrorGenericFriendly'); // Ultimate fallback
+    };
+
+    const handleErrorClick = () => {
+      if (driveSyncError === 'driveErrorUnauthorized' || driveSyncError === 'driveErrorForbidden') {
+        showSuccessNotification(t('sessionExpiredNotification'), 5000);
+        logout(); // This will redirect to sign-in
+      } else {
+        syncWithGoogleDrive(); // Attempt to re-sync for other errors
+      }
+    };
 
     switch (syncState) {
         case 'syncing':
@@ -846,7 +1010,7 @@ const AppLayout: React.FC = () => {
             icon = <CheckCircleIcon className="w-3 h-3 mr-1.5" />;
             containerColorClass = "bg-[var(--color-success-accent)]/10 text-[var(--color-success-accent)] border-[var(--color-success-accent)]/20";
             dotColorClass = "bg-[var(--color-success-accent)]";
-             if (currentSyncActivityMessage) { 
+             if (currentSyncActivityMessage && (!SYNC_CONFIG.QUIET_SUCCESS || !SYNC_CONFIG.BACKGROUND_SYNC)) { 
                 text = currentSyncActivityMessage;
                 tooltipText = currentSyncActivityMessage;
             } else if (lastDriveSync) {
@@ -859,25 +1023,26 @@ const AppLayout: React.FC = () => {
             break;
         case 'error':
             showIndicator = true;
+            isErrorClickable = true;
             icon = <XCircleIcon className="w-3 h-3 mr-1.5" />;
-            containerColorClass = "bg-[var(--color-danger-accent)]/10 text-[var(--color-danger-accent)] border-[var(--color-danger-accent)]/20";
+            containerColorClass = "bg-[var(--color-danger-accent)]/10 text-[var(--color-danger-accent)] border-[var(--color-danger-accent)]/20 cursor-pointer hover:!bg-[var(--color-danger-accent)]/20";
             dotColorClass = "bg-[var(--color-danger-accent)]";
-            text = t('syncStatusErrorShort');
-            tooltipText = driveSyncError || t('driveErrorGeneric');
+            tooltipText = getFriendlyErrorMessage(driveSyncError);
+            text = t('syncStatusErrorShort'); 
             break;
         case 'idle':
         default:
             if (currentUser && lastDriveSync) {
                  showIndicator = true;
                  icon = <CheckCircleIcon className="w-3 h-3 mr-1.5" />;
-                 containerColorClass = "bg-[var(--color-success-accent)]/10 text-[var(--color-success-accent)] border-[var(--color-success-accent)]/20"; // Show as green if previously synced
+                 containerColorClass = "bg-[var(--color-success-accent)]/10 text-[var(--color-success-accent)] border-[var(--color-success-accent)]/20"; 
                  dotColorClass = "bg-[var(--color-success-accent)]";
                  text = t('syncStatusLastShort', { dateTime: lastDriveSync.toLocaleTimeString(currentLang, { hour: '2-digit', minute: '2-digit'}) });
                  tooltipText = t('syncStatusLast', { dateTime: lastDriveSync.toLocaleString(currentLang, { dateStyle: 'medium', timeStyle: 'short' }) });
             } else if (currentUser) { 
                 showIndicator = true;
                 icon = <InformationCircleIcon className="w-3 h-3 mr-1.5" />;
-                containerColorClass = "bg-[var(--color-bg-surface-2)] text-[var(--color-text-muted)] border-[var(--color-border-default)]"; // Neutral if never synced
+                containerColorClass = "bg-[var(--color-bg-surface-2)] text-[var(--color-text-muted)] border-[var(--color-border-default)]"; 
                 dotColorClass = "bg-[var(--color-text-muted)]";
                 text = t('syncStatusNeverShort');
                 tooltipText = t('syncStatusNever');
@@ -888,13 +1053,23 @@ const AppLayout: React.FC = () => {
     }
     if (!currentUser) return null;
 
+    const indicatorContent = (
+      <div 
+        className={`text-xs font-medium flex items-center px-3 py-1.5 rounded-full border sync-indicator-base ${containerColorClass} ${showIndicator ? 'sync-indicator-visible' : 'sync-indicator-hidden'} ${isErrorClickable ? 'cursor-pointer' : ''}`}
+        onClick={isErrorClickable ? handleErrorClick : undefined}
+        tabIndex={isErrorClickable ? 0 : -1}
+        role={isErrorClickable ? "button" : undefined}
+        onKeyDown={isErrorClickable ? (e) => { if (e.key === 'Enter' || e.key === ' ') handleErrorClick(); } : undefined}
+      >
+        <div className={`w-1.5 h-1.5 rounded-full mr-2 ${dotColorClass} ${syncState === 'syncing' ? '' : 'animate-pulse'}`}></div>
+        {icon}
+        <span>{text}</span>
+      </div>
+    );
+    
     return (
-        <Tooltip content={tooltipText} placement="bottom-end">
-          <div className={`text-xs font-medium flex items-center px-3 py-1.5 rounded-full border sync-indicator-base ${containerColorClass} ${showIndicator ? 'sync-indicator-visible' : 'sync-indicator-hidden'}`}>
-            <div className={`w-1.5 h-1.5 rounded-full mr-2 animate-pulse ${dotColorClass}`}></div>
-            {icon}
-            <span>{text}</span>
-          </div>
+        <Tooltip content={tooltipText} placement="bottom-end" disabled={!tooltipText}>
+          {indicatorContent}
         </Tooltip>
     );
   };
@@ -907,10 +1082,10 @@ const AppLayout: React.FC = () => {
 
     useEffect(() => {
         const updateSize = () => {
-            setAvatarSize(window.innerWidth < 375 ? 'md' : 'lg'); // Example breakpoint
+            setAvatarSize(window.innerWidth < 375 ? 'md' : 'lg'); 
         };
         window.addEventListener('resize', updateSize);
-        updateSize(); // Initial check
+        updateSize(); 
         return () => window.removeEventListener('resize', updateSize);
     }, []);
 
@@ -944,9 +1119,8 @@ const AppLayout: React.FC = () => {
             <div className="w-12 h-1.5 bg-[var(--color-bg-surface-3)] rounded-full"></div>
           </div>
           <div className="px-5 py-6 flex items-center space-x-4 border-b border-[var(--color-border-default)]">
-            <UserAvatar
-              photoUrl={currentUser.imageUrl}
-              userName={currentUser.name}
+            <UserAvatar // Updated to pass user object
+              user={currentUser}
               size={avatarSize}
               className="border-2 border-[var(--color-primary-accent)]"
             />
@@ -1013,17 +1187,15 @@ const AppLayout: React.FC = () => {
   return (
     <div className="min-h-screen flex flex-col selection:bg-[var(--color-primary-accent)]/20 selection:text-[var(--color-primary-accent)] pb-16 md:pb-0"
          style={{ backgroundColor: 'var(--color-bg-body)', color: 'var(--color-text-body)' }}>
-      <header className="sticky top-0 z-50 glass-effect"> {/* Use glass-effect directly */}
+      <header className="sticky top-0 z-50 glass-effect"> 
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16"> {/* Consistent header height */}
+          <div className="flex items-center justify-between h-16"> 
             <div className="flex items-center space-x-2 sm:space-x-3 cursor-pointer" onClick={() => navigate('/')}>
-              {/* <img src="/path/to/logo.svg" alt={APP_NAME} className="h-8 w-8" /> Placeholder if logo exists */}
               <h1 className="text-xl sm:text-2xl font-bold tracking-tight bg-gradient-to-r from-[var(--color-primary-accent)] to-blue-400 bg-clip-text text-transparent">
                 {APP_NAME} 
               </h1>
             </div>
 
-            {/* Desktop Controls */}
             <div className="hidden md:flex items-center space-x-3">
               <nav className="flex items-center space-x-1">
                  <NavLink to="/" end icon={<HomeIcon className="w-4 h-4"/>}>{t('navHome')}</NavLink>
@@ -1060,7 +1232,6 @@ const AppLayout: React.FC = () => {
               )}
             </div>
 
-            {/* Mobile Controls (Top Bar) */}
             <div className="md:hidden flex items-center space-x-2">
                <Tooltip content={t('languageSwitcherTooltip')} placement="bottom">
                 <Button 
@@ -1078,7 +1249,7 @@ const AppLayout: React.FC = () => {
                     className="flex items-center justify-center w-8 h-8 rounded-full hover:bg-[var(--color-bg-surface-2)] transition-colors"
                     aria-label={t('profile')}
                 >
-                    <UserAvatar photoUrl={currentUser.imageUrl} userName={currentUser.name} size="sm" className="border-2 border-[var(--color-primary-accent)]"/>
+                    <UserAvatar user={currentUser} size="sm" className="border-2 border-[var(--color-primary-accent)]"/>
                 </button>
               )}
               {!currentUser && <ThemeToggle compact={true} />}
@@ -1087,7 +1258,6 @@ const AppLayout: React.FC = () => {
         </div>
       </header>
 
-      {/* New Mobile Bottom Navigation */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 glass-effect z-40 border-t border-[var(--color-glass-border)]">
           <div className="flex items-center justify-around h-16">
             <NavLink to="/" end isMobile icon={<HomeIcon className="w-5 h-5"/>}>
@@ -1131,7 +1301,7 @@ const AppLayout: React.FC = () => {
             <Route path="/results/:quizId" element={<ResultsPage />} />
             <Route path="/settings" element={currentUser ? <SyncSettingsPage /> : <Navigate to="/signin" state={{ from: location }} replace />} />
             <Route path="/profile" element={currentUser ? <ProfilePage /> : <Navigate to="/signin" state={{ from: location }} replace />} />
-            <Route path="/shared/:quizId" element={<SharedQuizPage />} /> {/* New Route */}
+            <Route path="/shared/:quizId" element={<SharedQuizPage />} /> 
             <Route path="*" element={<HomePage />} /> 
           </Routes>
         </Suspense>
@@ -1185,7 +1355,7 @@ const AppLayout: React.FC = () => {
         </AnimatedApiKeyWarning>
       )}
 
-      {driveSyncError && syncState === 'error' && ( 
+      {driveSyncError && syncState === 'error' && !SYNC_CONFIG.QUIET_ERRORS && ( 
          <AnimatedApiKeyWarning>
             <div role="alert" className="fixed bottom-20 md:bottom-4 right-4 w-auto max-w-[calc(100%-2rem)] md:max-w-md bg-[var(--color-danger-accent)] text-[var(--color-primary-accent-text)] p-3 sm:p-3.5 text-xs sm:text-sm shadow-2xl z-[200] flex items-center gap-2.5 border border-[var(--color-danger-accent)]/50 rounded-xl">
                 <InformationCircleIcon className="w-4 h-4 sm:w-5 sm:h-5 text-[var(--color-primary-accent-text)] flex-shrink-0" />
@@ -1203,7 +1373,6 @@ const AppLayout: React.FC = () => {
 };
 AppLayout.displayName = "AppLayout";
 
-// New AppContent component to consume context for ErrorBoundary's t prop
 const AppContent: React.FC = () => {
   const { t } = useTranslation();
   return (

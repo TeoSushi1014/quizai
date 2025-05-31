@@ -1,136 +1,110 @@
 
 import React, { useState, useEffect, useRef } from 'react';
+import { UserProfile } from '../types';
 import { useTranslation } from '../App';
-import { LoadingSpinner } from './ui';
+import { LoadingSpinner } from './ui'; // Changed Spinner to LoadingSpinner
 
-type UserAvatarProps = {
-  photoUrl?: string | null;
-  userName?: string | null;
-  size?: 'sm' | 'md' | 'lg';
+interface UserAvatarProps {
+  user: UserProfile | null;
+  size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
   className?: string;
-};
+  [key: string]: any; // Allow other props
+}
 
 const IMAGE_LOAD_TIMEOUT_MS = 10000; // 10 seconds
 
-export const UserAvatar: React.FC<UserAvatarProps> = ({
-  photoUrl,
-  userName,
-  size = 'md',
-  className = ''
-}) => {
+const UserAvatar = ({ user, size = 'md', className = '', ...props }: UserAvatarProps) => {
+  const [imageError, setImageError] = useState(false);
+  const [isLoading, setIsLoading] = useState(true); // Start with true if photoURL might exist
   const { t } = useTranslation();
-  const [isLoading, setIsLoading] = useState(!!photoUrl); // Start loading only if photoUrl is initially present
-  const [hasError, setHasError] = useState(false);
+  const photoUrl = user?.imageUrl; // Use imageUrl from UserProfile
+  const userName = user?.name;
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    // Clear any existing timeout when photoUrl changes or component unmounts
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
       timeoutRef.current = null;
     }
 
     if (photoUrl) {
+      setImageError(false);
       setIsLoading(true);
-      setHasError(false);
+      
+      const img = new Image();
+      img.src = photoUrl;
+      
+      img.onload = () => {
+        if (timeoutRef.current) clearTimeout(timeoutRef.current);
+        setIsLoading(false);
+        setImageError(false);
+      };
+      img.onerror = () => {
+        if (timeoutRef.current) clearTimeout(timeoutRef.current);
+        console.error('UserAvatar: Failed to load image from URL:', photoUrl);
+        setIsLoading(false);
+        setImageError(true);
+      };
 
       timeoutRef.current = setTimeout(() => {
-        if (isLoading) { // Check if still loading when timeout fires
-          console.warn('UserAvatar: Image loading timed out for URL:', photoUrl);
-          setIsLoading(false);
-          setHasError(true);
+        if (img.complete && img.naturalHeight !== 0) { // Already loaded
+            setIsLoading(false);
+            setImageError(false);
+        } else if (!img.complete || img.naturalHeight === 0) { // Not loaded or broken
+            console.warn('UserAvatar: Image loading timed out for URL:', photoUrl);
+            setIsLoading(false);
+            setImageError(true);
         }
       }, IMAGE_LOAD_TIMEOUT_MS);
 
     } else {
-      setIsLoading(false);
-      setHasError(false);
+      setIsLoading(false); // No URL, so not loading
+      setImageError(false); // No URL, so no error
     }
-
-    return () => {
+     return () => {
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
       }
     };
-  }, [photoUrl]); // isLoading is intentionally not in dependencies here to avoid resetting timeout on its change
-
-  const clearLoadTimeout = () => {
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-      timeoutRef.current = null;
-    }
-  };
-
-  const handleImageLoad = () => {
-    clearLoadTimeout();
-    setIsLoading(false);
-    setHasError(false);
-  };
-
-  const handleImageError = () => {
-    clearLoadTimeout();
-    console.error('UserAvatar: Failed to load image from URL:', photoUrl);
-    setIsLoading(false);
-    setHasError(true);
-  };
-
-  const sizeClasses = {
-    sm: 'w-8 h-8',
-    md: 'w-10 h-10',
-    lg: 'w-12 h-12'
-  };
-  const initialsFontSizeClasses = {
-    sm: 'text-sm',
-    md: 'text-base',
-    lg: 'text-lg'
-  };
-  const spinnerSizeMapping = {
-    sm: 'xs',
-    md: 'sm',
-    lg: 'sm'
-  } as const;
-
-  const sizeClass = sizeClasses[size];
-  const initialsFontSizeClass = initialsFontSizeClasses[size];
-  const currentSpinnerSize = spinnerSizeMapping[size];
+  }, [photoUrl]); // photoUrl is the direct dependency
   
-  const initials = userName?.charAt(0).toUpperCase() || '?';
-  const avatarGenericAlt = t('userAvatarGeneric');
-  const avatarWithNameAlt = userName ? t('userAvatarAlt', { name: userName }) : avatarGenericAlt;
-  const avatarFallbackAriaLabel = userName ? t('userAvatarWithName', { name: userName }) : t('userAvatar');
-
-  // Fallback 1: No photo URL provided at all OR error occurred
-  if (!photoUrl || hasError) {
-    return (
-      <div
-        className={`${sizeClass} rounded-full bg-[var(--color-primary-accent)] flex items-center justify-center text-[var(--color-primary-accent-text)] font-semibold ${initialsFontSizeClass} ${className}`}
-        aria-label={avatarFallbackAriaLabel}
-        role="img" // Indicate it's an image replacement
-      >
-        {initials}
-      </div>
-    );
-  }
-
-  // Attempt to load and display the image
+  const sizeClasses = {
+    xs: 'w-6 h-6 text-[8px]',
+    sm: 'w-8 h-8 text-xs',
+    md: 'w-10 h-10 text-sm',
+    lg: 'w-12 h-12 text-base',
+    xl: 'w-16 h-16 text-lg',
+  };
+  
+  const avatarBaseClasses = `relative rounded-full flex items-center justify-center overflow-hidden`;
+  const avatarClasses = `${avatarBaseClasses} ${sizeClasses[size]} ${className}`;
+  const initials = userName ? userName.charAt(0).toUpperCase() : '?';
+  const altText = userName ? t('userAvatarWithName', { name: userName }) : t('userAvatarGeneric');
+  const spinnerSizeMapping = {
+    xs: 'xs', sm: 'sm', md: 'sm', lg: 'md', xl: 'lg'
+  } as const;
+  
   return (
-    <div className={`${sizeClass} rounded-full bg-[var(--color-bg-surface-2)] flex items-center justify-center text-[var(--color-text-primary)] relative overflow-hidden ${className}`}>
-      {isLoading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-[var(--color-bg-surface-2)]">
-          <LoadingSpinner size={currentSpinnerSize} />
+    <div className={avatarClasses} {...props}>
+      {photoUrl && !imageError && !isLoading && (
+        <img 
+          src={photoUrl} 
+          alt={altText}
+          className={`rounded-full w-full h-full object-cover transition-opacity duration-300 opacity-100`}
+        />
+      )}
+      {isLoading && photoUrl && (
+        <div className="absolute inset-0 flex items-center justify-center bg-[var(--color-bg-surface-2)] dark:bg-[var(--color-bg-surface-2)] rounded-full">
+          <LoadingSpinner size={spinnerSizeMapping[size]} />
         </div>
       )}
-      <img
-        key={photoUrl} 
-        src={photoUrl}
-        alt={avatarWithNameAlt}
-        className={`${sizeClass} rounded-full object-cover transition-opacity duration-300 ${isLoading || hasError ? 'opacity-0' : 'opacity-100'}`}
-        onLoad={handleImageLoad}
-        onError={handleImageError}
-        referrerPolicy="no-referrer"
-      />
+      {(!photoUrl || imageError) && !isLoading && (
+        <div className="w-full h-full rounded-full flex items-center justify-center bg-[var(--color-primary-accent)]/80 text-[var(--color-primary-accent-text)] font-medium">
+          {initials}
+        </div>
+      )}
     </div>
   );
 };
-
 UserAvatar.displayName = "UserAvatar";
+export { UserAvatar };

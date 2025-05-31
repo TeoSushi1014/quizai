@@ -828,3 +828,25 @@ export const NotificationDisplay: React.FC<NotificationDisplayProps> = ({ notifi
   );
 };
 NotificationDisplay.displayName = "NotificationDisplay";
+
+
+interface AlertProps {
+  variant?: 'info' | 'warning' | 'error' | 'success';
+  className?: string;
+  children: ReactNode;
+}
+export const Alert: React.FC<AlertProps> = ({ variant = 'info', className = '', children }) => {
+  const baseStyle = "p-4 rounded-lg border";
+  const variantStyles = {
+    info: "bg-[var(--color-primary-accent)]/10 border-[var(--color-primary-accent)]/30 text-[var(--color-primary-accent)] dark:text-sky-300 dark:border-sky-300/30 dark:bg-sky-500/10",
+    warning: "bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400 dark:border-amber-400/30 dark:bg-amber-500/10",
+    error: "bg-[var(--color-danger-accent)]/10 border-[var(--color-danger-accent)]/30 text-[var(--color-danger-accent)] dark:text-red-400 dark:border-red-400/30 dark:bg-red-500/10",
+    success: "bg-[var(--color-success-accent)]/10 border-[var(--color-success-accent)]/30 text-[var(--color-success-accent)] dark:text-green-400 dark:border-green-400/30 dark:bg-green-500/10",
+  };
+  return (
+    <div role="alert" className={`${baseStyle} ${variantStyles[variant]} ${className}`}>
+      {children}
+    </div>
+  );
+};
+Alert.displayName = "Alert";

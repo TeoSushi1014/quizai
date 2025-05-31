@@ -1,4 +1,6 @@
 
+import { TokenResponse as GoogleTokenResponse } from '@react-oauth/google';
+
 export interface Question {
   id: string;
   questionText: string;
@@ -87,7 +89,7 @@ export interface AppContextType {
   setQuizResult: (result: QuizResult | null) => void;
   
   currentUser: UserProfile | null;
-  login: (user: UserProfile, token?: string) => void; 
+  login: (user: UserProfile, tokenResponse?: GoogleTokenResponse) => void; 
   logout: () => void;
   updateUserProfile: (updatedProfile: Partial<UserProfile>) => Promise<boolean>;
 
@@ -100,4 +102,8 @@ export interface AppContextType {
   setDriveSyncError: (error: string | null) => void; 
   syncState: SyncState; 
   currentSyncActivityMessage: string | null; 
+
+  // Notification functions
+  showSuccessNotification: (message: string, duration?: number, key?: string) => void;
+  showErrorNotification: (message: string, duration?: number, key?: string) => void;
 }

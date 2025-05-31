@@ -51,9 +51,10 @@ const SignInPage: React.FC = () => {
           name: userInfo.name,
           email: userInfo.email,
           imageUrl: userInfo.picture,
+          // accessToken will be set by the login context function from tokenResponse
         };
         logger.info("User info fetched successfully. Calling login context function.", 'SignInPage', { userId: userProfile.id });
-        login(userProfile, tokenResponse.access_token); 
+        login(userProfile, tokenResponse); // Pass the full tokenResponse
       } catch (error) {
         logger.error("Error during token validation or fetching user info.", 'SignInPage', undefined, error as Error);
         handleLoginError(error);
