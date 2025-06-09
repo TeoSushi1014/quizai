@@ -9,11 +9,7 @@
     "preview": "vite preview",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d dist",
-    "deploy:github": "echo 'Use GitHub Actions for deployment. Push to main branch to trigger deployment.'",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage",
-    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0"
+    "deploy:github": "echo 'Use GitHub Actions for deployment. Push to main branch to trigger deployment.'"
   },
   "dependencies": {
     "@google/genai": "^1.0.1",
