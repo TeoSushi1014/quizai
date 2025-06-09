@@ -1,9 +1,46 @@
-
 import { GoogleGenAI, GenerateContentResponse, Part, Content } from "@google/genai";
 import { Question, QuizConfig, Quiz, Language } from "../types";
 import { GEMINI_TEXT_MODEL, GEMINI_MODEL_ID } from "../constants";
 import { logger } from './logService';
 import { getTranslator } from "../i18n"; // Import getTranslator
+
+// Helper function to detect if content appears to be a formatted quiz
+export const isFormattedQuiz = (content: string): boolean => {
+  if (!content || typeof content !== 'string') return false;
+  
+  // Check for common quiz question patterns
+  const questionPatterns = [
+    // Match "Question X:" or "Câu X:" pattern (with or without a space after the number)
+    /(?:Question|Câu)\s*\d+\s*[:)]/i,
+    // Match line starting with number followed by period or parenthesis (e.g., "1. " or "1)")
+    /^\s*\d+\s*[.)]\s*\S+/m,
+    // Match questions inside text with "Question X:" or "Câu X:" pattern
+    /\b(?:Question|Câu)\s*\d+\s*[:)]/i
+  ];
+  
+  // Check for option patterns (A, B, C, D or similar)
+  const optionPatterns = [
+    // Match options with "A." format
+    /[A-D]\s*\.\s*\S+/i,
+    // Match options with "A)" format
+    /[A-D]\s*\)\s*\S+/i,
+    // Check for multiple sequential options (A followed by B, B followed by C, etc.)
+    /[A]\s*[.)].*?[B]\s*[.)]/is,
+    /[B]\s*[.)].*?[C]\s*[.)]/is,
+    /[C]\s*[.)].*?[D]\s*[.)]/is
+  ];
+  
+  // Check if we have at least one question pattern
+  const hasQuestionFormat = questionPatterns.some(pattern => pattern.test(content));
+  
+  // Check if we have sufficient option patterns (need at least 2 option pattern matches)
+  const optionMatches = optionPatterns.filter(pattern => pattern.test(content)).length;
+  const hasOptionFormat = optionMatches >= 2;
+  
+  // Return true if we have both question and option patterns
+  return hasQuestionFormat && hasOptionFormat;
+  return hasQuestionFormat && hasOptionFormat;
+};
 
 let geminiAI: GoogleGenAI | null = null;
 
@@ -136,22 +173,23 @@ const parseJsonFromMarkdown = <T,>(text: string): T | null => {
 const JSON_OUTPUT_SCHEMA_INSTRUCTION = (language: string) => `
 CRITICAL JSON Output Schema (MUST follow strictly):
 {
-  "title": "string (creative and relevant quiz title in ${language || 'English'})",
+  "title": "string (creative and relevant quiz title in ${language || 'English'}, or use original title if preserving a formatted quiz)",
   "questions": [
     {
       "id": "string (unique identifier, e.g., 'q1', 'q2'. Make this reasonably unique.)",
-      "questionText": "string (clear, unambiguous multiple-choice question in ${language || 'English'}. This string MUST be formatted using Markdown, including lists, bolding, and LaTeX for math like $inline_math$ or $$block_math$$ where appropriate. Do not truncate.)",
-      "options": ["string (A JSON array of EXACTLY 4 distinct, plausible option strings in ${language || 'English'}. Each option string MUST be formatted using Markdown. CRITICAL: Each option MUST be a complete, valid JSON string, properly quoted (e.g., \\"Option Text\\"), and NOT TRUNCATED. All string content, including special characters and internal quotes, MUST be correctly escaped (e.g., \\"Option with \\\\\\"quote\\\\\\" inside\\"). Options in the array MUST be separated by commas. ABSOLUTELY NO extraneous text, unquoted characters, or non-JSON content should appear: 1) between the closing quote of one option and the comma, 2) between the comma and the opening quote of the next option, or 3) between the closing quote of the last option and the closing square bracket ']'.)"],
-      "correctAnswer": "string (The exact text of the correct option from the 'options' array. All in ${language || 'English'})",
-      "explanation": "string (Detailed explanation in ${language || 'English'}, formatted using Markdown, ideally 2-4 concise sentences for the core part. Explain correctness and why distractors are wrong. Refer to source content if possible. This field can ALSO include supplementary information as requested by custom user prompts, such as IPA transcriptions, etymologies, or example sentences, integrated naturally with the main explanation. Ensure this string is valid JSON content, formatted with Markdown, and not truncated.)"
+      "questionText": "string (If preserving a formatted quiz: use the EXACT original question text including any numbering like 'Question 1:' or 'Câu 1:'. Otherwise: create a clear, unambiguous multiple-choice question in ${language || 'English'}. This string MUST be formatted using Markdown, including lists, bolding, and LaTeX for math like $inline_math$ or $$block_math$$ where appropriate. Do not truncate.)",
+      "options": ["string (A JSON array of EXACTLY 4 distinct option strings. If preserving a formatted quiz: use the exact original options, preserving their order as A, B, C, D. Each option string MUST be formatted using Markdown. CRITICAL: Each option MUST be a complete, valid JSON string, properly quoted (e.g., \\"Option Text\\"), and NOT TRUNCATED. All string content, including special characters and internal quotes, MUST be correctly escaped (e.g., \\"Option with \\\\\\"quote\\\\\\" inside\\"). Options in the array MUST be separated by commas. ABSOLUTELY NO extraneous text, unquoted characters, or non-JSON content should appear.)",
+      ],
+      "correctAnswer": "string (If preserving a formatted quiz with provided answers: use the exact correct answer from the original. If preserving a quiz without answers: research to find the correct answer. Otherwise for new quizzes: select one option as the correct answer. Must exactly match one of the option strings in the options array.)",
+      "explanation": "string (Detailed explanation in ${language || 'English'}, formatted using Markdown. For preserved formatted quizzes: provide explanation if available in original, otherwise create a brief explanation of why the answer is correct. For new quizzes: ideally 2-4 concise sentences explaining why the answer is correct and why distractors are wrong. Refer to source content if possible. This field can ALSO include supplementary information as requested by custom user prompts. Ensure this string is valid JSON content, formatted with Markdown, and not truncated.)"
     }
   ]
 }
 `;
 
 // Updated system instruction based on user's "roles.ts" and "prompt_builder.ts"
-const buildGeminiSystemInstruction = (config: QuizConfig): string => {
-    const lang = config.language || 'English';
+const buildGeminiSystemInstruction = (_config: QuizConfig): string => {
+    // Using config parameter is optional as it's now handled in buildGeminiPrompt
     return `You are an expert quiz creator for students. Your role is to:
 
 1. Create high-quality multiple choice questions based on the provided content.
@@ -162,6 +200,32 @@ const buildGeminiSystemInstruction = (config: QuizConfig): string => {
    - Exactly 4 answer options (no more, no less)
    - The correct answer clearly identified
    - A detailed explanation that teaches the concept
+   
+5. IMPORTANT ROLE - FORMATTED QUIZ HANDLING: 
+   If the user uploads a properly formatted quiz file, you MUST:
+   - Use that quiz EXACTLY as provided without creating new questions
+   - Keep the exact format, content, and options from the original quiz
+   - Preserve all question numbering and formatting (e.g., "Question 1:" or "Câu 1:")
+   - Preserve all option letters (A, B, C, D) and their exact content
+   - Example: If content has "Câu 1: 1+1=? A. 2 B. 3 C. 4 D. 5", output this exact question and options
+   - If answers are provided (e.g., "Answer: A"), use them
+   - If answers are not provided, research to add the correct answers
+   - Add explanations for each answer if not already included
+
+IMPORTANT ROLE - FORMAT DETECTION:
+If the user provides a properly formatted multiple-choice quiz file, you MUST:
+- Use that quiz exactly as provided without creating new questions
+- Keep the format, content, and options exactly the same
+- For example, if the provided content has questions like:
+  "Question 1: 1+1=?
+   A. 2
+   B. 3
+   C. 4
+   D. 5"
+  You MUST use these exact questions and options in your output
+- If the correct answers are provided, use them
+- If correct answers are not provided, research and provide the correct answers
+- Never create new questions when a properly formatted quiz is detected
 
 FORMAT REQUIREMENTS:
 - Use Markdown formatting for better readability (e.g., **bold**, *italic*, lists).
@@ -243,6 +307,15 @@ const buildGeminiPrompt = (
     prompt += `- EVERY question MUST have EXACTLY 4 multiple choice options (A, B, C, D).\n`;
     prompt += `- Present questions in clear, concise language.\n`;
     prompt += `- Provide detailed explanations for answers that teach the concept.\n\n`;
+    
+    prompt += `FORMATTED QUIZ DETECTION:\n`;
+    prompt += `- CRITICAL INSTRUCTION: If the content contains a properly formatted multiple-choice quiz (like "Question 1: 1+1=? A. 2 B. 3 C. 4 D. 5"), use that quiz EXACTLY as provided.\n`;
+    prompt += `- DO NOT create new questions or modify existing ones if a formatted quiz is detected.\n`;
+    prompt += `- Preserve the exact wording of all questions and options (A, B, C, D).\n`;
+    prompt += `- Keep question numbering and formatting exactly as in the original (e.g., "Question 1:" or "Câu 1:").\n`;
+    prompt += `- If correct answers are provided in the original (e.g., with "Answer: A" or similar), use them.\n`;
+    prompt += `- If correct answers are not provided, research to determine and add the correct answers.\n`;
+    prompt += `- Generate explanations only if they're not already included in the original quiz.\n\n`;
     
     prompt += `MARKDOWN FORMAT:\n`;
     prompt += `- Use ### for conceptual question titles (map to 'questionText' in JSON).\n`;
@@ -335,6 +408,22 @@ export const generateQuizWithGemini = async (
   titleSuggestion?: string
 ): Promise<Omit<Quiz, 'id' | 'createdAt'>> => {
   logger.info("Attempting to generate quiz with Gemini", "GeminiService", { model: GEMINI_TEXT_MODEL, lang: config.language });
+  
+  // Check if the content is a formatted quiz (only for text content)
+  if (typeof content === 'string' && isFormattedQuiz(content)) {
+    // Extract information about the quiz: count questions & options
+    const questionMatches = content.match(/(?:Question|Câu)\s*\d+|^\s*\d+\s*[.)]/gmi) || [];
+    const optionMatches = content.match(/[A-D]\s*[.)]\s*\S+/gi) || [];
+    
+    logger.info("Formatted quiz detected - will preserve exact format", "GeminiService", { 
+      contentPreview: content.substring(0, 100),
+      formattedQuiz: true,
+      questionCount: questionMatches.length,
+      optionCount: optionMatches.length
+    });
+    // We will still use the AI to process the quiz, but with instructions to preserve the format
+  }
+  
   const genAIInstance = initializeGeminiAI(); 
   const { requestContents, sourceContentSnippet, systemInstructionString } = buildGeminiPrompt(content, config, titleSuggestion);
 

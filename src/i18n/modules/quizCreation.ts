@@ -1,4 +1,3 @@
-
 // src/i18n/modules/quizCreation.ts
 export const en = {
   step1Title: "Provide Content",
@@ -141,22 +140,21 @@ export const en = {
 
 export const vi = {
   step1Title: "Cung cấp nội dung",
-  step1UploadOrDrag: "Nhấn để tải lên hoặc kéo thả",
-  step1AcceptedFiles: "PDF, TXT, DOCX, JPG, PNG (TỐI ĐA {maxFileSizeMB}MB)",
+  step1UploadOrDrag: "Nhấp để tải lên hoặc kéo và thả",
+  step1AcceptedFiles: "PDF, TXT, DOCX, JPG, PNG (TỐI ĐA. {maxFileSizeMB}MB)",
   step1Or: "HOẶC",
   step1PasteTextLabel: "Dán văn bản",
-  step1PasteTextPlaceholder: "Dán nội dung văn bản của bạn vào đây...",
+  step1PasteTextPlaceholder: "Dán nội dung văn bản của bạn tại đây...",
   step1UsePastedText: "Sử dụng văn bản đã dán",
   step1ProcessingFile: "Đang xử lý tệp...",
   step1ErrorProcessingFile: "Không thể xử lý tệp.",
   step1ErrorUnsupportedFile: "Loại tệp không được hỗ trợ. Vui lòng tải lên PDF, DOCX, TXT, JPG, hoặc PNG.",
-  step1ErrorUnsupportedFileTypeDynamic: "Loại tệp không được hỗ trợ. Các loại được chấp nhận: {acceptedFileTypes}",
+  step1ErrorUnsupportedFileTypeDynamic: "Loại tệp không được hỗ trợ. Các định dạng được chấp nhận: {acceptedFileTypes}",
   step1ErrorFileTooLarge: "Lỗi: Kích thước tệp tối đa là {maxFileSizeMB}MB.",
-  step1ErrorPasteText: "Vui lòng dán một ít văn bản.",
-  step1MultipleFilesSelected: "Đã chọn {count} tệp",
-  step1RemoveFiles: "Xóa các tệp",
-  step1AcceptedFilesMultiple: "PDF, TXT, DOCX, JPG, PNG (TỐI ĐA {maxFileSizeMB}MB mỗi tệp) - Cho phép nhiều tệp",
-  step1ProcessingProgress: "Đang xử lý tệp {current} / {total}",
+  step1ErrorPasteText: "Vui lòng dán một số văn bản.",
+  step1MultipleFilesSelected: "{count} tệp đã chọn",
+  step1FormattedQuizDetected: "Đã phát hiện quiz đúng định dạng! Hệ thống sẽ giữ nguyên tất cả câu hỏi và lựa chọn như đã cung cấp.",
+  step1PastedFormattedQuizDetected: "Đã phát hiện quiz đúng định dạng trong văn bản dán! Hệ thống sẽ giữ nguyên cấu trúc quiz của bạn.",
   step2Title: "Cấu hình Quiz",
   step2BackButton: "Quay lại Nội dung",
   step2SourceContent: "Nội dung nguồn:",

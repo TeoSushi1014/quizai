@@ -189,11 +189,26 @@ const QuizCreatePage: React.FC = () => {
         }
       }
       
+      const trimmedContent = allTextsCombined.trim();
       setProcessedContents(tempProcessedContents);
-      setCombinedContent(allTextsCombined.trim());
-      setProcessedContentText(allTextsCombined.trim()); // For display in modal and summary
+      setCombinedContent(trimmedContent);
+      setProcessedContentText(trimmedContent); // For display in modal and summary
       
-      logger.info('Files processed successfully.', 'QuizCreatePage', { combinedTextLength: allTextsCombined.trim().length });
+      // Import isFormattedQuiz at the top of the file to use this
+      const isFormatted = await import('../../services/geminiService').then(module => {
+        return module.isFormattedQuiz(trimmedContent);
+      }).catch(() => false);
+      
+      if (isFormatted) {
+        logger.info('Formatted quiz detected in uploaded files.', 'QuizCreatePage');
+        // Show a notification message (not an error)
+        setProcessingError("✅ Quiz format detected! The system will preserve all questions and options exactly as provided.");
+      }
+      
+      logger.info('Files processed successfully.', 'QuizCreatePage', { 
+        combinedTextLength: trimmedContent.length,
+        isFormattedQuiz: isFormatted 
+      });
       setStep(2);
     } catch (err) {
       logger.error("Error processing files:", 'QuizCreatePageFileProcessing', undefined, err as Error);
@@ -205,16 +220,30 @@ const QuizCreatePage: React.FC = () => {
   };
 
 
-  const handlePasteText = () => {
+  const handlePasteText = async () => {
     if (pastedText.trim()) {
-      logger.info('Using pasted text.', 'QuizCreatePage', { textLength: pastedText.trim().length });
+      const trimmedPastedText = pastedText.trim();
+      logger.info('Using pasted text.', 'QuizCreatePage', { textLength: trimmedPastedText.length });
       // Clear file related states
       setUploadedFiles([]); setProcessedContents([]); setCombinedContent(null); setImageBase64(null); setInitialImageExtractedText(null);
       
-      setProcessedContentText(pastedText.trim()); 
-      setQuizTitleSuggestion(t('step2PastedText') + " Quiz"); 
-      setStep(2); 
-      setProcessingError(null);
+      setProcessedContentText(trimmedPastedText);
+      setQuizTitleSuggestion(t('step2PastedText') + " Quiz");
+      
+      // Check if the pasted text is a formatted quiz
+      const isFormatted = await import('../../services/geminiService').then(module => {
+        return module.isFormattedQuiz(trimmedPastedText);
+      }).catch(() => false);
+      
+      if (isFormatted) {
+        logger.info('Formatted quiz detected in pasted text.', 'QuizCreatePage');
+        // Show formatted quiz detected notification (not an error, but as a notification)
+        setProcessingError("✅ Quiz format detected! The system will preserve your quiz exactly as provided.");
+      } else {
+        setProcessingError(null);
+      }
+       
+      setStep(2);
     } else { 
       setProcessingError(t('step1ErrorPasteText'));
       logger.warn('Attempted to use empty pasted text.', 'QuizCreatePage');
@@ -413,7 +442,11 @@ const QuizCreatePage: React.FC = () => {
         <div className="relative flex py-1 items-center"> <div className="flex-grow border-t border-[var(--color-border-default)]"></div> <span className="flex-shrink mx-4 text-[var(--color-text-muted)] text-xs font-medium uppercase tracking-wider">{t('step1Or')}</span> <div className="flex-grow border-t border-[var(--color-border-default)]"></div> </div> 
         <Textarea label={<p className="text-base font-semibold text-[var(--color-text-primary)]">{t('step1PasteTextLabel')}</p>} value={pastedText} onChange={(e) => setPastedText(e.target.value)} placeholder={t('step1PasteTextPlaceholder')} rows={6} className="min-h-[150px] text-sm paste-text-area" /> 
         <Button onClick={handlePasteText} disabled={!pastedText.trim() || isProcessingFiles} fullWidth size="lg" variant="secondary" className="py-3 shadow-lg"> {t('step1UsePastedText')} </Button> 
-        {processingError && !isProcessingFiles && (<div role="alert" className={`p-3.5 bg-red-500/20 border border-red-500/50 rounded-lg text-sm text-red-300 text-center shadow-md animate-fadeIn`}>{processingError}</div>)} 
+        {processingError && !isProcessingFiles && (
+          <div role="alert" className={`p-3.5 ${processingError.startsWith('✅') ? 'bg-green-500/20 border-green-500/50 text-green-300' : 'bg-red-500/20 border-red-500/50 text-red-300'} border rounded-lg text-sm text-center shadow-md animate-fadeIn`}>
+            {processingError}
+          </div>
+        )} 
         </div> </Card> );
       case 2:
         const modelDisplayLabel = (<div className="flex items-center text-sm font-semibold text-[var(--color-text-primary)]"> <img src="https://www.pngall.com/wp-content/uploads/16/Google-Gemini-Logo-Transparent.png" alt={t('step2AIModelLabel')} className="w-5 h-5 mr-2.5" /> {t('step2AIModelLabel')} {isApiKeyMissingForGemini() && (<Tooltip content={t('apiKeyMissingTooltip')} placement="top"> <KeyIcon className="w-4 h-4 text-yellow-400 ml-2.5 cursor-help"/> </Tooltip>)} </div>);
@@ -422,10 +455,38 @@ const QuizCreatePage: React.FC = () => {
         const allDifficultyOptions = [...manualDifficultyOptions, { value: 'AI-Determined', label: t('step2DifficultyAIDetermined') } ];
         const numQuestionsLabelText = useAIMode ? t('step2NumQuestionsLabelAIMode') : t('step2NumQuestionsLabel');
         
+        // Check if content appears to be a formatted quiz
+        const hasFormattedQuizContent = (() => {
+          if (processedContentText && typeof processedContentText === 'string') {
+            try {
+              // Use lazy import to avoid circular dependencies
+              return import('../../services/geminiService').then(module => {
+                return module.isFormattedQuiz(processedContentText);
+              }).catch(() => false);
+            } catch (e) {
+              return Promise.resolve(false);
+            }
+          }
+          return Promise.resolve(false);
+        })();
+        
+        const [isFormattedQuiz, setIsFormattedQuiz] = React.useState(false);
+        
+        React.useEffect(() => {
+          hasFormattedQuizContent.then(result => {
+            setIsFormattedQuiz(result);
+          });
+        }, [hasFormattedQuizContent]);
+        
         let sourceDisplayContent: ReactNode;
         if (uploadedFiles.length > 0) {
             if (uploadedFiles.length === 1) {
-                sourceDisplayContent = imageBase64 ? t('step2Image', {fileName: uploadedFiles[0].name}) : t('step2File', {fileName: uploadedFiles[0].name});
+                sourceDisplayContent = (
+                  <div>
+                    {imageBase64 ? t('step2Image', {fileName: uploadedFiles[0].name}) : t('step2File', {fileName: uploadedFiles[0].name})}
+                    {isFormattedQuiz && <div className="mt-2 text-xs font-medium text-green-500">✅ Quiz format detected! Questions will be preserved exactly as provided.</div>}
+                  </div>
+                );
             } else {
                 sourceDisplayContent = (
                   <>
@@ -434,11 +495,17 @@ const QuizCreatePage: React.FC = () => {
                         {uploadedFiles.slice(0, 5).map((file,idx) => <li key={idx} className="truncate" title={file.name}>{file.name}</li>)}
                         {uploadedFiles.length > 5 && <li>{t('step2AndMoreFiles', {count: uploadedFiles.length - 5})}</li>}
                     </ul>
+                    {isFormattedQuiz && <div className="mt-2 text-xs font-medium text-green-500">✅ Quiz format detected! Questions will be preserved exactly as provided.</div>}
                   </>  
                 );
             }
         } else if (pastedText) {
-            sourceDisplayContent = t('step2PastedText');
+            sourceDisplayContent = (
+              <div>
+                {t('step2PastedText')}
+                {isFormattedQuiz && <div className="mt-2 text-xs font-medium text-green-500">✅ Quiz format detected! Questions will be preserved exactly as provided.</div>}
+              </div>
+            );
         } else {
             sourceDisplayContent = "N/A";
         }
