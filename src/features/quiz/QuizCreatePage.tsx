@@ -76,6 +76,9 @@ const QuizCreatePage: React.FC = () => {
   const [initialImageExtractedText, setInitialImageExtractedText] = useState<string | null>(null); 
   
   const [quizTitleSuggestion, setQuizTitleSuggestion] = useState<string>("");
+  
+  // State for formatted quiz detection - moved to component level to avoid hooks in conditional rendering
+  const [isFormattedQuiz, setIsFormattedQuiz] = useState(false);
   const [customUserPrompt, setCustomUserPrompt] = useState<string>("");
 
   const initialAIMode = true;
@@ -119,6 +122,26 @@ const QuizCreatePage: React.FC = () => {
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [step]);
+  
+  // Effect for formatted quiz detection
+  useEffect(() => {
+    if (processedContentText && typeof processedContentText === 'string') {
+      import('../../services/geminiService').then(module => {
+        const isFormatted = module.isFormattedQuiz(processedContentText);
+        setIsFormattedQuiz(isFormatted);
+        if (isFormatted) {
+          logger.info('Formatted quiz detected in content', 'QuizCreatePage', {
+            contentPreview: processedContentText.substring(0, 100)
+          });
+        }
+      }).catch(error => {
+        logger.error('Error checking for formatted quiz', 'QuizCreatePage', undefined, error as Error);
+        setIsFormattedQuiz(false);
+      });
+    } else {
+      setIsFormattedQuiz(false);
+    }
+  }, [processedContentText]);
 
 
   const isApiKeyMissingForGemini = () => !isGeminiKeyAvailable;
@@ -455,28 +478,7 @@ const QuizCreatePage: React.FC = () => {
         const allDifficultyOptions = [...manualDifficultyOptions, { value: 'AI-Determined', label: t('step2DifficultyAIDetermined') } ];
         const numQuestionsLabelText = useAIMode ? t('step2NumQuestionsLabelAIMode') : t('step2NumQuestionsLabel');
         
-        // Check if content appears to be a formatted quiz
-        const hasFormattedQuizContent = (() => {
-          if (processedContentText && typeof processedContentText === 'string') {
-            try {
-              // Use lazy import to avoid circular dependencies
-              return import('../../services/geminiService').then(module => {
-                return module.isFormattedQuiz(processedContentText);
-              }).catch(() => false);
-            } catch (e) {
-              return Promise.resolve(false);
-            }
-          }
-          return Promise.resolve(false);
-        })();
-        
-        const [isFormattedQuiz, setIsFormattedQuiz] = React.useState(false);
-        
-        React.useEffect(() => {
-          hasFormattedQuizContent.then(result => {
-            setIsFormattedQuiz(result);
-          });
-        }, [hasFormattedQuizContent]);
+        // Note: isFormattedQuiz state is now managed at the component level
         
         let sourceDisplayContent: ReactNode;
         if (uploadedFiles.length > 0) {
