@@ -1,4 +1,5 @@
 {
+  "include": ["src/**/*", "src/custom.d.ts"],
   "compilerOptions": {
     "target": "ES2020",
     "experimentalDecorators": true,
@@ -15,6 +16,7 @@
     "noEmit": true,
     "allowJs": true,
     "jsx": "react-jsx",
+    "typeRoots": ["./node_modules/@types", "./src"],
 
     /* Linting */
     "strict": true,
