@@ -140,34 +140,21 @@ export const QuizCard: React.FC<QuizCardProps> = ({ quiz, onDelete, onEditQuiz, 
   let shareButtonIcon;
   let shareButtonCustomClass = "text-[var(--color-text-secondary)] opacity-80 hover:text-[var(--color-success-accent)] hover:bg-[var(--color-success-accent)]/10 hover:!border-[var(--color-success-accent)]/70";
 
-  // The shareFeedback state might be managed by the ShareModal itself now.
-  // If QuizCard still needs to show feedback based on modal actions, it would need callbacks from the modal.
-  // For simplicity, we assume the modal handles its own feedback, and QuizCard's button just opens it.
-  // If the button itself should change based on modal actions, that requires more complex state management.
-  // For now, keeping the icon logic simple for the button that opens the modal.
-  // The 'sharing', 'copied', 'failed' states are now primarily for the modal's internal UI.
-  // The QuizCard button icon can remain the standard ShareIcon.
-  // However, if the user's plan implies the QuizCard button *itself* shows these states, we need to adjust.
-  // The user's plan says "Thêm case mới vào switch" referring to the QuizCard's share button icon logic.
-  // This implies the QuizCard button should reflect the 'sharing' state perhaps before modal is fully ready.
-  // For this implementation, shareFeedback in QuizCard will reflect the *intent* or modal opening.
-
-  switch (shareFeedback.type) { // This feedback might be less relevant if modal handles it.
-    case 'sharing': // This state might be set when opening modal, before URL is ready.
-      shareButtonIcon = <LoadingSpinner size="sm" className="w-4 h-4 !p-0" textClassName="!hidden" />; // Use LoadingSpinner
+  switch (shareFeedback.type) { 
+    case 'sharing': 
+      shareButtonIcon = <LoadingSpinner size="sm" className="w-4 h-4 !p-0" textClassName="!hidden" />; 
       shareButtonCustomClass = "text-[var(--color-primary-accent)] bg-[var(--color-primary-accent)]/10 !border-[var(--color-primary-accent)]/70 cursor-default";
       break;
-    case 'copied': // Likely handled by modal now
+    case 'copied': 
       shareButtonIcon = <CheckCircleIcon className="w-4 h-4 text-[var(--color-success-accent)]" />;
       shareButtonCustomClass = "text-[var(--color-success-accent)] bg-[var(--color-success-accent)]/10 !border-[var(--color-success-accent)]/70 hover:!border-[var(--color-success-accent)]";
       break;
-    case 'failed': // Likely handled by modal now
+    case 'failed': 
       shareButtonIcon = <XCircleIcon className="w-4 h-4 text-[var(--color-danger-accent)]" />;
       shareButtonCustomClass = "text-[var(--color-danger-accent)] bg-[var(--color-danger-accent)]/10 !border-[var(--color-danger-accent)]/70 hover:!border-[var(--color-danger-accent)]";
       break;
     default: // idle
       shareButtonIcon = <ShareIcon className="w-4 h-4"/>;
-      // Default class is already set
       break;
   }
 
@@ -193,7 +180,7 @@ export const QuizCard: React.FC<QuizCardProps> = ({ quiz, onDelete, onEditQuiz, 
                 className="text-base sm:text-lg font-semibold text-[var(--color-text-primary)] mb-3 group-hover:text-[var(--color-primary-accent)] line-clamp-2 transition-colors var(--duration-fast) var(--ease-ios)"
                 title={quiz.title}
             >
-                <MathText text={quiz.title} />
+                <MathText text={quiz.title} markdownFormatting={true} />
             </h3>
             <div className="mb-3 space-y-2">
                 <div className="text-sm sm:text-xs text-[var(--color-text-secondary)] opacity-90 flex items-center flex-wrap gap-x-3.5 gap-y-2">
@@ -207,7 +194,7 @@ export const QuizCard: React.FC<QuizCardProps> = ({ quiz, onDelete, onEditQuiz, 
                 </div>
                 {quiz.sourceContentSnippet && (
                     <p className="text-sm sm:text-xs text-[var(--color-text-secondary)] opacity-90 italic line-clamp-1" title={quiz.sourceContentSnippet}>
-                       {t('dashboardQuizCardSource', { snippet: '' })}<MathText text={quiz.sourceContentSnippet} />
+                       {t('dashboardQuizCardSource', { snippet: '' })}<MathText text={quiz.sourceContentSnippet} markdownFormatting={true} />
                     </p>
                 )}
                  <p className="text-sm sm:text-xs text-[var(--color-text-secondary)] opacity-90 pt-1">{dateLabel}</p>
@@ -304,7 +291,7 @@ export const QuizCard: React.FC<QuizCardProps> = ({ quiz, onDelete, onEditQuiz, 
           }
         >
           <p className="text-[var(--color-text-body)] text-base">
-            {t('confirmDeletionMessage', { quizName: quiz.title })}
+            <MathText text={t('confirmDeletionMessage', { quizName: quiz.title })} markdownFormatting={true}/>
           </p>
         </Modal>
       )}

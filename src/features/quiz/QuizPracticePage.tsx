@@ -4,9 +4,11 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAppContext, useTranslation } from '../../App';
 import { Question, QuizResult, UserAnswer } from '../../types';
 import { Button, Card, ProgressBar, LoadingSpinner, Tooltip, Modal } from '../../components/ui';
-import MathText from '../../components/MathText';
+// MathText is not directly used here anymore if PracticeQuizQuestion handles all markdown
 import { CheckCircleIcon, CircleIcon, ChevronLeftIcon, ChevronRightIcon, XCircleIcon, LightbulbIcon } from '../../constants';
 import { useQuizFlow } from './hooks/useQuizFlow';
+import PracticeQuizQuestion from './components/PracticeQuizQuestion'; 
+import PracticeQuizExplanation from './components/PracticeQuizExplanation'; // Import the new explanation component
 
 interface PracticeAttempt {
   questionId: string;
@@ -27,7 +29,7 @@ const QuizPracticePage: React.FC = () => {
   const [isCurrentSelectionCorrectFeedback, setIsCurrentSelectionCorrectFeedback] = useState<boolean | null>(null);
   const [practiceAttempts, setPracticeAttempts] = useState<PracticeAttempt[]>([]);
   const [showTimesUpModalState, setShowTimesUpModalState] = useState(false);
-  const [isFinishingPractice, setIsFinishingPractice] = useState(false);
+  const [isFinishingOrChecking, setIsFinishingOrChecking] = useState(false); 
   const isFinishingPracticeRef = useRef(false);
 
   const handleTimeUp = useCallback(() => {
@@ -49,7 +51,7 @@ const QuizPracticePage: React.FC = () => {
     attemptSettings,
   } = useQuizFlow(quizId, handleTimeUp);
 
-  const explanationIconUrl = "https://img.icons8.com/?size=256&id=eoxMN35Z6JKg&format=png";
+  // const explanationIconUrl = "https://img.icons8.com/?size=256&id=eoxMN35Z6JKg&format=png"; // Moved to PracticeQuizExplanation
 
   useEffect(() => {
     if (shuffledQuestions.length > 0 && practiceAttempts.length === 0) {
@@ -81,13 +83,15 @@ const QuizPracticePage: React.FC = () => {
     setCurrentTentativeSelection(nextTentativeSelection);
     setIsCurrentSelectionChecked(nextIsChecked);
     setIsCurrentSelectionCorrectFeedback(nextCorrectFeedback);
+    setIsFinishingOrChecking(false); // Reset checking state when question changes
 
   }, [currentQuestionIndex, currentQuestion, practiceAttempts]);
 
 
   const triggerFinishPractice = useCallback(() => {
     if (isFinishingPracticeRef.current || !localActiveQuiz) return;
-    isFinishingPracticeRef.current = true; // Set this early
+    isFinishingPracticeRef.current = true; 
+    setIsFinishingOrChecking(true); 
 
     let finalPracticeAttempts = [...practiceAttempts];
 
@@ -103,7 +107,6 @@ const QuizPracticePage: React.FC = () => {
             : pa
         );
     } else if (currentQuestion && !currentTentativeSelection && !isCurrentSelectionChecked) {
-        // If current question has no tentative selection and wasn't checked, ensure its selectedOption is null
         finalPracticeAttempts = finalPracticeAttempts.map(pa =>
             pa.questionId === currentQuestion.id
             ? { ...pa, selectedOption: null, isCorrect: null }
@@ -134,7 +137,7 @@ const QuizPracticePage: React.FC = () => {
     };
     
     setGlobalQuizResult(resultData);
-    setIsFinishingPractice(true);
+    navigate(`/results/${localActiveQuiz.id}`);
   }, [
     localActiveQuiz, 
     practiceAttempts, 
@@ -143,22 +146,19 @@ const QuizPracticePage: React.FC = () => {
     isCurrentSelectionChecked, 
     setGlobalQuizResult, 
     attemptSettings.timeLimit, 
-    timeLeft
+    timeLeft,
+    navigate
   ]);
 
-  useEffect(() => {
-    if (isFinishingPractice && isFinishingPracticeRef.current && localActiveQuiz) {
-      navigate(`/results/${localActiveQuiz.id}`);
-    }
-  }, [isFinishingPractice, localActiveQuiz, navigate]);
 
   const handleSelectOption = (optionText: string) => {
-    if (isCurrentSelectionChecked || isFinishingPracticeRef.current) return;
+    if (isCurrentSelectionChecked || isFinishingPracticeRef.current || isFinishingOrChecking) return;
     setCurrentTentativeSelection(optionText);
   };
 
   const handleCheckAnswer = () => {
-    if (!currentTentativeSelection || !currentQuestion || isFinishingPracticeRef.current) return;
+    if (!currentTentativeSelection || !currentQuestion || isFinishingPracticeRef.current || isFinishingOrChecking) return;
+    setIsFinishingOrChecking(true); // Indicate checking is in progress
 
     const isCorrect = currentTentativeSelection === currentQuestion.correctAnswer;
     setIsCurrentSelectionChecked(true);
@@ -177,40 +177,50 @@ const QuizPracticePage: React.FC = () => {
           : pa
       )
     );
+    // setIsFinishingOrChecking(false) will be handled by useEffect when question changes or if explicitly reset
   };
 
   const handleNextQuestionLogic = useCallback(() => {
-    if (!localActiveQuiz || !currentQuestion || isFinishingPracticeRef.current) return;
+    if (!localActiveQuiz || !currentQuestion || isFinishingPracticeRef.current || isFinishingOrChecking) return;
+    setIsFinishingOrChecking(true);
 
-    // If user made a selection but didn't "Check", store it as a tentative selection before moving.
-    // isCorrect remains null or its previous checked state.
     if (currentTentativeSelection && !isCurrentSelectionChecked) {
       setPracticeAttempts(prev =>
         prev.map(pa =>
           pa.questionId === currentQuestion.id && (pa.selectedOption !== currentTentativeSelection || pa.isCorrect === null)
-            ? { ...pa, selectedOption: currentTentativeSelection, isCorrect: pa.isCorrect, /* don't reset isCorrect if already checked */ attempts: pa.attempts || 0 }
+            ? { ...pa, selectedOption: currentTentativeSelection, isCorrect: pa.isCorrect, attempts: pa.attempts || 0 }
             : pa
         )
       );
     } else if (!currentTentativeSelection && !isCurrentSelectionChecked) {
-       // If user skipped by clicking next without selecting, and it wasn't checked.
        setPracticeAttempts(prev =>
         prev.map(pa =>
           pa.questionId === currentQuestion.id && pa.selectedOption !== null && pa.isCorrect === null
-            ? { ...pa, selectedOption: null } // Clear previous tentative if any, if not checked
+            ? { ...pa, selectedOption: null } 
             : pa
         )
       );
     }
 
-
     if (!goToNextQuestion()) { 
       triggerFinishPractice();
+    } else {
+      // Reset for next question will be handled by useEffect [currentQuestionIndex]
     }
-  }, [localActiveQuiz, currentQuestion, goToNextQuestion, triggerFinishPractice, currentTentativeSelection, isCurrentSelectionChecked]);
+  }, [localActiveQuiz, currentQuestion, goToNextQuestion, triggerFinishPractice, currentTentativeSelection, isCurrentSelectionChecked, isFinishingOrChecking]);
+  
+  const handleSkipQuestionLogic = useCallback(() => { 
+    if (!localActiveQuiz || !currentQuestion || isFinishingPracticeRef.current || isFinishingOrChecking) return;
+    setIsFinishingOrChecking(true);
+    if (!goToNextQuestion()) {
+      triggerFinishPractice();
+    }
+  }, [localActiveQuiz, currentQuestion, goToNextQuestion, triggerFinishPractice, isFinishingOrChecking]);
+
 
   const handlePreviousQuestionLogic = useCallback(() => {
-    if (!currentQuestion || isFinishingPracticeRef.current) return;
+    if (!currentQuestion || isFinishingPracticeRef.current || isFinishingOrChecking) return;
+    setIsFinishingOrChecking(true);
     
     if (currentTentativeSelection && !isCurrentSelectionChecked) {
       setPracticeAttempts(prev =>
@@ -230,15 +240,14 @@ const QuizPracticePage: React.FC = () => {
       );
     }
     goToPreviousQuestion();
-  }, [goToPreviousQuestion, currentTentativeSelection, isCurrentSelectionChecked, currentQuestion]);
+  }, [goToPreviousQuestion, currentTentativeSelection, isCurrentSelectionChecked, currentQuestion, isFinishingOrChecking]);
 
   const handleCloseTimesUpModalAndSubmit = useCallback(() => {
-    // setShowTimesUpModalState(false); // This will be handled by triggerFinishPractice -> setIsFinishingPractice
     triggerFinishPractice();
   }, [triggerFinishPractice]);
 
 
-  if (isFinishingPractice) {
+  if (isFinishingOrChecking && isFinishingPracticeRef.current) { // Show loading only when truly finishing
     return (
       <div className="flex flex-col items-center justify-center p-8 min-h-[400px]">
         <LoadingSpinner text={t('quizPracticeEnding') || "Processing..."} size="lg" />
@@ -251,8 +260,7 @@ const QuizPracticePage: React.FC = () => {
   if (!currentQuestion) {
     if (localActiveQuiz && totalQuestions > 0 && currentQuestionIndex >= totalQuestions) {
         if (!isFinishingPracticeRef.current) {
-            // console.warn("QuizPracticePage: currentQuestion is undefined because index is out of bounds. Initiating finish.");
-            triggerFinishPractice(); // Call it directly
+            triggerFinishPractice(); 
         }
         return (
           <div className="flex flex-col items-center justify-center p-8 min-h-[400px]">
@@ -272,148 +280,87 @@ const QuizPracticePage: React.FC = () => {
     );
   }
 
-  const progressPercent = totalQuestions > 0 ? ((currentQuestionIndex + 1) / totalQuestions) * 100 : 0;
   const isLastQuestion = currentQuestionIndex === totalQuestions - 1;
+  
+  const renderQuizContent = () => {
+    if (!currentQuestion) return null;
+  
+    return (
+      <div className="space-y-4">
+        <PracticeQuizQuestion
+          question={currentQuestion.questionText}
+          options={currentQuestion.options}
+          currentIndex={currentQuestionIndex}
+          totalQuestions={totalQuestions}
+          selectedOption={currentTentativeSelection}
+          onSelectOption={handleSelectOption}
+          onCheckAnswer={handleCheckAnswer}
+          onSkipQuestion={handleSkipQuestionLogic}
+          isSubmitting={isFinishingOrChecking}
+          isAnswerChecked={isCurrentSelectionChecked}
+          isAnswerCorrect={isCurrentSelectionCorrectFeedback}
+          correctAnswer={currentQuestion.correctAnswer}
+        />
+        
+        {isCurrentSelectionChecked && (
+          <PracticeQuizExplanation 
+            explanation={currentQuestion.explanation || t('resultsNoExplanation')} 
+          />
+        )}
+      </div>
+    );
+  };
 
   return (
-    <Card className="max-w-3xl mx-auto shadow-2xl !rounded-2xl animate-page-slide-fade-in" useGlassEffect>
+    <Card className="max-w-2xl mx-auto shadow-2xl !rounded-2xl animate-page-slide-fade-in p-5 sm:p-6" useGlassEffect>
       <div className="mb-6 sm:mb-8">
-        <h1 className="text-2xl sm:text-3xl font-bold text-[var(--color-text-primary)] mb-4 leading-tight tracking-tight line-clamp-2" title={localActiveQuiz.title}>
-          <MathText text={t('quizPracticeTitle', { quizTitle: localActiveQuiz.title })} />
+        <h1 className="text-xl sm:text-2xl font-bold text-[var(--color-text-primary)] mb-3 leading-tight tracking-tight line-clamp-2" title={localActiveQuiz.title}>
+           {t('quizPracticeTitle', { quizTitle: localActiveQuiz.title })}
         </h1>
-        <div className="flex justify-between items-center text-sm text-[var(--color-text-secondary)] mb-5">
-          <span>{t('quizTakingQuestionProgress', {current: currentQuestionIndex + 1, total: totalQuestions})}</span>
+        <div className="flex justify-between items-center text-xs text-[var(--color-text-secondary)] mb-2">
           {timeLeft !== null && <span className={`font-semibold ${timeLeft <= 60 ? 'text-red-400 animate-pulse' : 'text-[var(--color-primary-accent)]'}`}>{t('quizTakingTimeLeft', { time: formatTime(timeLeft) })}</span>}
           {localActiveQuiz.config?.customUserPrompt && (
-            <Tooltip content={<div className="max-w-xs text-left text-xs"><MathText text={localActiveQuiz.config.customUserPrompt}/></div>} placement="bottom-end">
-                <LightbulbIcon className="w-5 h-5 text-yellow-300 cursor-help"/>
+            <Tooltip content={<div className="max-w-xs text-left text-xs"><PracticeQuizExplanation explanation={localActiveQuiz.config.customUserPrompt}/></div>} placement="bottom-end">
+                <LightbulbIcon className="w-4 h-4 text-yellow-300 cursor-help"/>
             </Tooltip>
           )}
         </div>
-        <ProgressBar progress={progressPercent} size="lg" barClassName="bg-gradient-to-r from-purple-500 to-pink-500"/>
       </div>
 
-      <div>
-        <div
-          className={`p-6 sm:p-8 bg-[var(--color-bg-surface-2)]/60 rounded-xl shadow-inner border border-[var(--color-border-default)] min-h-[200px] flex flex-col`}
+      {renderQuizContent()}
+
+      <div className="quiz-navigation-actions mt-6 pt-6 border-t border-[var(--color-border-default)] flex flex-col sm:flex-row sm:justify-between gap-3">
+        <Button
+            variant="secondary"
+            onClick={handlePreviousQuestionLogic}
+            disabled={isFinishingOrChecking || currentQuestionIndex === 0}
+            size="md"
+            leftIcon={<ChevronLeftIcon className="w-4 h-4"/>}
+            className="w-full sm:w-auto"
         >
-          <div key={currentQuestion.id} className="animate-fadeInUp">
-            <h2 className="text-lg sm:text-xl font-semibold text-[var(--color-text-primary)] mb-8 leading-relaxed">
-              <MathText text={currentQuestion.questionText} />
-            </h2>
-
-            <div className="flex-grow">
-              <div className="space-y-4">
-                {currentQuestion.options.map((option, index) => {
-                  const isSelectedForDisplay = currentTentativeSelection === option;
-                  let optionStyle = `bg-[var(--color-bg-surface-3)] hover:bg-[var(--color-bg-surface-3)]/70 border-[var(--color-border-interactive)] hover:border-[var(--color-primary-accent)] text-[var(--color-text-primary)]`;
-                  let icon = <CircleIcon className="w-6 h-6 text-[var(--color-text-muted)] group-hover:text-[var(--color-primary-accent)] transition-colors var(--duration-fast) var(--ease-ios)" strokeWidth={2.5}/>;
-
-                  if (isCurrentSelectionChecked) {
-                    if (isSelectedForDisplay && isCurrentSelectionCorrectFeedback) {
-                      optionStyle = 'bg-green-500/40 border-green-500 text-green-50 font-semibold scale-[1.01]';
-                      icon = <CheckCircleIcon className="w-6 h-6 text-green-50" isFilled={true}/>;
-                    } else if (isSelectedForDisplay && !isCurrentSelectionCorrectFeedback) {
-                      optionStyle = 'bg-red-500/40 border-red-500 text-red-50 font-semibold scale-[1.01]';
-                      icon = <XCircleIcon className="w-6 h-6 text-red-50" />;
-                    } else if (option === currentQuestion.correctAnswer) {
-                       optionStyle = 'bg-green-500/30 border-green-600 text-green-100 opacity-90';
-                       icon = <CheckCircleIcon className="w-6 h-6 text-green-100" isFilled={false}/>;
-                    } else {
-                      optionStyle = 'bg-[var(--color-bg-surface-3)]/50 border-[var(--color-border-default)] text-[var(--color-text-muted)] opacity-70 cursor-not-allowed';
-                      icon = <CircleIcon className="w-6 h-6 text-[var(--color-text-muted)]/70" strokeWidth={2.5}/>;
-                    }
-                  } else if (isSelectedForDisplay) {
-                     optionStyle = 'bg-[var(--color-primary-accent)]/50 border-[var(--color-primary-accent)] text-[var(--color-primary-accent-text)] font-semibold hover:bg-[var(--color-primary-accent)]/60 scale-[1.01]';
-                     icon = <CircleIcon className="w-6 h-6 text-[var(--color-primary-accent-text)]" isFilled={true} strokeWidth={1}/>;
-                  }
-
-                  return (
-                    <button
-                      key={`${option}-${index}`} onClick={() => handleSelectOption(option)}
-                      disabled={isCurrentSelectionChecked || isFinishingPracticeRef.current}
-                      className={`w-full flex items-center text-left p-4 sm:p-4 rounded-xl border-2 focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--color-primary-accent)]/50 focus-visible:ring-offset-2 ${isSelectedForDisplay ? 'focus-visible:ring-offset-[var(--color-bg-surface-1)]' : 'focus-visible:ring-offset-[var(--color-bg-surface-2)]'} shadow-lg
-                                 transition-all var(--duration-fast) var(--ease-ios) will-change-transform, border, background-color
-                                 ${optionStyle}`}
-                      aria-pressed={isSelectedForDisplay}
-                    >
-                      <span className="mr-3.5 flex-shrink-0">{icon}</span>
-                      <span className="text-sm sm:text-base flex-grow">
-                        <MathText text={option} />
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {isCurrentSelectionChecked && (
-          <div className={`my-6 p-5 bg-[var(--color-bg-surface-1)]/40 rounded-xl border border-[var(--color-border-default)] animate-fadeInUp`}>
-            <p className="flex items-start text-base font-semibold text-[var(--color-primary-accent)] mb-2.5">
-              <img src={explanationIconUrl} alt={t('resultsExplanationTitle')} className="w-5 h-5 mr-3 flex-shrink-0 mt-0.5" />
-              {t('resultsExplanationTitle')}
-            </p>
-            <div className="text-[var(--color-text-body)]/90 text-sm leading-relaxed whitespace-pre-wrap break-words">
-              <MathText text={currentQuestion.explanation || t('resultsNoExplanation')} />
-            </div>
-          </div>
-        )}
+        {t('previous')}
+        </Button>
+      
+        <Button
+          variant={isLastQuestion && isCurrentSelectionChecked ? "primary" : "secondary"} // Primary if last question and checked
+          onClick={isCurrentSelectionChecked ? handleNextQuestionLogic : triggerFinishPractice}
+          disabled={isFinishingOrChecking}
+          size="md"
+          rightIcon={<ChevronRightIcon className="w-4 h-4"/>}
+          className="w-full sm:w-auto"
+        >
+          {isCurrentSelectionChecked ? (isLastQuestion ? t('finishPractice') : t('nextQuestion')) : t('finishPractice') /* If not checked, this button becomes finish */}
+        </Button>
       </div>
 
-      <div className="flex flex-col space-y-3 pt-6 border-t border-[var(--color-border-default)] mt-6 sm:mt-8"> 
-        {!isCurrentSelectionChecked ? (
-          <Button onClick={handleCheckAnswer} disabled={!currentTentativeSelection || isFinishingPracticeRef.current} variant="primary" size="lg" leftIcon={<CheckCircleIcon className="w-5 h-5"/>} className="w-full py-3 rounded-xl">
-            {t('checkAnswer')}
-          </Button>
-        ) : (
-          <>
-            {isCurrentSelectionCorrectFeedback === true && <p className={`text-center text-green-400 font-semibold text-lg animate-fadeIn`}>{t('answerCorrect')}</p>}
-            {isCurrentSelectionCorrectFeedback === false && <p className={`text-center text-red-400 font-semibold text-lg animate-fadeIn`}>{t('answerIncorrect')}</p>}
-            <Button
-                onClick={handleNextQuestionLogic}
-                variant="primary"
-                size="lg"
-                rightIcon={<ChevronRightIcon className="w-5 h-5"/>}
-                disabled={isFinishingPracticeRef.current}
-                className={`w-full py-3 rounded-xl ${isCurrentSelectionCorrectFeedback ? 'bg-green-500 hover:bg-green-600' : 'bg-red-500 hover:bg-red-600'}`}
-            >
-              {isLastQuestion ? t('finishPractice') : t('nextQuestion')}
-            </Button>
-          </>
-        )}
-
-        <div className="flex justify-between items-center pt-3">
-            <Button onClick={handlePreviousQuestionLogic} disabled={currentQuestionIndex === 0 || isFinishingPracticeRef.current} variant="outline" size="md" leftIcon={<ChevronLeftIcon className="w-4 h-4"/>} className="py-2.5 px-5 rounded-lg">
-                {t('previous')}
-            </Button>
-            {!isCurrentSelectionChecked && ( 
-              isLastQuestion ? (
-                <Button onClick={triggerFinishPractice} disabled={isFinishingPracticeRef.current} variant="outline" size="md" rightIcon={<ChevronRightIcon className="w-4 h-4"/>} className="py-2.5 px-5 rounded-lg">
-                    {t('finishPractice')}
-                </Button>
-              ) : (
-                <Button onClick={handleNextQuestionLogic} disabled={isFinishingPracticeRef.current} variant="outline" size="md" rightIcon={<ChevronRightIcon className="w-4 h-4"/>} className="py-2.5 px-5 rounded-lg">
-                    {t('skipQuestion')}
-                </Button>
-              )
-            )}
-            {isCurrentSelectionChecked && ( 
-                 <Button onClick={triggerFinishPractice} disabled={isFinishingPracticeRef.current} variant="outline" size="md" className="py-2.5 px-5 rounded-lg">
-                    {t('finishPractice')}
-                </Button>
-            )}
-        </div>
-      </div>
 
       {showTimesUpModalState && (
         <Modal
           isOpen={showTimesUpModalState && !isFinishingPracticeRef.current}
-          onClose={handleCloseTimesUpModalAndSubmit} // Submitting on close
+          onClose={handleCloseTimesUpModalAndSubmit} 
           title={t('timesUp')}
           size="md"
-          hideCloseButton={true} // Prevent closing without submitting
+          hideCloseButton={true} 
           footerContent={
             <div className="flex justify-center">
               <Button variant="primary" onClick={handleCloseTimesUpModalAndSubmit} size="md">

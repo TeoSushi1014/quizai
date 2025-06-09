@@ -1,0 +1,68 @@
+/* Quiz Feedback Animations */
+@keyframes highlight-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(var(--color-feedback-glow), 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(var(--color-feedback-glow), 0); }
+  100% { box-shadow: 0 0 0 0 rgba(var(--color-feedback-glow), 0); }
+}
+
+.correct-answer-pulse {
+  --color-feedback-glow: 34, 197, 94;
+  animation: highlight-pulse 2s ease-in-out;
+}
+
+.incorrect-answer-pulse {
+  --color-feedback-glow: 239, 68, 68;
+  animation: highlight-pulse 2s ease-in-out;
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translate3d(0, -20px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.feedback-banner {
+  animation: fadeInDown 0.4s ease-out;
+}
+
+/* Enhance visibility of correct and incorrect states */
+.answer-option-correct {
+  border-color: #22c55e !important; /* green-500 */
+  background-color: rgba(240, 253, 244, 0.8) !important; /* green-50 with opacity */
+}
+
+.dark .answer-option-correct {
+  background-color: rgba(20, 83, 45, 0.4) !important; /* dark:green-900 with opacity */
+  border-color: #22c55e !important;
+}
+
+.answer-option-incorrect {
+  border-color: #ef4444 !important; /* red-500 */
+  background-color: rgba(254, 242, 242, 0.8) !important; /* red-50 with opacity */
+}
+
+.dark .answer-option-incorrect {
+  background-color: rgba(127, 29, 29, 0.4) !important; /* dark:red-900 with opacity */
+  border-color: #ef4444 !important;
+}
+
+/* Animation for explanation section */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 20px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.animate-fadeInUp {
+  animation: fadeInUp 0.5s ease-out;
+}

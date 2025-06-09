@@ -1,0 +1,35 @@
+/* Special fix for numeric answers to ensure proper vertical alignment */
+
+/* Target specifically numeric-only content for better vertical alignment */
+.markdown-github p:only-child:not(:empty) {
+  display: flex; 
+  align-items: center;
+  min-height: 24px;
+}
+
+/* Ensure the option indicators and option content align correctly */
+.option-indicator,
+button .option-content {
+  display: flex;
+  align-items: center;
+}
+
+/* When options are purely numeric, ensure proper vertical alignment */
+.markdown-content .markdown-github p:only-child {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  height: 100%;
+}
+
+/* Fix for the specific case of short numeric answers to prevent top alignment */
+.option-content .markdown-github {
+  height: 100%;
+  justify-content: center;
+}
+
+/* Prevent multiple lines in option indicators causing misalignment */
+.option-indicator {
+  height: 24px; /* Fixed height to match single line height */
+  line-height: 24px;
+}

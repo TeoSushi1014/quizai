@@ -1,22 +1,19 @@
 
 import { GoogleGenAI, GenerateContentResponse, Part, Content } from "@google/genai";
-import { Question, QuizConfig, Quiz, AIModelType } from "../types";
+import { Question, QuizConfig, Quiz, Language } from "../types";
 import { GEMINI_TEXT_MODEL, GEMINI_MODEL_ID } from "../constants";
 import { logger } from './logService';
+import { getTranslator } from "../i18n"; // Import getTranslator
 
 let geminiAI: GoogleGenAI | null = null;
 
 const initializeGeminiAI = (): GoogleGenAI => {
   if (!geminiAI) {
-    // API_KEY is now sourced directly from process.env.API_KEY.
-    // This environment variable is made available to the client-side bundle via vite.config.ts.
     const apiKeyFromEnv = process.env.API_KEY;
     
     if (typeof apiKeyFromEnv !== 'string' || !apiKeyFromEnv) {
       const errorMessage = "Google Gemini API Key (process.env.API_KEY) not set or not available to the client. Quiz generation may fail.";
       logger.error(errorMessage, "GeminiServiceInit");
-      // Visual alert is in App.tsx based on isGeminiKeyAvailable context value,
-      // which should reflect if process.env.API_KEY was successfully passed.
       throw new Error(errorMessage); 
     }
     logger.info("Gemini AI SDK Initializing with API Key from process.env.API_KEY.", "GeminiServiceInit");
@@ -32,11 +29,22 @@ const parseJsonFromMarkdown = <T,>(text: string): T | null => {
   if (match && match[1]) {
     jsonStr = match[1].trim();
   }
+  // Minimalistic cleaning for common AI artifacts if they are outside quoted strings
+  // This is very basic; more robust cleaning might be needed if issues persist.
   jsonStr = jsonStr.replace(/侬/g, ''); 
   jsonStr = jsonStr.replace(/ܘ/g, ''); 
   jsonStr = jsonStr.replace(/对着/g, ''); 
+  
+  // Attempt to fix a very specific pattern of broken JSON strings due to newlines before closing quotes.
+  // Example: "some text\n", -> "some text",
+  // Example: "some text\n"} -> "some text"}
+  // Example: "some text\n"] -> "some text"]
   jsonStr = jsonStr.replace(/"\s*```\s*([\]\},])/g, '"$1');
   jsonStr = jsonStr.replace(/"\s*```\s*(,"[^"]+")/g, '"$1');
+
+
+  // Attempt to fix newlines within strings that break JSON.
+  // This regex looks for a quoted string followed by a newline and then more unquoted text that seems like it should be part of the string.
   try {
     const patternString = "(\"[^\"\\\\]*(?:\\\\.[^\"\\\\]*)*\")\\s*\\n\\s*([a-zA-Z_][a-zA-Z0-9_]*(?:\\s+[a-zA-Z_][a-zA-Z0-9_]*)*\\s*)\"";
     const brokenStringRegex = new RegExp(patternString, "g");
@@ -44,12 +52,19 @@ const parseJsonFromMarkdown = <T,>(text: string): T | null => {
   } catch(e) {
     logger.warn("Error during string newline fixing regex replacement.", "GeminiServiceParse", undefined, e as Error);
   }
+
+  // Remove trailing commas before closing braces or brackets
   jsonStr = jsonStr.replace(/,\s*([\}\]])/g, '$1');
+
+  // Attempt to fix bad escapes (backslash not followed by a valid escape char)
   try {
+    // This regex looks for a backslash NOT followed by a known escape character or unicode/hex escape.
+    // If found, it doubles the backslash. This is risky and might need refinement.
     jsonStr = jsonStr.replace(/\\(?![bfnrtv"\\/]|u[0-9a-fA-F]{4}|x[0-9a-fA-F]{2})/g, '\\\\');
   } catch (e) {
     logger.warn("Error during bad escape fixing regex replacement.", "GeminiServiceParse", undefined, e as Error);
   }
+
 
   try {
     return JSON.parse(jsonStr) as T;
@@ -61,55 +76,135 @@ const parseJsonFromMarkdown = <T,>(text: string): T | null => {
         originalTextPreview: text.substring(0,200) 
       }, e
     );
-    // Fallback parsing
+    // Fallback: try to find the start and end of the main JSON structure if surrounded by junk
     const jsonStartBracket = jsonStr.indexOf('[');
     const jsonStartBrace = jsonStr.indexOf('{');
     let actualJsonStart = -1;
-    if (jsonStartBracket !== -1 && (jsonStartBrace === -1 || jsonStartBracket < jsonStartBrace)) actualJsonStart = jsonStartBracket;
-    else if (jsonStartBrace !== -1) actualJsonStart = jsonStartBrace;
+
+    if (jsonStartBracket !== -1 && (jsonStartBrace === -1 || jsonStartBracket < jsonStartBrace)) {
+      actualJsonStart = jsonStartBracket;
+    } else if (jsonStartBrace !== -1) {
+      actualJsonStart = jsonStartBrace;
+    }
 
     if (actualJsonStart !== -1) {
         let openBrackets = 0, openBraces = 0, actualJsonEnd = -1, inString = false;
         const startingCharType = jsonStr[actualJsonStart];
         for (let i = actualJsonStart; i < jsonStr.length; i++) {
             const char = jsonStr[i];
-            if (char === '"') { if (i === 0 || jsonStr[i-1] !== '\\' || (jsonStr[i-1] === '\\' && i > 1 && jsonStr[i-2] === '\\')) inString = !inString; }
-            if (inString) continue; 
-            if (char === '{') openBraces++; else if (char === '}') openBraces--;
-            else if (char === '[') openBrackets++; else if (char === ']') openBrackets--;
-            if (startingCharType === '{' && openBraces === 0 && openBrackets === 0 && i >= actualJsonStart) { actualJsonEnd = i; break; }
-            if (startingCharType === '[' && openBrackets === 0 && openBraces === 0 && i >= actualJsonStart) { actualJsonEnd = i; break; }
+            // Basic string state tracking (doesn't handle escaped quotes within strings perfectly but often good enough)
+            if (char === '"') {
+                if (i === 0 || jsonStr[i-1] !== '\\' || (jsonStr[i-1] === '\\' && i > 1 && jsonStr[i-2] === '\\')) { // check for unescaped quote
+                    inString = !inString;
+                }
+            }
+            if (inString) continue; // Skip brace/bracket counting if inside a string
+
+            if (char === '{') openBraces++;
+            else if (char === '}') openBraces--;
+            else if (char === '[') openBrackets++;
+            else if (char === ']') openBrackets--;
+
+            if (startingCharType === '{' && openBraces === 0 && openBrackets === 0 && i >= actualJsonStart) {
+                actualJsonEnd = i;
+                break;
+            }
+            if (startingCharType === '[' && openBrackets === 0 && openBraces === 0 && i >= actualJsonStart) {
+                actualJsonEnd = i;
+                break;
+            }
         }
         if (actualJsonEnd !== -1) {
             try {
                 let potentialJson = jsonStr.substring(actualJsonStart, actualJsonEnd + 1);
-                potentialJson = potentialJson.replace(/,\s*([\}\]])/g, '$1');
+                potentialJson = potentialJson.replace(/,\s*([\}\]])/g, '$1'); // Clean trailing commas again
                 logger.info("Fallback parsing attempting with substring.", "GeminiServiceParse", { substringPreview: potentialJson.substring(0,200) });
                 return JSON.parse(potentialJson) as T;
             } catch (e2: any) {
                 logger.error("Fallback JSON.parse also failed (Gemini).", "GeminiServiceParse", { errorMsg: e2.message, substringAttempted: jsonStr.substring(actualJsonStart, actualJsonEnd + 1).substring(0,200) }, e2);
             }
-        } else logger.warn("Fallback parsing: Could not determine a valid JSON substring (Gemini).", "GeminiServiceParse");
-    } else logger.warn("Fallback parsing: No JSON start characters ([ or {) found in the response (Gemini).", "GeminiServiceParse");
+        } else {
+            logger.warn("Fallback parsing: Could not determine a valid JSON substring (Gemini).", "GeminiServiceParse");
+        }
+    } else {
+        logger.warn("Fallback parsing: No JSON start characters ([ or {) found in the response (Gemini).", "GeminiServiceParse");
+    }
     return null;
   }
 };
 
 const JSON_OUTPUT_SCHEMA_INSTRUCTION = (language: string) => `
-        CRITICAL JSON Output Schema (MUST follow strictly):
-        {
-          "title": "string (creative and relevant quiz title in ${language || 'English'})",
-          "questions": [
-            {
-              "id": "string (unique identifier, e.g., 'q1', 'q2'. Make this reasonably unique.)",
-              "questionText": "string (clear, unambiguous multiple-choice question in ${language || 'English'}. Do not truncate.)",
-              "options": ["string (A JSON array of 3-5 distinct, plausible option strings in ${language || 'English'}. CRITICAL: Each option MUST be a complete, valid JSON string, properly quoted (e.g., \\"Option Text\\"), and NOT TRUNCATED. All string content, including special characters and internal quotes, MUST be correctly escaped (e.g., \\"Option with \\\\\\"quote\\\\\\" inside\\"). Options in the array MUST be separated by commas. ABSOLUTELY NO extraneous text, unquoted characters, or non-JSON content should appear: 1) between the closing quote of one option and the comma, 2) between the comma and the opening quote of the next option, or 3) between the closing quote of the last option and the closing square bracket ']'.)"],
-              "correctAnswer": "string (The exact text of the correct option from the 'options' array. All in ${language || 'English'})",
-              "explanation": "string (Detailed explanation in ${language || 'English'}, ideally 2-4 concise sentences. Explain correctness and why distractors are wrong. Refer to source content if possible. This field can ALSO include supplementary information as requested by custom user prompts, such as IPA transcriptions, etymologies, or example sentences, integrated naturally with the main explanation. Ensure this string is valid JSON content and not truncated.)"
-            }
-          ]
-        }
+CRITICAL JSON Output Schema (MUST follow strictly):
+{
+  "title": "string (creative and relevant quiz title in ${language || 'English'})",
+  "questions": [
+    {
+      "id": "string (unique identifier, e.g., 'q1', 'q2'. Make this reasonably unique.)",
+      "questionText": "string (clear, unambiguous multiple-choice question in ${language || 'English'}. This string MUST be formatted using Markdown, including lists, bolding, and LaTeX for math like $inline_math$ or $$block_math$$ where appropriate. Do not truncate.)",
+      "options": ["string (A JSON array of EXACTLY 4 distinct, plausible option strings in ${language || 'English'}. Each option string MUST be formatted using Markdown. CRITICAL: Each option MUST be a complete, valid JSON string, properly quoted (e.g., \\"Option Text\\"), and NOT TRUNCATED. All string content, including special characters and internal quotes, MUST be correctly escaped (e.g., \\"Option with \\\\\\"quote\\\\\\" inside\\"). Options in the array MUST be separated by commas. ABSOLUTELY NO extraneous text, unquoted characters, or non-JSON content should appear: 1) between the closing quote of one option and the comma, 2) between the comma and the opening quote of the next option, or 3) between the closing quote of the last option and the closing square bracket ']'.)"],
+      "correctAnswer": "string (The exact text of the correct option from the 'options' array. All in ${language || 'English'})",
+      "explanation": "string (Detailed explanation in ${language || 'English'}, formatted using Markdown, ideally 2-4 concise sentences for the core part. Explain correctness and why distractors are wrong. Refer to source content if possible. This field can ALSO include supplementary information as requested by custom user prompts, such as IPA transcriptions, etymologies, or example sentences, integrated naturally with the main explanation. Ensure this string is valid JSON content, formatted with Markdown, and not truncated.)"
+    }
+  ]
+}
 `;
+
+// Updated system instruction based on user's "roles.ts" and "prompt_builder.ts"
+const buildGeminiSystemInstruction = (config: QuizConfig): string => {
+    const lang = config.language || 'English';
+    return `You are an expert quiz creator for students. Your role is to:
+
+1. Create high-quality multiple choice questions based on the provided content.
+2. Each question MUST have EXACTLY 4 multiple-choice options (A, B, C, D).
+3. Format all content using Markdown syntax for better readability.
+4. For each question, provide:
+   - A clear question text formatted with proper Markdown
+   - Exactly 4 answer options (no more, no less)
+   - The correct answer clearly identified
+   - A detailed explanation that teaches the concept
+
+FORMAT REQUIREMENTS:
+- Use Markdown formatting for better readability (e.g., **bold**, *italic*, lists).
+- Use **bold text** for emphasis.
+- Use bullet lists for organizing information.
+- Use > blockquotes for important notes.
+- For math formulas, use proper LaTeX syntax with $...$ for inline and $$...$$ for block equations.
+- NUMBER each question clearly (this is for conceptual structure; the JSON output will have question objects in an array).
+
+EXPECTED OUTPUT FORMAT (This describes the conceptual structure that your JSON output should represent for each question object within the main JSON):
+### Question {number} (This conceptual title should be mapped to the 'questionText' field in the JSON)
+
+{question text with proper markdown} (This is the content for 'questionText' field)
+
+A. {option A} (These are for the 'options' array in JSON)
+B. {option B}
+C. {option C}
+D. {option D}
+
+Correct Answer: {letter} (The 'correctAnswer' field in JSON should contain the full text of the correct option string, not just the letter)
+
+**Explanation:**
+{detailed explanation using markdown} (This is for the 'explanation' field in JSON)
+
+IMPORTANT REQUIREMENTS FOR JSON:
+- Always create EXACTLY 4 options (A, B, C, D) for each multiple-choice question. These go into the 'options' array.
+- Make sure incorrect options are plausible but clearly incorrect upon analysis.
+- All answers must be mutually exclusive with no ambiguity.
+- Ensure questions test understanding, not just memorization.
+- The entire output MUST be a single, valid JSON object, adhering to the schema specified in the user prompt.
+- All string values (questionText, options, correctAnswer, explanation) must be valid JSON strings, with internal quotes and special characters properly escaped (e.g., "Option with a \\"quote\\""). For LaTeX, backslashes must be doubled (e.g., \\\\sqrt{x}).
+- Do not truncate any JSON strings or the overall JSON structure.
+
+USER CUSTOMIZATION:
+Review the 'USER-PROVIDED INSTRUCTIONS' block in the user prompt.
+IF IT CONTAINS TEXT:
+    - These instructions DEFINE the *content, style, tone, and focus* for quiz elements. They OVERRIDE general guidelines.
+    - Integrate any requested supplementary information (e.g., IPA, etymology) into the 'explanation' field, alongside the core explanation.
+ELSE (if empty or states no custom instructions):
+    - Generate the quiz based on general guidelines and the source content, prioritizing core requirements.
+`;
+};
+
 
 const buildGeminiPrompt = (
     content: string | { base64Data: string; mimeType: string },
@@ -118,105 +213,121 @@ const buildGeminiPrompt = (
 ): { requestContents: Content; sourceContentSnippet: string; systemInstructionString: string } => {
     let sourceContentSnippet = "";
     const parts: Part[] = [];
-    let systemInstructionString = `You are a rigorous educational AI agent whose mission is to generate quizzes that fully and exhaustively reflect the original input content provided by the user (such as a 50-question test file).
+    
+    const systemInstructionString = buildGeminiSystemInstruction(config);
 
-Your task is non-negotiable:
-✅ You must generate a set of quiz questions that matches the scope, depth, and quantity of the original material.
-✅ If the input file has 50 questions or covers 50 topics, your output must match or exceed that number — never less.
+    const lang = config.language || 'English';
+    const t = getTranslator(lang === 'Vietnamese' ? 'vi' : 'en');
 
-Absolutely no assumptions are allowed about content reduction, simplification, or condensation.
+    const difficultyDescriptions = {
+      'Easy': t('step2DifficultyEasy'),
+      'Medium': t('step2DifficultyMedium'),
+      'Hard': t('step2DifficultyHard'),
+      'AI-Determined': t('step2DifficultyAIDetermined')
+    };
 
-Before returning your response, perform the following internal steps (not visible to the user):
-1. Parse and extract every distinct question, topic, or learning objective from the input.
-2. Generate a quiz item for each of them — ensuring one-to-one or one-to-many coverage.
-3. Validate each question for alignment with the original content.
-4. Confirm that the total number of output quiz items is not lower than the total input topics/questions.
-5. If you cannot meet the above criteria for any reason, do not respond until all conditions are satisfied.
+    const difficultyDesc = difficultyDescriptions[config.difficulty as keyof typeof difficultyDescriptions] || difficultyDescriptions['AI-Determined'];
+    
+    const numQuestionsText = config.numQuestions > 0 ? config.numQuestions.toString() : t('step2NumQuestionsAIPlaceholder');
 
-This quiz MUST BE MULTIPLE-CHOICE.
-Output format MUST be a single, valid JSON object. No other text or markdown outside this JSON object.
-The quiz, including all titles, questions, options, and explanations, MUST be in ${config.language || 'English'}.
+    const contentGuidance = t('step1PasteTextLabel'); // Generic, actual content comes next
 
-Your behavior regarding quiz content and style MUST BE guided by the user's specific instructions, if provided.
+    let prompt = `You are an expert quiz creator. Your task is to create a high-quality quiz based on the provided content.\n\n`;
+    prompt += `${contentGuidance}\n\n`;
+    prompt += `${t('step2DifficultyLabel')}: ${difficultyDesc}\n`;
+    prompt += `${t('step2NumQuestionsLabel')}: ${numQuestionsText}\n\n`;
+    prompt += `${t('step2LanguageLabel')}: ${lang}\n\n`;
 
-PRIMARY TASK MODIFICATION BASED ON USER INPUT:
-Review the 'USER-PROVIDED INSTRUCTIONS' block located within these System Instructions.
+    prompt += `REQUIREMENTS:\n`;
+    prompt += `- Use Markdown formatting throughout for better readability.\n`;
+    prompt += `- EVERY question MUST have EXACTLY 4 multiple choice options (A, B, C, D).\n`;
+    prompt += `- Present questions in clear, concise language.\n`;
+    prompt += `- Provide detailed explanations for answers that teach the concept.\n\n`;
+    
+    prompt += `MARKDOWN FORMAT:\n`;
+    prompt += `- Use ### for conceptual question titles (map to 'questionText' in JSON).\n`;
+    prompt += `- Use **bold** for emphasis.\n`;
+    prompt += `- Use proper lists for options conceptually (map to 'options' array in JSON).\n`;
+    prompt += `- Format math with $...$ (inline) and $$...$$ (block).\n`;
+    prompt += `- Use blockquotes > for important notes.\n\n`;
 
-IF THE 'USER-PROVIDED INSTRUCTIONS' BLOCK CONTAINS TEXT:
-  - These user instructions define the REQUIRED *content, style, tone, and focus* for all quiz elements (questions, options, explanations).
-  - These instructions take ABSOLUTE PRECEDENCE. They OVERRIDE any conflicting general guidelines or suggestions found elsewhere regarding quiz content and style.
-  - Your main task becomes: meticulously implement these user instructions to shape the quiz.
-  - If user instructions request specific textual additions related to a question (e.g., IPA transcriptions, etymologies, example sentences), you SHOULD integrate these naturally within the 'explanation' field for the relevant question. This is in addition to the core explanation of why the answer is correct and why distractors are wrong. Ensure the primary explanation remains clear and complete.
-  - However, you MUST still strictly adhere to the required JSON output format and structure, and ensure all questions are multiple-choice.
-
-ELSE (if the 'USER-PROVIDED INSTRUCTIONS' block is empty or explicitly states no custom instructions):
-  - Generate the quiz based on the general guidelines and the provided source content, strictly adhering to your core mission and non-negotiable task regarding content coverage and quantity.
-
----
-BEGIN USER-PROVIDED INSTRUCTIONS:
-${config.customUserPrompt && config.customUserPrompt.trim() ? config.customUserPrompt.trim() : "No specific user instructions provided beyond quiz configuration. Default quiz generation guidelines apply, strictly adhering to your core mission and non-negotiable task regarding content coverage and quantity."}
-END USER-PROVIDED INSTRUCTIONS
----
-
-Regardless of custom instructions, always ensure the output JSON format is strictly correct and complete, and all questions are multiple-choice.
-Ensure there is NO extraneous text or characters between JSON properties or after string values before the expected comma or closing brace/bracket.
-Each string value, especially within arrays like 'options', must be a COMPLETE, valid JSON string, properly quoted, and escaped. Pay EXTREME attention to not truncating strings or omitting closing quotes/brackets.
-Every part of the JSON response, especially strings, must be correctly formatted and escaped. Check for and remove any accidental truncation or data leakage between fields.
-Strictly follow JSON formatting, especially for strings, arrays, and preventing truncation. All detailed JSON schema and quality guidelines are provided in the main prompt (the part that includes the source content and specific output requirements).`;
-
-    const quizTitleInstruction = titleSuggestion ? `The quiz title should be relevant to "${titleSuggestion}".` : "Suggest a creative and relevant title for this quiz.";
-    const aiModeInstruction = config.difficulty === 'AI-Determined' ?
-        `Determine the optimal number of multiple-choice questions (aim for ${config.numQuestions > 0 ? config.numQuestions : 'between 5 and 10, but adjust based on content length/complexity'}) and their difficulty levels based on the provided content. Strive for a balanced mix of difficulties if appropriate.` :
-        `The quiz should have exactly ${config.numQuestions} multiple-choice questions. The difficulty for all questions should be ${config.difficulty}. `;
-    const hasCustomPrompt = !!(config.customUserPrompt && config.customUserPrompt.trim());
-    let mainInstructionsPreamble: string;
-    if (hasCustomPrompt) {
-        mainInstructionsPreamble = `
-IMPORTANT: Your primary guide for quiz *content, style, tone, and focus* is the 'USER-PROVIDED INSTRUCTIONS' block found in the System Instructions for this task. You MUST meticulously follow them.
-The instructions below define the REQUIRED *structural and formatting* aspects for the quiz output.
-ALL questions MUST be multiple-choice.
-The quiz, including all titles, questions, options, and explanations, MUST be in ${config.language || 'English'}.
-${quizTitleInstruction}
-${aiModeInstruction}
-`;
+    if (config.customUserPrompt && config.customUserPrompt.trim()) {
+      prompt += `USER-PROVIDED INSTRUCTIONS (OVERRIDE general guidelines if conflicting, otherwise supplement):\n${config.customUserPrompt.trim()}\n\n`;
     } else {
-        mainInstructionsPreamble = `
-General multiple-choice quiz generation guidelines:
-The quiz, including all titles, questions, options, and explanations, MUST be in ${config.language || 'English'}.
-${quizTitleInstruction}
-${aiModeInstruction}
-ALL questions MUST be multiple-choice.
-`;
+      prompt += `USER-PROVIDED INSTRUCTIONS: No specific user instructions provided. Default quiz generation guidelines apply, strictly adhering to core requirements.\n\n`;
     }
-    const mainContentInstructions = `
-        ${mainInstructionsPreamble}
-        ${JSON_OUTPUT_SCHEMA_INSTRUCTION(config.language || 'English')}
-        Key Quality Guidelines (Always Apply for JSON Structure and Validity):
-        1.  Questions: Clear and unambiguous multiple-choice questions. Each question must have 3-5 distinct, plausible options.
-        2.  Options Array: The "options" field MUST be a valid JSON array of strings. Each string option within the 'options' array must be a COMPLETE, valid JSON string, properly quoted, and NOT TRUNCATED. All string content must be correctly escaped (e.g., internal quotes as \\"). Ensure each option is correctly terminated by a quote, followed by a comma (if not the last item) or the closing square bracket (']'). Incomplete or truncated strings, or strings with unescaped internal quotes, will break the JSON. Do NOT leave strings unterminated or malformed. ABSOLUTELY NO unquoted text or non-JSON characters should be inserted between elements of this array, or between the last element and the closing ']'."
-        3.  Explanations: Concise (ideally 2-4 sentences for the core part), comprehensive, explaining correctness and incorrectness for options. If custom instructions request additional information (like IPA), include it here as well. Ensure explanations are valid JSON string content and not truncated.
-        4.  Language: Strictly in ${config.language || 'English'}.
-        5.  Completeness: All required JSON fields must be present for each question.
-        6.  String Integrity: All string values within the JSON must be properly escaped and not contain raw newlines or characters that break JSON. This is especially critical for strings within arrays. Ensure every string is fully formed and terminated. For LaTeX content within string values, a single LaTeX backslash (e.g., in \\sqrt) MUST be represented as a double backslash (e.g., \\\\sqrt) in the JSON string value so that it's a valid JSON string and parses correctly.
-        7.  Strict JSON Adherence: Your entire response must be a single, valid JSON object with no surrounding text or markdown. Ensure no truncation, especially within string values or arrays. There should be no characters between a string value and the following comma or closing brace/bracket. Double-check for any truncated strings or missing closing quotes/brackets, especially if the content is long or contains special characters.
-        8.  Internal Cleanliness: Ensure no non-JSON characters (e.g., stray unicode characters, incomplete markdown markers like \`\`\`) are present *within* the JSON structure itself, particularly not after string values or before closing delimiters like ']' or '}'.
-        9.  Array Element Purity: When constructing JSON arrays (e.g., the "options" array), ensure that only valid JSON elements (typically strings in quotes) are present. DO NOT include any unquoted text, extraneous phrases, or non-JSON data between valid array elements, or between the last valid element and the closing square bracket (']'). For example, an array like \`"options": ["Option A", "Option B" extraneous text here, "Option C"]\` is INVALID. It MUST be \`"options": ["Option A", "Option B", "Option C"]\`. Any text within an array must be part of a properly quoted and comma-separated string element.
-        10. Handling Response Length Limits: It is CRITICAL that the entire JSON response is valid. If the content to be included in a field, especially the 'explanation' field, is very long and risks exceeding response limits, you MUST prioritize JSON validity. This means:
-            a. Shorten the content of the field (e.g., the explanation) to ensure it fits, RATHER THAN truncating the JSON structure itself or a string value mid-way.
-            b. Ensure the shortened content is still a valid, properly quoted JSON string (e.g., "A shorter but complete explanation.").
-            c. Never allow an unterminated string or an incomplete JSON object/array. If you must cut content, do it within the text of a field and ensure that field is still correctly formatted as a JSON string with a closing quote.
-    `;
-    const effectiveMainContentInstructions = mainContentInstructions;
+
+    prompt += `Based on the content below, and all prior instructions, create a quiz. The quiz title suggestion is: "${titleSuggestion || 'AI Suggested Title'}".\n\n`;
+    prompt += `STRICTLY ADHERE to this JSON Output Schema:\n${JSON_OUTPUT_SCHEMA_INSTRUCTION(lang)}\n\n`;
+    prompt += `CONTENT TO PROCESS:\n`;
+
+
     if (typeof content === 'string') {
         sourceContentSnippet = content.substring(0, 500) + (content.length > 500 ? "..." : "");
-        parts.push({ text: `Source Text: """${content}"""\n\nInstructions for multiple-choice quiz generation: """${effectiveMainContentInstructions}"""` });
+        parts.push({ text: `${prompt}"""${content}"""` });
     } else {
         sourceContentSnippet = `Image content (${content.mimeType})`;
-        parts.push({ inlineData: { data: content.base64Data, mimeType: content.mimeType } });
-        parts.push({ text: `Instructions for multiple-choice quiz based on the preceding image: """${effectiveMainContentInstructions}"""` });
+        parts.push({ text: prompt }); // Text prompt first
+        parts.push({ inlineData: { data: content.base64Data, mimeType: content.mimeType } }); // Then image
     }
     return { requestContents: { parts }, sourceContentSnippet, systemInstructionString };
 };
+
+
+const validateAndFixQuestions = (questions: Question[], currentLanguage: Language): Question[] => {
+  const t = getTranslator(currentLanguage);
+  return questions.map((question, qIndex) => {
+    let currentOptions = Array.isArray(question.options) ? [...question.options] : [];
+    let currentCorrectAnswer = question.correctAnswer;
+
+    // Ensure each option is a string
+    currentOptions = currentOptions.map(opt => typeof opt === 'string' ? opt : String(opt));
+    if(typeof currentCorrectAnswer !== 'string') {
+        currentCorrectAnswer = String(currentCorrectAnswer);
+    }
+
+    if (currentOptions.length < 4) {
+      const needed = 4 - currentOptions.length;
+      for (let i = 0; i < needed; i++) {
+        // Ensure unique placeholder options
+        currentOptions.push(t('reviewNewOptionDefault', { index: currentOptions.length + 1 + qIndex*10 }));
+      }
+    } else if (currentOptions.length > 4) {
+      const originalCorrectAnswerText = currentCorrectAnswer;
+      let tempOptions = currentOptions.slice(0, 4);
+      
+      if (!tempOptions.includes(originalCorrectAnswerText)) {
+        // Correct answer was truncated. Add it back, replacing the last option of the truncated list.
+        // Ensure the options are distinct before replacing.
+        const distinctTempOptions = Array.from(new Set(tempOptions.slice(0, 3)));
+        tempOptions = [...distinctTempOptions];
+        while(tempOptions.length < 3) {
+            tempOptions.push(t('reviewNewOptionDefault', { index: tempOptions.length + 1 + qIndex * 10 + 100}));
+        }
+        tempOptions.push(originalCorrectAnswerText); // Add the correct answer as the 4th option
+        if (tempOptions.length > 4) tempOptions = tempOptions.slice(tempOptions.length - 4); // ensure it's 4
+        currentCorrectAnswer = originalCorrectAnswerText;
+      }
+      currentOptions = tempOptions;
+    }
+    
+    // Final check: ensure correctAnswer is one of the options. If not, default to the first.
+    if (!currentOptions.includes(currentCorrectAnswer) && currentOptions.length > 0) {
+        logger.warn(`Correct answer for Q${qIndex+1} ('${currentCorrectAnswer}') was not in the final 4 options. Defaulting to first option.`, "GeminiServiceValidation", { options: currentOptions, originalCorrect: question.correctAnswer });
+        currentCorrectAnswer = currentOptions[0];
+    } else if (currentOptions.length === 0) { // Should not happen due to padding
+        currentCorrectAnswer = t('error'); // Fallback if options array is empty
+        currentOptions = [t('error'), t('error'), t('error'), t('error')]; // Pad to prevent further errors
+    }
+
+    return {
+      ...question,
+      options: currentOptions,
+      correctAnswer: currentCorrectAnswer,
+    };
+  });
+};
+
 
 export const generateQuizWithGemini = async (
   content: string | { base64Data: string; mimeType: string },
@@ -232,8 +343,9 @@ export const generateQuizWithGemini = async (
       model: GEMINI_TEXT_MODEL,
       contents: requestContents,
       config: {
-        responseMimeType: "application/json",
-        systemInstruction: systemInstructionString,
+        responseMimeType: "application/json", // Request JSON output
+        systemInstruction: systemInstructionString, // Provide system instruction
+        // Add other parameters like temperature, topK, topP if needed, but systemInstruction and responseMimeType are key for structured output.
       }
     });
     const textResponse = response.text || '';
@@ -244,24 +356,17 @@ export const generateQuizWithGemini = async (
       logger.error("Failed to parse quiz data or data is incomplete/invalid structure (Gemini).", "GeminiService", { parsedDataPreview: JSON.stringify(parsedQuizData)?.substring(0,200) }); 
       throw new Error("Gemini AI failed to generate quiz in the expected format or returned an empty/invalid quiz. Please check the console for the raw AI response and parsing attempts.");
     }
-    const validatedQuestions = parsedQuizData.questions.map((q, index) => {
+    
+    const currentLanguage = (config.language === 'Vietnamese' ? 'vi' : 'en') as Language;
+    const questionsWithCorrectOptions = validateAndFixQuestions(parsedQuizData.questions, currentLanguage);
+
+    const validatedQuestionsFinal = questionsWithCorrectOptions.map((q, index) => {
         const questionId = q.id || `gq${index + 1}-${Date.now()}`;
-        let options = q.options;
-        if (!Array.isArray(q.options) || q.options.length < 2) {
-            logger.warn(`Question ${questionId} has invalid options, providing defaults.`, "GeminiServiceValidation", { originalOptions: q.options });
-            options = [`Generated Option A for ${questionId}`, `Generated Option B for ${questionId}`, `Generated Option C for ${questionId}`];
-        }
-        let correctAnswer = typeof q.correctAnswer === 'string' ? q.correctAnswer : '';
-        if (!options.includes(correctAnswer) && options.length > 0) {
-            logger.warn(`Correct answer for ${questionId} ('${q.correctAnswer}') not in options. Defaulting to first option.`, "GeminiServiceValidation", { options });
-            correctAnswer = options[0];
-        } else if (options.length === 0) {
-            correctAnswer = "A model answer should be provided here.";
-        }
-        return { ...q, id: questionId, options, correctAnswer, explanation: q.explanation || "No explanation provided by AI. Consider regenerating or editing." };
+        return { ...q, id: questionId, explanation: q.explanation || getTranslator(currentLanguage)('resultsNoExplanation') };
     });
-    logger.info("Successfully generated and validated quiz from Gemini.", "GeminiService", { title: parsedQuizData.title, questionCount: validatedQuestions.length });
-    return { ...parsedQuizData, questions: validatedQuestions, sourceContentSnippet };
+
+    logger.info("Successfully generated and validated quiz from Gemini.", "GeminiService", { title: parsedQuizData.title, questionCount: validatedQuestionsFinal.length });
+    return { ...parsedQuizData, questions: validatedQuestionsFinal, sourceContentSnippet };
   } catch (error) {
     logger.error("Error generating quiz with Gemini", "GeminiService", undefined, error as Error);
     let detailedMessage = `Failed to generate quiz with Gemini. An unexpected error occurred. Please try again later.`;
@@ -295,7 +400,7 @@ export const extractTextFromImageWithGemini = async (
 
   try {
     const response: GenerateContentResponse = await genAIInstance.models.generateContent({
-      model: GEMINI_TEXT_MODEL, // Standard model for text extraction as well
+      model: GEMINI_TEXT_MODEL, // Using the standard text model for multimodal input
       contents: contents,
     });
     const textResponse = response.text || '';
@@ -314,4 +419,3 @@ export const extractTextFromImageWithGemini = async (
     return null; 
   }
 };
-

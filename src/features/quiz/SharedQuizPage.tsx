@@ -119,7 +119,7 @@ const SharedQuizPage: React.FC = () => {
       <div className="border-b border-[var(--color-border-default)] pb-6 mb-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <h1 className="text-2xl sm:text-3xl font-bold text-[var(--color-text-primary)] leading-tight tracking-tight line-clamp-3" title={sharedQuiz.title}>
-            <MathText text={sharedQuiz.title} />
+            <MathText text={sharedQuiz.title} markdownFormatting={true} />
           </h1>
           <Button 
             variant="outline" 
@@ -168,7 +168,7 @@ const SharedQuizPage: React.FC = () => {
               <div key={question.id} className="bg-[var(--color-bg-surface-2)]/60 p-4 sm:p-5 rounded-xl border border-[var(--color-border-default)] shadow-md">
                 <p className="font-medium text-[var(--color-text-primary)] mb-2 text-sm sm:text-base">
                   <span className="text-[var(--color-primary-accent)] mr-2 font-semibold">{index + 1}.</span>
-                  <MathText text={question.questionText} />
+                  <MathText text={question.questionText} markdownFormatting={true} />
                 </p>
                 {index === 2 && sharedQuiz.questions.length > 3 && (
                    <p className="text-xs text-[var(--color-text-muted)] italic text-center mt-3">{t('andMoreQuestions', {count: sharedQuiz.questions.length - 3})}</p>

@@ -1,0 +1,36 @@
+/* Fix for question title and content alignment */
+
+/* Ensure question title and content are properly spaced */
+.question-title {
+  display: flex;
+  flex-direction: column;
+  gap: 4px !important;
+}
+
+/* Fix specific issue with h3 + paragraph layout */
+.markdown-github h3[id^="cu-hi"] {
+  display: none !important;
+  height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Ensure no margin between question number and content */
+.question-number + .question-content {
+  margin-top: 2px !important;
+}
+
+/* Apply specific fix for ResultsPage question items */
+.ml-1.flex-grow.min-w-0 {
+  display: flex;
+  flex-direction: column;
+  gap: 0 !important;
+}
+
+.ml-1.flex-grow.min-w-0 p.text-xs.font-semibold {
+  margin-bottom: 0 !important;
+}
+
+.ml-1.flex-grow.min-w-0 div.text-sm {
+  margin-top: 2px !important;
+}

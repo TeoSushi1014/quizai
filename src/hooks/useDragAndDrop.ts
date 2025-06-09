@@ -3,21 +3,23 @@ import { useState, useRef, useCallback } from 'react';
 import { useTranslation } from '../App'; // Import useTranslation
 
 interface DragDropOptions {
-  onFileAccepted: (file: File) => void;
+  onFilesAccepted: (files: File[]) => void; // Changed to handle multiple files
   onError: (errorMessage: string) => void;
   maxFileSizeMB?: number;
   acceptedFileTypes?: string;
+  multipleFiles?: boolean; // New prop to enable multiple file selection
 }
 
 export const useDragAndDrop = ({
-  onFileAccepted,
+  onFilesAccepted,
   onError,
   maxFileSizeMB = 10,
-  acceptedFileTypes = '.pdf,.txt,.docx,image/*' // Default from user snippet
+  acceptedFileTypes = '.pdf,.txt,.docx,image/*',
+  multipleFiles = false, // Default to single file
 }: DragDropOptions) => {
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { t } = useTranslation(); // Initialize t function
+  const { t } = useTranslation(); 
 
   const validateFile = useCallback((file: File): boolean => {
     if (file.size > maxFileSizeMB * 1024 * 1024) {
@@ -32,20 +34,19 @@ export const useDragAndDrop = ({
     let isValidType = acceptedTypesArray.includes(fileExtension);
     if (!isValidType) {
       isValidType = acceptedTypesArray.some(acceptedType => {
-        if (acceptedType.startsWith('.')) return false; // e.g. ".pdf" - already handled
-        if (acceptedType.endsWith('/*')) return fileMimeType.startsWith(acceptedType.slice(0, -2)); // e.g. "image/*"
-        return fileMimeType === acceptedType; // e.g. "application/pdf"
+        if (acceptedType.startsWith('.')) return false; 
+        if (acceptedType.endsWith('/*')) return fileMimeType.startsWith(acceptedType.slice(0, -2)); 
+        return fileMimeType === acceptedType; 
       });
     }
-
-    // Explicitly allow .docx and .pdf by extension if they were in acceptedFileTypes,
-    // even if a generic MIME type (like application/octet-stream) was provided by the browser.
+    
     if (!isValidType && fileExtension === '.docx' && acceptedFileTypes.toLowerCase().includes('.docx')) {
         isValidType = true;
     }
     if (!isValidType && fileExtension === '.pdf' && acceptedFileTypes.toLowerCase().includes('.pdf')) {
         isValidType = true;
     }
+
 
     if (!isValidType) {
       onError(t('step1ErrorUnsupportedFileTypeDynamic', { acceptedFileTypes: acceptedFileTypes.replace(/\./g, '').toUpperCase() }));
@@ -59,7 +60,7 @@ export const useDragAndDrop = ({
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(true);
-    onError(''); // Clear previous errors on new drag action
+    onError(''); 
   }, [onError]);
 
   const handleDragLeave = useCallback((e: React.DragEvent<HTMLElement>) => {
@@ -70,33 +71,59 @@ export const useDragAndDrop = ({
 
   const handleDragOver = useCallback((e: React.DragEvent<HTMLElement>) => {
     e.preventDefault();
-    e.stopPropagation(); // Necessary to allow drop
+    e.stopPropagation(); 
   }, []);
 
   const handleDrop = useCallback((e: React.DragEvent<HTMLElement>) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
-    onError(''); // Clear previous errors
+    onError(''); 
 
-    const files = e.dataTransfer.files;
-    if (files && files.length > 0) {
-      if (validateFile(files[0])) {
-        onFileAccepted(files[0]);
+    const droppedFiles = Array.from(e.dataTransfer.files);
+    if (droppedFiles.length === 0) return;
+
+    if (multipleFiles) {
+      const validFiles: File[] = [];
+      for (const file of droppedFiles) {
+        if (!validateFile(file)) return; // Stop if any file is invalid
+        validFiles.push(file);
+      }
+      if (validFiles.length > 0) onFilesAccepted(validFiles);
+    } else {
+      if (validateFile(droppedFiles[0])) {
+        onFilesAccepted([droppedFiles[0]]);
       }
     }
-  }, [validateFile, onFileAccepted, onError]);
+  }, [validateFile, onFilesAccepted, onError, multipleFiles]);
 
   const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    onError(''); // Clear previous errors
-    const files = e.target.files;
-    if (files && files.length > 0) {
-      if (validateFile(files[0])) {
-        onFileAccepted(files[0]);
+    onError(''); 
+    const selectedFiles = Array.from(e.target.files || []);
+    if (selectedFiles.length === 0) return;
+
+    if (multipleFiles) {
+      const validFiles: File[] = [];
+      for (const file of selectedFiles) {
+        if (!validateFile(file)) { // Stop if any file is invalid
+          if (fileInputRef.current) fileInputRef.current.value = ''; // Reset input on error
+          return; 
+        }
+        validFiles.push(file);
+      }
+      if (validFiles.length > 0) onFilesAccepted(validFiles);
+    } else {
+      if (validateFile(selectedFiles[0])) {
+        onFilesAccepted([selectedFiles[0]]);
+      } else {
+        if (fileInputRef.current) fileInputRef.current.value = ''; // Reset input on error
       }
     }
-    if (fileInputRef.current) fileInputRef.current.value = ''; // Reset file input
-  }, [validateFile, onFileAccepted, onError]);
+    // Reset file input for all cases if not reset above, to allow re-selection of same file(s)
+    if (e.target.files && e.target.value) { // Only reset if a value was actually set
+        e.target.value = '';
+    }
+  }, [validateFile, onFilesAccepted, onError, multipleFiles]);
 
   return {
     isDragging,

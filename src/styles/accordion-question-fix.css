@@ -1,0 +1,33 @@
+/* Direct fix for question titles in the accordion UI */
+
+/* Fix for the specific HTML structure in the accordion */
+.accordion h3[id^="cu-hi"] + p {
+  margin-top: 0 !important;
+  display: inline !important;
+}
+
+/* Make the question number and text display inline */
+.ml-1.flex-grow.min-w-0 {
+  display: block !important;
+}
+
+/* Hide the separate question number paragraph */
+.ml-1.flex-grow.min-w-0 > p.text-xs.font-semibold + div.text-sm {
+  display: inline-block !important;
+}
+
+/* Replace the <p>Q1.</p> with :before content */
+.ml-1.flex-grow.min-w-0 > p.text-xs.font-semibold {
+  display: none !important;
+}
+
+/* Add spacing to indent question content after the number */
+.ml-1.flex-grow.min-w-0 div.markdown-github > p {
+  text-indent: 0 !important;
+  display: inline !important;
+}
+
+/* Make sure the first paragraph starts on the same line as the question number */
+.ml-1.flex-grow.min-w-0 div.markdown-github > p:first-of-type {
+  display: inline !important;
+}

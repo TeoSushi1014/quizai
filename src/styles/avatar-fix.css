@@ -1,0 +1,72 @@
+/**
+ * Avatar display fixes for Google profile pictures and general avatar styling
+ */
+
+/* Base avatar styling */
+.user-avatar {
+  position: relative;
+  overflow: hidden;
+  background-color: var(--color-bg-surface-2);
+  border: 2px solid var(--color-primary-accent);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Fix image display within avatars */
+.user-avatar img {
+  object-fit: cover;
+  width: 100%;
+  height: 100%;
+  background-color: var(--color-bg-surface-2);
+  transform: translateZ(0); /* Force GPU acceleration */
+  backface-visibility: hidden; /* Prevent flickering */
+  -webkit-backface-visibility: hidden;
+}
+
+/* Specific fixes for Google profile pictures */
+.user-avatar img[src*="googleusercontent.com"] {
+  transform: scale(1.01); /* Prevent edge artifacts */
+  image-rendering: -webkit-optimize-contrast; /* Sharper images on webkit */
+  image-rendering: crisp-edges;
+}
+
+/* Loading state styling */
+.user-avatar .avatar-loading {
+  position: absolute;
+  inset: 0;
+  background-color: var(--color-bg-surface-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@keyframes avatar-pulse {
+  0% { opacity: 0.6; }
+  50% { opacity: 0.9; }
+  100% { opacity: 0.6; }
+}
+
+.avatar-loading {
+  animation: avatar-pulse 1.5s infinite ease-in-out;
+}
+
+/* Better contrast for fallback initials */
+.user-avatar div:not(.avatar-loading) {
+  color: var(--color-primary-accent-text);
+  font-weight: 600;
+  background-color: var(--color-primary-accent);
+}
+
+/* Fix border appearance in various contexts */
+.user-avatar.border,
+.user-avatar.border-2,
+.user-avatar.border-4 {
+  border-color: var(--color-primary-accent) !important;
+}
+
+/* Ensure proper stacking context */
+.user-avatar > * {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}

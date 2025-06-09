@@ -1,12 +1,11 @@
-
+import React from 'react';
 import styled from 'styled-components';
 
-const Card = () => {
+const Card = ({ language = 'CSS', className = '' }) => {
   return (
-    <StyledWrapper>
-      <div className="code-editor">
-        <div className="header">
-          <span className="title">CSS</span>
+    <StyledWrapper className={className}>
+      <div className="code-editor">        <div className="header">
+          <span className="title">{language}</span>
         </div>
         <div className="editor-content">
           <code className="code">
@@ -17,11 +16,11 @@ const Card = () => {
             </p>
             <p className="property">
               <span className="color-2">background-color</span><span>:</span>
-              <span className="color-preview-1" /><span className="color-1">#1d1e22</span>;
+              <span className="color-preview-1"></span><span>#1d1e22</span>;
             </p>
             <p className="property">
               <span className="color-2"> box-shadow</span><span>:</span>
-              <span className="color-1">0px 4px 30px  <span className="color-preview-2" /><span className="color-3">rgba(</span>0, 0, 0, 0.5<span className="color-3">)</span></span>;
+              <span className="color-1">0px 4px 30px  <span className="color-preview-2"></span><span className="color-3">rgba(</span>0, 0, 0, 0.5<span className="color-3">)</span></span>;
             </p>
             <p className="property">
               <span className="color-2">border-radius</span><span>:</span>
@@ -50,7 +49,6 @@ const StyledWrapper = styled.div`
     justify-content: space-between;
     margin: 10px;
   }
-
   .title {
     font-family: Lato, sans-serif;
     font-weight: 900;
@@ -100,9 +98,9 @@ const StyledWrapper = styled.div`
     background-color: #1d1e22;
   }
 
-  .color-preview-2 { /* This was color-preview-1 in the original, corrected to color-preview-2 */
+  .color-preview-2 {
     background-color: rgba(0, 0, 0, 0.5);
   }
 `;
-Card.displayName = "FeatureItemCardStyled"; // Renamed for clarity, was Card
-export default Card; // Exporting Card as default from FeatureItemCard.tsx file
+
+export default Card;

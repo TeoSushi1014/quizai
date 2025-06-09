@@ -1,4 +1,3 @@
-
 // src/i18n/modules/common.ts
 export const en = {
   appName: "QuizAI",
@@ -163,6 +162,14 @@ export const en = {
   sessionExpiredNotification: "Your session has expired. Please sign in again to continue syncing.",
   retryingSync: "Retrying sync ({attempt}/{maxAttempts})...",
   syncErrorsHidden: "Some sync errors were suppressed. Click for details.",
+
+  // Font and Text Size Selectors
+  fontSelector: "Font",
+  textSizeSelector: "Text Size",
+  textSizeSmall: "Small",
+  textSizeMedium: "Medium",
+  textSizeLarge: "Large",
+  textSizeExtraLarge: "Extra Large",
 };
 
 export const vi = {
@@ -329,4 +336,12 @@ export const vi = {
   sessionExpiredNotification: "Phiên của bạn đã hết hạn. Vui lòng đăng nhập lại để tiếp tục đồng bộ.",
   retryingSync: "Đang thử lại đồng bộ ({attempt}/{maxAttempts})...",
   syncErrorsHidden: "Một số lỗi đồng bộ đã được ẩn. Nhấp để xem chi tiết.",
+
+  // Font and Text Size Selectors
+  fontSelector: "Font chữ",
+  textSizeSelector: "Cỡ chữ",
+  textSizeSmall: "Nhỏ",
+  textSizeMedium: "Trung bình",
+  textSizeLarge: "Lớn",
+  textSizeExtraLarge: "Rất lớn",
 };

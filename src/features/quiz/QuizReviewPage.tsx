@@ -376,25 +376,13 @@ const QuizReviewPage: React.FC = () => {
       if (existingQuizIdFromParams) {
         await updateQuiz(updatedQuizData);
       } else {
-        // This case implies deleting a question from a quiz that hasn't been saved yet.
-        // addQuiz would typically be for a brand new quiz. If it's an unsaved quiz being edited,
-        // the 'editableQuiz' in the reducer is the source of truth. The final save will use addQuiz.
-        // For now, the local state update is primary. The main 'Save Quiz' button will handle persistence.
-        // However, to trigger sync, we must call updateQuiz or addQuiz from context.
-        // If it's a new quiz being edited, addQuiz would create it.
-        // If it's an existing quiz, updateQuiz updates it.
-        // Let's assume any quiz being edited to this point has an ID and can be 'updated'.
-        // If not `existingQuizIdFromParams`, it means it's a new quiz from generation.
-        // We still need to save it if any interaction happens that needs persistence.
-        await updateQuiz(updatedQuizData); // Assuming updateQuiz can handle "upsert" or add if not found (or AppContext handles it)
-                                         // More robustly, one might need specific context function `updateEditableQuizInLocalStore`
+        await updateQuiz(updatedQuizData); 
       }
       logger.info("Question deleted and quiz updated", "QuizReviewPage", { quizId: updatedQuizData.id, questionId: confirmDeleteQuestionModal.questionId, remainingQuestions: updatedQuizData.questions.length });
       showSuccess(t('questionDeletedSuccessfully'), 3000);
     } catch (error) {
       logger.error("Error saving quiz after question deletion", "QuizReviewPage", { quizId: updatedQuizData.id, questionId: confirmDeleteQuestionModal.questionId }, error as Error);
       showError(t('reviewErrorSaving'), 5000);
-      // Optionally, revert local state change or re-fetch if save fails critically
       dispatch({ type: 'INIT_QUIZ_DATA', payload: { quiz: editableQuiz, language } }); // Revert to pre-delete state
     }
   };
@@ -466,7 +454,7 @@ const QuizReviewPage: React.FC = () => {
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
                 <h1 className="text-xl sm:text-2xl font-bold text-slate-50 leading-tight truncate tracking-tight flex items-center" title={editableQuiz.title}>
-                     {isEditingExisting ? t('reviewEditQuizTitle') : t('reviewFinalizeQuizTitle')}
+                     <MathText text={isEditingExisting ? t('reviewEditQuizTitle') : t('reviewFinalizeQuizTitle')} markdownFormatting={true} />
                 </h1>
                 <div className="flex flex-wrap justify-center sm:justify-end items-center gap-2.5">
                     {!isEditingExisting && (<Button variant="outline" size="sm" onClick={() => navigate('/create')} leftIcon={<ArrowUturnLeftIcon className="w-4 h-4"/>}> {t('reviewDiscardRegenerateShort')} </Button>)}
@@ -497,7 +485,7 @@ const QuizReviewPage: React.FC = () => {
                         {t('resultsViewSourceSnippet')}
                     </summary>
                     <blockquote className="mt-3 text-xs text-slate-400/80 max-h-24 overflow-y-auto p-3 bg-slate-700/60 border border-slate-600/60 rounded-lg shadow-inner italic">
-                        <MathText text={editableQuiz.sourceContentSnippet} />
+                        <MathText text={editableQuiz.sourceContentSnippet} markdownFormatting={true} />
                     </blockquote>
                 </details>
             )}

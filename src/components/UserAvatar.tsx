@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { UserProfile } from '../types';
 import { useTranslation } from '../App';
 import { LoadingSpinner } from './ui'; // Changed Spinner to LoadingSpinner
@@ -20,6 +20,30 @@ const UserAvatar = ({ user, size = 'md', className = '', ...props }: UserAvatarP
   const photoUrl = user?.imageUrl; // Use imageUrl from UserProfile
   const userName = user?.name;
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  
+  // Process Google profile URLs to ensure high resolution and proper loading
+  const processedPhotoUrl = useMemo(() => {
+    if (!photoUrl) return null;
+    
+    // Handle Google profile pictures specifically
+    if (photoUrl.includes('googleusercontent.com')) {
+      // Start with the base URL
+      let processedUrl = photoUrl;
+      
+      // Remove any existing size parameters
+      processedUrl = processedUrl.replace(/=s\d+(-c)?/, '');
+      
+      // Remove any existing parameters but keep the base URL
+      processedUrl = processedUrl.split('?')[0];
+      
+      // Add our size parameter
+      processedUrl = `${processedUrl}=s256-c`;
+      
+      return processedUrl;
+    }
+    
+    return photoUrl;
+  }, [photoUrl]);
 
   useEffect(() => {
     if (timeoutRef.current) {
@@ -27,21 +51,33 @@ const UserAvatar = ({ user, size = 'md', className = '', ...props }: UserAvatarP
       timeoutRef.current = null;
     }
 
-    if (photoUrl) {
+    if (processedPhotoUrl) {
+      // processedPhotoUrl is already processed in the useMemo hook above
+        
       setImageError(false);
       setIsLoading(true);
       
       const img = new Image();
-      img.src = photoUrl;
+      
+      // Set crossOrigin before setting src to handle CORS properly
+      img.crossOrigin = "anonymous";
+      
+      // For Google photos, we don't need cache busting as it can cause CORS issues
+      if (processedPhotoUrl.includes('googleusercontent.com')) {
+        img.src = processedPhotoUrl;
+      } else {
+        // For other images, we can still use cache busting
+        img.src = `${processedPhotoUrl}${processedPhotoUrl.includes('?') ? '&' : '?'}t=${new Date().getTime()}`;
+      }
       
       img.onload = () => {
         if (timeoutRef.current) clearTimeout(timeoutRef.current);
         setIsLoading(false);
         setImageError(false);
       };
-      img.onerror = () => {
+      img.onerror = (e) => {
         if (timeoutRef.current) clearTimeout(timeoutRef.current);
-        console.error('UserAvatar: Failed to load image from URL:', photoUrl);
+        console.error('UserAvatar: Failed to load image from URL:', processedPhotoUrl || 'unknown', e);
         setIsLoading(false);
         setImageError(true);
       };
@@ -51,7 +87,7 @@ const UserAvatar = ({ user, size = 'md', className = '', ...props }: UserAvatarP
             setIsLoading(false);
             setImageError(false);
         } else if (!img.complete || img.naturalHeight === 0) { // Not loaded or broken
-            console.warn('UserAvatar: Image loading timed out for URL:', photoUrl);
+            console.warn('UserAvatar: Image loading timed out for URL:', processedPhotoUrl || 'unknown');
             setIsLoading(false);
             setImageError(true);
         }
@@ -66,7 +102,7 @@ const UserAvatar = ({ user, size = 'md', className = '', ...props }: UserAvatarP
         clearTimeout(timeoutRef.current);
       }
     };
-  }, [photoUrl]); // photoUrl is the direct dependency
+  }, [processedPhotoUrl]); // Use processedPhotoUrl as dependency since it's memoized
   
   const sizeClasses = {
     xs: 'w-6 h-6 text-[8px]',
@@ -76,7 +112,7 @@ const UserAvatar = ({ user, size = 'md', className = '', ...props }: UserAvatarP
     xl: 'w-16 h-16 text-lg',
   };
   
-  const avatarBaseClasses = `relative rounded-full flex items-center justify-center overflow-hidden`;
+  const avatarBaseClasses = `relative rounded-full flex items-center justify-center overflow-hidden shadow-lg user-avatar`;
   const avatarClasses = `${avatarBaseClasses} ${sizeClasses[size]} ${className}`;
   const initials = userName ? userName.charAt(0).toUpperCase() : '?';
   const altText = userName ? t('userAvatarWithName', { name: userName }) : t('userAvatarGeneric');
@@ -86,11 +122,19 @@ const UserAvatar = ({ user, size = 'md', className = '', ...props }: UserAvatarP
   
   return (
     <div className={avatarClasses} {...props}>
-      {photoUrl && !imageError && !isLoading && (
+      {processedPhotoUrl && !imageError && !isLoading && (
         <img 
-          src={photoUrl} 
+          src={processedPhotoUrl.includes('googleusercontent.com') 
+            ? processedPhotoUrl 
+            : `${processedPhotoUrl}${processedPhotoUrl.includes('?') ? '&' : '?'}t=${new Date().getTime()}`}
           alt={altText}
-          className={`rounded-full w-full h-full object-cover transition-opacity duration-300 opacity-100`}
+          className={`rounded-full w-full h-full object-cover transition-opacity duration-300 opacity-100 bg-[var(--color-bg-surface-2)]`}
+          crossOrigin="anonymous"
+          referrerPolicy="no-referrer"
+          onError={(e) => {
+            console.error('Image load error in render:', e);
+            setImageError(true);
+          }}
         />
       )}
       {isLoading && photoUrl && (

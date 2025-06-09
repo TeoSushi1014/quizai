@@ -1,0 +1,31 @@
+/* Hide unnecessary question links and fix spacing issues */
+
+/* Hide links with #cu-hi pattern */
+a[href^="#cu-hi"] {
+  display: none !important;
+}
+
+/* Hide empty headings with cu-hi IDs that create unwanted space */
+h3[id^="cu-hi"], h2[id^="cu-hi"], h1[id^="cu-hi"] {
+  display: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  height: 0 !important;
+}
+
+/* Fix spacing between question number and question text */
+.ml-1.flex-grow p.text-xs + div {
+  margin-top: 0 !important;
+}
+
+/* Make sure there's no gap in question displays */
+.flex-grow.min-w-0 {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* Target and fix the specific issue with Q1 and question text */
+.markdown-github h3[id^="cu-hi"] + p {
+  margin-top: 0 !important;
+}

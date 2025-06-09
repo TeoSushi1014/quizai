@@ -1,0 +1,311 @@
+
+/* src/styles/markdown.css */
+/* Applied to the root of MathText when markdownFormatting={true} */
+/* Works in conjunction with github-markdown.css imported in index.html */
+
+.markdown-custom-render { /* Custom styles for our react-markdown rendering */
+  font-family: var(--font-primary);
+  line-height: 1.6;
+  word-wrap: break-word;
+  color: var(--color-text-body);
+}
+
+.markdown-custom-render > *:first-child {
+  margin-top: 0 !important;
+}
+
+.markdown-custom-render > *:last-child {
+  margin-bottom: 0 !important;
+}
+
+/* Headings */
+.markdown-custom-render h1,
+.markdown-custom-render h2,
+.markdown-custom-render h3,
+.markdown-custom-render h4,
+.markdown-custom-render h5,
+.markdown-custom-render h6 {
+  margin-top: 1.5em; /* Adjusted from 24px for responsiveness */
+  margin-bottom: 1em; /* Adjusted from 16px */
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--color-text-primary);
+  border-bottom: 1px solid var(--color-border-default);
+  padding-bottom: 0.3em;
+}
+
+.markdown-custom-render h1 { font-size: 2em; } /* ~32px */
+.markdown-custom-render h2 { font-size: 1.5em; } /* ~24px */
+.markdown-custom-render h3 { font-size: 1.25em; } /* ~20px */
+.markdown-custom-render h4 { font-size: 1em; } /* ~16px */
+.markdown-custom-render h5 { font-size: 0.875em; } /* ~14px */
+.markdown-custom-render h6 { font-size: 0.85em; color: var(--color-text-secondary); } /* ~13.6px */
+
+.markdown-custom-render h1 .anchor-link,
+.markdown-custom-render h2 .anchor-link,
+.markdown-custom-render h3 .anchor-link,
+.markdown-custom-render h4 .anchor-link,
+.markdown-custom-render h5 .anchor-link,
+.markdown-custom-render h6 .anchor-link {
+  color: inherit;
+  text-decoration: none;
+}
+.markdown-custom-render h1 .anchor-link:hover,
+.markdown-custom-render h2 .anchor-link:hover,
+.markdown-custom-render h3 .anchor-link:hover,
+.markdown-custom-render h4 .anchor-link:hover,
+.markdown-custom-render h5 .anchor-link:hover,
+.markdown-custom-render h6 .anchor-link:hover {
+  text-decoration: underline;
+}
+
+
+/* Paragraphs */
+.markdown-custom-render p {
+  margin-top: 0;
+  margin-bottom: 1em; /* ~16px */
+}
+
+/* Links */
+.markdown-custom-render a {
+  color: var(--color-primary-accent);
+  text-decoration: none;
+  transition: color var(--duration-fast) var(--ease-ios);
+}
+.markdown-custom-render a:hover {
+  text-decoration: underline;
+  color: var(--color-primary-accent-hover);
+}
+.markdown-custom-render a:not([href]) { /* Links without href (e.g., anchors) */
+  color: inherit;
+  text-decoration: none;
+}
+
+/* Lists */
+.markdown-custom-render ul,
+.markdown-custom-render ol {
+  margin-top: 0;
+  margin-bottom: 1em;
+  padding-left: 2em; /* ~32px from left edge */
+}
+.markdown-custom-render ul ul,
+.markdown-custom-render ul ol,
+.markdown-custom-render ol ol,
+.markdown-custom-render ol ul {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+.markdown-custom-render li {
+  word-wrap: break-all;
+  margin-bottom: 0.25em;
+}
+.markdown-custom-render li > p { /* Paragraphs inside list items */
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+}
+.markdown-custom-render li.task-list-item { /* For GFM task lists */
+  list-style-type: none;
+}
+.markdown-custom-render li.task-list-item input[type="checkbox"] {
+  margin: 0 0.2em 0.25em -1.6em;
+  vertical-align: middle;
+}
+
+/* Blockquotes */
+.markdown-custom-render blockquote {
+  margin: 0 0 1em;
+  padding: 0 1em;
+  color: var(--color-text-secondary);
+  border-left: 0.25em solid var(--color-border-default);
+}
+.markdown-custom-render blockquote > :first-child {
+  margin-top: 0;
+}
+.markdown-custom-render blockquote > :last-child {
+  margin-bottom: 0;
+}
+
+/* Tables */
+.markdown-custom-render .table-wrapper { /* For responsive tables */
+  display: block;
+  width: 100%;
+  overflow-x: auto;
+  margin-bottom: 1em;
+}
+.markdown-custom-render table {
+  width: 100%;
+  border-collapse: collapse;
+  border-spacing: 0;
+  border: 1px solid var(--color-border-default);
+}
+.markdown-custom-render table th,
+.markdown-custom-render table td {
+  padding: 0.5em 0.75em; /* ~8px 12px */
+  border: 1px solid var(--color-border-default);
+  text-align: left;
+}
+.markdown-custom-render table th {
+  font-weight: 600;
+  background-color: var(--color-bg-surface-2);
+}
+.markdown-custom-render table tr:nth-child(2n) { /* Alternating row background */
+  background-color: var(--color-bg-surface-1);
+}
+html.light .markdown-custom-render table tr:nth-child(2n) {
+  background-color: var(--color-bg-surface-2); /* Slightly different for light */
+}
+
+
+/* Horizontal Rule */
+.markdown-custom-render hr {
+  height: 0.25em;
+  padding: 0;
+  margin: 1.5em 0; /* ~24px */
+  background-color: var(--color-border-default);
+  border: 0;
+}
+
+/* Inline Code */
+.markdown-custom-render .inline-code { /* From MathText.tsx */
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.875em; /* Slightly smaller than main text */
+  padding: 0.2em 0.4em;
+  margin: 0 0.1em;
+  border-radius: var(--radius-sm);
+  background-color: var(--color-bg-surface-2);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border-default);
+}
+
+/* Variable Highlight (special inline code from MathText.tsx) */
+.markdown-custom-render .variable-highlight {
+  font-weight: 600;
+  color: var(--color-primary-accent);
+  background: transparent;
+  padding: 0;
+  border: none;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.875em;
+}
+
+
+/* KaTeX specific styling if needed beyond its own CSS */
+.markdown-custom-render .katex-display { /* For block math */
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.5em 0; /* Add some vertical padding */
+}
+
+/* Compact Markdown specific adjustments */
+.compact-markdown p,
+.compact-markdown ul,
+.compact-markdown ol,
+.compact-markdown blockquote,
+.compact-markdown .table-wrapper,
+.compact-markdown hr {
+  margin-bottom: 0.75em;
+}
+.compact-markdown h1, .compact-markdown h2, .compact-markdown h3, 
+.compact-markdown h4, .compact-markdown h5, .compact-markdown h6 {
+  margin-top: 1em;
+  margin-bottom: 0.5em;
+  padding-bottom: 0.2em;
+}
+.compact-markdown h1 { font-size: 1.75em; }
+.compact-markdown h2 { font-size: 1.3em; }
+.compact-markdown h3 { font-size: 1.15em; }
+
+/* Styles for code block elements from CodeBlock.tsx, if not covered by general pre/code */
+.code-block {
+  margin: 1em 0;
+  background-color: var(--color-bg-surface-1); /* Base for code block */
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 1px solid var(--color-border-default);
+  box-shadow: var(--shadow-sm);
+}
+.code-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0.75rem;
+  background-color: var(--color-bg-surface-2);
+  border-bottom: 1px solid var(--color-border-default);
+}
+.code-language {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.75rem; /* ~12px */
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+}
+.copy-button {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--radius-sm);
+  background-color: var(--color-bg-surface-3);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border-interactive);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-ios);
+}
+.copy-button:hover {
+  background-color: var(--color-primary-accent);
+  color: var(--color-primary-accent-text);
+  border-color: var(--color-primary-accent);
+}
+.code-content { /* This is the <pre> tag inside CodeBlock.tsx */
+  margin: 0 !important; /* Override default pre margin if any */
+  padding: 0.75rem !important; /* Override default pre padding */
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.875rem; /* ~14px */
+  overflow-x: auto;
+  line-height: 1.5;
+  color: var(--color-text-body); /* Use body text for code, can be themed more specifically if needed */
+  background-color: transparent !important; /* Ensure pre itself is transparent if CodeBlock div has bg */
+  border: none !important; /* Remove border from pre if CodeBlock div has it */
+}
+.code-content code { /* Code tag inside pre */
+  background-color: transparent !important;
+  padding: 0 !important;
+  border: none !important;
+  font-size: inherit !important;
+  color: inherit !important; /* Inherit color from .code-content */
+}
+
+
+/* Overrides for quiz-question specific markdown content if any */
+/* These classes are from the user's original markdown.css - keep if they are still relevant for specific quiz elements */
+.quiz-markdown { /* Might be used on ResultsPage, PracticePage where MathText is not the root */
+  color: var(--color-text-body);
+  line-height: 1.5;
+}
+
+.quiz-markdown h1, .quiz-markdown h2, .quiz-markdown h3, .quiz-markdown h4, .quiz-markdown h5, .quiz-markdown h6 {
+  color: var(--color-text-primary);
+  margin: 0.75rem 0 0.5rem 0;
+  font-weight: 600;
+}
+.quiz-markdown h1 { font-size: 1.4rem; }
+.quiz-markdown h2 { font-size: 1.25rem; }
+.quiz-markdown h3 { font-size: 1.1rem; }
+.quiz-markdown h4 { font-size: 1rem; }
+.quiz-markdown p { margin: 0.3rem 0 0.6rem; }
+.quiz-markdown ul, .quiz-markdown ol { margin: 0.3rem 0 0.6rem; padding-left: 1.5rem; }
+.quiz-markdown ul { list-style-type: disc; }
+.quiz-markdown ol { list-style-type: decimal; }
+.quiz-markdown li { margin-bottom: 0.25rem; }
+
+.question-content .markdown-custom-render { /* Specifically for question text if wrapped */
+    background-color: var(--color-bg-surface-1); 
+    border-radius: var(--radius-md);
+    padding: 1rem;
+    margin-bottom: 1rem;
+    border: 1px solid var(--color-border-default);
+}
+html.light .question-content .markdown-custom-render {
+    background-color: var(--color-bg-surface-1);
+}
+
+.option-content .markdown-custom-render p {
+    margin: 0 !important; /* Remove paragraph margins within options for tighter layout */
+}

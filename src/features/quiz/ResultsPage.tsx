@@ -1,5 +1,4 @@
 
-
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -7,7 +6,8 @@ import { useAppContext, useTranslation } from '../../App';
 import { Quiz, Question } from '../../types';
 import { Button, Card, Accordion, ProgressBar, LoadingSpinner, Tooltip } from '../../components/ui';
 import MathText from '../../components/MathText';
-import { CheckCircleIcon, XCircleIcon, DocumentTextIcon, ArrowUturnLeftIcon, PlusCircleIcon, HomeIcon } from '../../constants';
+import AccordionQuestionTitle from './components/AccordionQuestionTitle';
+import { XCircleIcon, DocumentTextIcon, ArrowUturnLeftIcon, PlusCircleIcon, HomeIcon } from '../../constants';
 import useShouldReduceMotion from '../../hooks/useShouldReduceMotion';
 
 
@@ -21,17 +21,18 @@ interface QuestionResultItemProps {
   initiallyOpen: boolean;
 }
 
-const questionItemVariants = {
-  hidden: { opacity: 0, y: 20 },
+const questionItemVariantsFactory = (shouldReduceMotion: boolean) => ({ // Renamed
+  hidden: { opacity: shouldReduceMotion ? 1 : 0, y: shouldReduceMotion ? 0 : 20 },
   visible: {
     opacity: 1,
     y: 0,
     transition: {
-      duration: 0.4,
+      duration: shouldReduceMotion ? 0.001 : 0.4,
       ease: [0.25, 0.1, 0.25, 1],
     },
   },
-};
+});
+
 
 const QuestionResultItem: React.FC<QuestionResultItemProps> = ({
   question,
@@ -40,61 +41,77 @@ const QuestionResultItem: React.FC<QuestionResultItemProps> = ({
   index,
   sourceContentSnippet,
   explanationIconUrl,
-  initiallyOpen,
+  initiallyOpen = false, 
 }) => {
   const { t } = useTranslation();
   const shouldReduceMotion = useShouldReduceMotion();
+  const currentQuestionItemVariants = useMemo(() => questionItemVariantsFactory(shouldReduceMotion), [shouldReduceMotion]);
+
 
   return (
     <motion.div
-      variants={questionItemVariants}
-      initial={shouldReduceMotion ? { opacity: 1, y: 0 } : questionItemVariants.hidden}
-      animate={questionItemVariants.visible}
-      transition={{ duration: shouldReduceMotion ? 0.001 : 0.4, ease: [0.25, 0.1, 0.25, 1]}}
+      variants={currentQuestionItemVariants}
     >
       <Accordion
         initiallyOpen={initiallyOpen}
-        containerClassName={`!rounded-xl shadow-lg ${isCorrect ? `!border-green-500/60` : `!border-red-500/60`}`} // Status borders
+        containerClassName={`!rounded-xl shadow-lg ${isCorrect ? `!border-green-500/60` : `!border-red-500/60`}`}
         title={
-          <div className="flex items-center w-full gap-3">
-            <span className="text-xs text-[var(--color-text-muted)] font-semibold">Q{index + 1}.</span>
-            <span className={`flex-grow text-sm sm:text-base ${isCorrect ? 'text-[var(--color-text-secondary)]' : 'text-[var(--color-text-primary)] font-semibold'} min-w-0 break-words`} title={question.questionText}>
-              <MathText text={question.questionText} />
-            </span>
-          </div>
+          <AccordionQuestionTitle
+            question={question}
+            index={index}
+            isCorrect={isCorrect}
+          />
         }
-        titleClassName={`py-3.5 px-4 sm:px-5 rounded-t-xl ${isCorrect ? `hover:!bg-green-400/15` : `hover:!bg-red-400/15`}`} // Themed hover
-        contentClassName={`!bg-[var(--color-bg-surface-2)]/30`} // Themed content bg
+        titleClassName={`py-3.5 px-4 sm:py-4 sm:px-5 rounded-t-xl ${isCorrect ? `hover:!bg-green-400/15` : `hover:!bg-red-400/15`}`}
+        contentClassName={`!bg-[var(--color-bg-surface-2)]/30`}
       >
-        <div className="space-y-4 text-sm sm:text-base">
-          <p className="text-[var(--color-text-secondary)]">
-            <strong className="font-semibold text-[var(--color-text-primary)]">{t('resultsYourAnswer')} </strong>
-            <span className={`${isCorrect ? 'text-green-400 font-medium' : 'text-red-400 font-medium'} break-words`}>
-              <MathText text={userAnswerText || t('resultsNotAnswered')} />
-            </span>
-          </p>
-          {!isCorrect && (
-            <p className="text-[var(--color-text-secondary)]">
-              <strong className="font-semibold text-[var(--color-text-primary)]">{t('resultsCorrectAnswerMC')} </strong>
-              <span className="text-green-400 font-medium break-words">
-                <MathText text={question.correctAnswer} />
-              </span>
-            </p>
-          )}
-          <div className="mt-5 pt-5 border-t border-[var(--color-border-default)]">
+        <div className="space-y-5 text-sm sm:text-base">
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {question.options.map((option, i) => {
+              const isUserAnswer = option === userAnswerText;
+              const isCorrectAnswer = option === question.correctAnswer;
+              let optionStyle = "py-2.5 px-3.5 rounded-lg border text-sm transition-all var(--duration-fast) var(--ease-ios)";
+
+              if (isUserAnswer) {
+                optionStyle += isCorrectAnswer
+                  ? " bg-green-500/20 border-green-500/70 text-green-200 font-semibold ring-2 ring-green-500/50"
+                  : " bg-red-500/20 border-red-500/70 text-red-200 font-semibold ring-2 ring-red-500/50";
+              } else if (isCorrectAnswer) {
+                optionStyle += " bg-green-500/10 border-green-500/40 text-green-300";
+              } else {
+                optionStyle += " bg-[var(--color-bg-surface-2)]/70 border-[var(--color-border-default)] text-[var(--color-text-secondary)] opacity-80";
+              }
+
+              return (
+                <div key={i} className={optionStyle}>
+                  <div className="flex items-center"> {/* Changed from items-start to items-center */}
+                    <span className="font-medium mr-2.5 flex-shrink-0">{String.fromCharCode(65 + i)}.</span>
+                    <div className="flex-grow markdown-content option-content flex items-center">
+                      <MathText text={option} markdownFormatting={true} stripPrefix={true} compact={true} />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="mt-5 border-t border-[var(--color-border-default)]">
             <p className="flex items-start text-base font-semibold text-[var(--color-primary-accent)] mb-2.5">
               <img src={explanationIconUrl} alt={t('resultsExplanationTitle')} className="w-5 h-5 mr-3 flex-shrink-0 mt-0.5" />
               {t('resultsExplanationTitle')}
             </p>
-            <div className="text-[var(--color-text-body)]/90 leading-relaxed whitespace-pre-wrap break-words">
-              <MathText text={question.explanation || t('resultsNoExplanation')} />
+            <div className="text-[var(--color-text-body)]/90 leading-relaxed break-words markdown-content">
+              <MathText text={question.explanation || t('resultsNoExplanation')} markdownFormatting={true} />
             </div>
           </div>
           {sourceContentSnippet && (
             <details className="mt-5 pt-5 border-t border-[var(--color-border-default)]">
-              <summary className="text-xs text-[var(--color-text-muted)] cursor-pointer hover:text-[var(--color-primary-accent)] flex items-center font-semibold group transition-colors var(--duration-fast) var(--ease-ios)"> <DocumentTextIcon className="w-4 h-4 mr-2.5 text-[var(--color-text-muted)] group-hover:text-[var(--color-primary-accent)] transition-colors var(--duration-fast) var(--ease-ios)" strokeWidth={2} /> {t('resultsViewSourceSnippet')} </summary>
-              <blockquote className={`mt-3 text-xs text-[var(--color-text-muted)]/80 max-h-36 overflow-y-auto p-3.5 bg-[var(--color-bg-surface-2)]/60 border border-[var(--color-border-default)] rounded-lg shadow-inner italic`}>
-                <MathText text={sourceContentSnippet} />
+              <summary className="text-xs text-[var(--color-text-muted)] cursor-pointer hover:text-[var(--color-primary-accent)] flex items-center font-semibold group transition-colors var(--duration-fast) var(--ease-ios)">
+                <DocumentTextIcon className="w-4 h-4 mr-2.5 text-[var(--color-text-muted)] group-hover:text-[var(--color-primary-accent)] transition-colors var(--duration-fast) var(--ease-ios)" strokeWidth={2} />
+                {t('resultsViewSourceSnippet')}
+              </summary>
+              <blockquote className={`mt-3 text-xs text-[var(--color-text-muted)]/80 max-h-36 overflow-y-auto p-3.5 bg-[var(--color-bg-surface-2)]/60 border border-[var(--color-border-default)] rounded-lg shadow-inner italic markdown-content`}>
+                <MathText text={sourceContentSnippet} markdownFormatting={true}/>
               </blockquote>
             </details>
           )}
@@ -189,7 +206,7 @@ const ResultsPage: React.FC = () => {
 
     if (quizToDisplay) {
       setCurrentDisplayQuiz(quizToDisplay);
-      setActiveQuiz(quizToDisplay);
+      setActiveQuiz(quizToDisplay); // Set the active quiz in context if needed elsewhere
       setIsLoadingQuizData(false);
     } else {
       console.error(`ResultsPage: Quiz ${quizResult.quizId} not found in fully loaded quizzes list.`);
@@ -283,10 +300,10 @@ const ResultsPage: React.FC = () => {
     >
       <Card className="max-w-4xl mx-auto shadow-2xl !rounded-2xl" useGlassEffect>
         <motion.h1 variants={generalItemVariants} className="text-3xl sm:text-4xl font-bold text-[var(--color-text-primary)] mb-4 text-center leading-tight tracking-tight line-clamp-2" title={currentDisplayQuiz.title}>
-          <MathText text={pageTitle} />
+          <MathText text={pageTitle} markdownFormatting={true} />
         </motion.h1>
         <motion.p variants={generalItemVariants} className="text-base text-[var(--color-text-secondary)] mb-12 text-center">
-            {sourceMode === 'practice' ? t('practiceSummarySubtitle') : t('resultsSubtitle')}
+            <MathText text={sourceMode === 'practice' ? t('practiceSummarySubtitle') : t('resultsSubtitle')} markdownFormatting={true} />
         </motion.p>
 
         <motion.div variants={generalItemVariants}>

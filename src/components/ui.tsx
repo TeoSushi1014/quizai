@@ -1,7 +1,7 @@
 
 import React, { ReactNode, useState, useRef, useEffect, Children, cloneElement, ReactElement, useId } from 'react'; // Added useId
 import ReactDOM from 'react-dom'; 
-import { ChevronDownIcon, UploadIcon as DefaultUploadIcon, InformationCircleIcon, XCircleIcon as CloseIcon, CheckCircleIcon, XCircleIcon as ErrorIcon } from '../constants'; 
+import { ChevronDownIcon, UploadIcon as DefaultUploadIcon, InformationCircleIcon, XCircleIcon as CloseIcon, CheckCircleIcon, XCircleIcon as ErrorIcon, DocumentTextIcon } from '../constants'; // Added DocumentTextIcon
 import { useTranslation } from '../App';
 import { NotificationState } from '../hooks/useNotification'; 
 import { useDragAndDrop } from '../hooks/useDragAndDrop';
@@ -590,11 +590,9 @@ interface ToggleProps {
   checked: boolean;
   onChange: (checked: boolean) => void;
   name?: string;
-  // description?: string; // Removed description as per user's latest code snippet
   size?: 'sm' | 'md' | 'lg';
   disabled?: boolean;
   labelClassName?: string;
-  // descriptionClassName?: string; // Removed
   containerClassName?: string;
   labelPosition?: "left" | "right";
 }
@@ -666,13 +664,14 @@ Toggle.displayName = "Toggle";
 
 
 interface DropzoneProps {
-  onFileUpload: (file: File) => void;
+  onFileUpload: (files: File[]) => void; // Changed to handle multiple files
   acceptedFileTypes?: string;
   maxFileSizeMB?: number;
   label?: ReactNode;
   icon?: ReactNode;
   isLoading?: boolean;
-  currentFile?: File | null;
+  currentFiles?: File[] | null; // Changed to array
+  multipleFiles?: boolean; // New prop
 }
 
 export const Dropzone: React.FC<DropzoneProps> = ({
@@ -682,7 +681,8 @@ export const Dropzone: React.FC<DropzoneProps> = ({
     label,
     icon = <DefaultUploadIcon className="w-10 h-10 sm:w-12 sm:h-12 mb-3 text-[var(--color-text-muted)] group-hover:text-[var(--color-primary-accent)] transition-colors var(--duration-fast) var(--ease-ios)" strokeWidth={1}/>,
     isLoading = false,
-    currentFile = null,
+    currentFiles = null,
+    multipleFiles = false, // Default to single file
 }) => {
   const [error, setError] = useState<string | null>(null);
   const { t } = useTranslation();
@@ -692,15 +692,16 @@ export const Dropzone: React.FC<DropzoneProps> = ({
     fileInputRef,
     handlers,
   } = useDragAndDrop({
-    onFileAccepted: (file) => {
+    onFilesAccepted: (files) => {
       setError(null); 
-      onFileUpload(file);
+      onFileUpload(files);
     },
     onError: (errorMessage) => {
       setError(errorMessage);
     },
     maxFileSizeMB,
     acceptedFileTypes,
+    multipleFiles, // Pass this to the hook
   });
 
 
@@ -718,24 +719,63 @@ export const Dropzone: React.FC<DropzoneProps> = ({
         tabIndex={0}
         onKeyDown={(e) => { if(e.key === 'Enter' || e.key === ' ') fileInputRef.current?.click();}}
       >
-        {isLoading || currentFile ? (
+        {isLoading ? (
             <div className="text-center animate-fadeIn">
                 <LoadingSpinner size="md" className="mb-3.5"/>
-                <p className="text-sm text-[var(--color-text-secondary)] font-semibold">{isLoading ? t('step1ProcessingFile') : t('loading')}</p>
-                {currentFile && <p className="text-xs text-[var(--color-text-muted)] mt-1.5 truncate max-w-[200px] sm:max-w-xs">{currentFile.name}</p>}
+                <p className="text-sm text-[var(--color-text-secondary)] font-semibold">{t('step1ProcessingFile')}</p>
+            </div>
+        ) : currentFiles && currentFiles.length > 0 ? (
+            <div className="text-center animate-fadeIn">
+                <div className="flex items-center justify-center mb-2">
+                    <DocumentTextIcon className="w-8 h-8 text-[var(--color-primary-accent)] mr-2.5" />
+                    <span className="text-sm font-medium text-[var(--color-text-primary)]">
+                      {currentFiles.length === 1 
+                        ? currentFiles[0].name 
+                        : t('step1MultipleFilesSelected', { count: currentFiles.length })}
+                    </span>
+                </div>
+                <Button 
+                    variant="link"
+                    size="xs"
+                    onClick={(e) => {
+                        e.preventDefault(); 
+                        e.stopPropagation(); // Prevent label click
+                        onFileUpload([]); // Clear files by passing empty array
+                         if (fileInputRef.current) fileInputRef.current.value = ''; // Reset input
+                    }} 
+                    className="!text-[var(--color-danger-accent)] hover:!text-[var(--color-danger-accent)]/80 text-xs"
+                >
+                    {t('step1RemoveFiles')}
+                </Button>
             </div>
         ) : (
             <div className="flex flex-col items-center justify-center text-center group-hover:opacity-80 transition-opacity var(--duration-fast) var(--ease-ios)">
-            {icon}
-            <p className="mb-2 text-xs sm:text-sm text-[var(--color-text-secondary)] group-hover:text-[var(--color-text-primary)] transition-colors var(--duration-fast) var(--ease-ios)">
-                <span className="font-semibold text-[var(--color-primary-accent)] group-hover:text-[var(--color-primary-accent-hover)] transition-colors var(--duration-fast) var(--ease-ios)">{t('step1UploadOrDrag').split(' ')[0]}</span> {t('step1UploadOrDrag').substring(t('step1UploadOrDrag').indexOf(' ')+1)}
-            </p>
-            <p className="text-[0.7rem] sm:text-xs text-[var(--color-text-muted)] group-hover:text-[var(--color-text-secondary)] transition-colors var(--duration-fast) var(--ease-ios)">{t('step1AcceptedFiles', {maxFileSizeMB})}</p>
+                {icon}
+                <p className="mb-2 text-xs sm:text-sm text-[var(--color-text-secondary)] group-hover:text-[var(--color-text-primary)] transition-colors var(--duration-fast) var(--ease-ios)">
+                    <span className="font-semibold text-[var(--color-primary-accent)] group-hover:text-[var(--color-primary-accent-hover)] transition-colors var(--duration-fast) var(--ease-ios)">{t('step1UploadOrDrag').split(' ')[0]}</span> {t('step1UploadOrDrag').substring(t('step1UploadOrDrag').indexOf(' ')+1)}
+                </p>
+                <p className="text-[0.7rem] sm:text-xs text-[var(--color-text-muted)] group-hover:text-[var(--color-text-secondary)] transition-colors var(--duration-fast) var(--ease-ios)">
+                    {multipleFiles ? t('step1AcceptedFilesMultiple', {maxFileSizeMB}) : t('step1AcceptedFiles', {maxFileSizeMB})}
+                </p>
             </div>
         )}
-        <input id="file-upload-dropzone" ref={fileInputRef} type="file" className="hidden" onChange={handlers.handleFileChange} accept={acceptedFileTypes} disabled={isLoading || !!currentFile}/>
-        {error && !isLoading && !currentFile && <div role="alert" className={`absolute bottom-3 left-3 right-3 p-2 bg-[var(--color-danger-accent)]/30 border border-[var(--color-danger-accent)]/60 rounded-lg text-xs text-[var(--color-danger-accent)] text-center shadow-md animate-fadeIn`}>{error}</div>}
+        <input id="file-upload-dropzone" ref={fileInputRef} type="file" className="hidden" onChange={handlers.handleFileChange} accept={acceptedFileTypes} disabled={isLoading} multiple={multipleFiles}/>
+        {error && !isLoading && <div role="alert" className={`absolute bottom-3 left-3 right-3 p-2 bg-[var(--color-danger-accent)]/30 border border-[var(--color-danger-accent)]/60 rounded-lg text-xs text-[var(--color-danger-accent)] text-center shadow-md animate-fadeIn`}>{error}</div>}
       </label>
+      {/* Display list of filenames if multiple files are selected */}
+      {multipleFiles && currentFiles && currentFiles.length > 1 && !isLoading && (
+          <div className="mt-3 max-h-24 overflow-y-auto thin-scrollbar-horizontal p-2 bg-[var(--color-bg-surface-1)] rounded-lg border border-[var(--color-border-default)]">
+              <p className="text-xs font-medium text-[var(--color-text-muted)] mb-1.5">{t('step1MultipleFilesSelected', { count: currentFiles.length })}:</p>
+              <ul className="list-none space-y-1">
+                  {currentFiles.map((file, index) => (
+                      <li key={index} className="text-xs text-[var(--color-text-secondary)] flex items-center">
+                          <DocumentTextIcon className="w-3 h-3 mr-1.5 flex-shrink-0 text-[var(--color-text-muted)]" />
+                          <span className="truncate" title={file.name}>{file.name}</span>
+                      </li>
+                  ))}
+              </ul>
+          </div>
+      )}
     </div>
   );
 };

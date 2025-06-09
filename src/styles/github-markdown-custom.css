@@ -1,0 +1,344 @@
+
+/* src/styles/github-markdown-custom.css */
+
+.github-markdown {
+  /* Default (Light Theme) Variables from App's index.html or GitHub defaults */
+  --gh-text-primary: var(--color-text-primary, #24292f);
+  --gh-text-secondary: var(--color-text-secondary, #57606a);
+  --gh-text-tertiary: var(--color-text-tertiary, #6e7781); /* For things like footnote refs */
+  --gh-text-body: var(--color-text-body, #1f2328);
+  --gh-text-code: var(--color-text-code, #1f2328); /* Code text color for light theme */
+  
+  --gh-bg-primary: var(--color-bg-primary, #ffffff); /* Main background of the markdown area */
+  --gh-bg-surface-1: var(--color-bg-surface-1, #ffffff); /* Surface for elements like blockquotes, table rows */
+  --gh-bg-surface-2: var(--color-bg-surface-2, #f6f8fa); /* Surface for elements like code blocks, table headers */
+  --gh-bg-surface-3: var(--color-bg-surface-3, #eaeef2); /* Hover/active states for some elements */
+  
+  --gh-primary-accent: var(--color-primary-accent, #0969da);
+  
+  --gh-border-default: var(--color-border-default, #d0d7de);
+  --gh-border-strong: var(--color-border-strong, #afb8c1); /* For things like focused elements or stronger separators */
+  
+  --gh-success-accent: var(--color-success-accent, #1a7f37); /* GitHub green for success states */
+  --gh-danger-accent: var(--color-danger-accent, #cf222e); /* GitHub red for danger states */
+
+  font-family: var(--font-primary-github-like, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji");
+  line-height: 1.6;
+  word-wrap: break-word;
+  color: var(--gh-text-body);
+  background-color: var(--gh-bg-primary); /* Ensure markdown area has a base background */
+}
+
+/* Dark Theme Overrides using html.dark from app's theme context */
+html.dark .github-markdown {
+  --gh-text-primary: var(--color-text-primary, #c9d1d9);
+  --gh-text-secondary: var(--color-text-secondary, #8b949e);
+  --gh-text-body: var(--color-text-body, #c9d1d9);
+  --gh-text-code: var(--color-text-code, #c9d1d9); /* Code text color for dark theme */
+
+  --gh-bg-primary: var(--color-bg-primary, #0d1117);
+  --gh-bg-surface-1: var(--color-bg-surface-1, #0d1117);
+  --gh-bg-surface-2: var(--color-bg-surface-2, #161b22);
+  --gh-bg-surface-3: var(--color-bg-surface-3, #21262d);
+
+  --gh-primary-accent: var(--color-primary-accent, #58a6ff);
+
+  --gh-border-default: var(--color-border-default, #30363d);
+  --gh-border-strong: var(--color-border-strong, #8b949e);
+
+  --gh-success-accent: var(--color-success-accent, #3fb950);
+  --gh-danger-accent: var(--color-danger-accent, #f85149);
+}
+
+.github-markdown > *:first-child {
+  margin-top: 0 !important;
+}
+
+.github-markdown > *:last-child {
+  margin-bottom: 0 !important;
+}
+
+/* Headings from MathText */
+.github-markdown h1, .github-markdown h2, .github-markdown h3, .github-markdown h4, .github-markdown h5, .github-markdown h6 {
+  color: var(--gh-text-primary);
+  font-weight: 600;
+  font-family: inherit; /* Ensure it uses the --font-primary-github-like */
+}
+.github-markdown h1 a, .github-markdown h2 a, .github-markdown h3 a, .github-markdown h4 a, .github-markdown h5 a, .github-markdown h6 a {
+  color: inherit; /* Anchor link color same as heading */
+  text-decoration: none;
+}
+.github-markdown h1 a:hover, .github-markdown h2 a:hover, .github-markdown h3 a:hover, .github-markdown h4 a:hover, .github-markdown h5 a:hover, .github-markdown h6 a:hover {
+  text-decoration: underline;
+}
+/* Specific styles from MathText for borders are applied directly in the component for h1, h2 */
+
+/* Paragraphs from MathText */
+.github-markdown p {
+  color: var(--gh-text-body);
+  font-family: inherit;
+}
+
+/* Links from MathText */
+.github-markdown a {
+  color: var(--gh-primary-accent);
+  text-decoration: none;
+}
+.github-markdown a:hover {
+  text-decoration: underline;
+}
+
+/* Lists from MathText */
+.github-markdown ul, .github-markdown ol {
+  color: var(--gh-text-body);
+  font-family: inherit;
+}
+.github-markdown li {
+  color: var(--gh-text-body);
+}
+
+/* GFM Task List specific - styles are applied in MathText custom <li> renderer using these classes */
+.github-markdown ul.contains-task-list {
+  list-style-type: none;
+  padding-left: 1rem; /* Less padding for task lists */
+}
+.github-markdown .task-list-item {
+  display: flex;
+  align-items: flex-start; /* Align items to the start for multi-line text */
+  margin-bottom: 0.25em; /* Consistent spacing */
+}
+.github-markdown .task-list-item input[type="checkbox"] {
+  margin-right: 0.5em;
+  margin-top: 0.25em; /* Align checkbox with text better */
+  appearance: none;
+  -webkit-appearance: none;
+  width: 1em;
+  height: 1em;
+  border: 1px solid var(--gh-border-strong);
+  border-radius: 3px;
+  vertical-align: middle; /* GitHub style is middle */
+  cursor: pointer;
+  position: relative;
+  background-color: var(--gh-bg-surface-1); /* Background of checkbox */
+  flex-shrink: 0; /* Prevent checkbox from shrinking */
+}
+.github-markdown .task-list-item input[type="checkbox"]:checked {
+  background-color: var(--gh-primary-accent);
+  border-color: var(--gh-primary-accent);
+}
+.github-markdown .task-list-item input[type="checkbox"]:checked::before {
+  content: '✔';
+  color: var(--gh-bg-primary); /* Checkmark color against accent background */
+  font-size: 0.8em;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-weight: bold;
+  line-height: 1em; /* Center checkmark */
+}
+.github-markdown .task-list-item .task-list-item-label {
+    opacity: 1;
+    color: var(--gh-text-body);
+}
+.github-markdown .task-list-item input[type="checkbox"]:checked + .task-list-item-label { /* Assuming label span is direct sibling */
+    opacity: 0.7;
+    text-decoration: line-through;
+    color: var(--gh-text-secondary);
+}
+
+
+/* Images from MathText (using MarkdownImage) */
+.github-markdown img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px; /* GitHub uses 6px */
+  background-color: var(--gh-bg-surface-1); /* Background for transparent images */
+  display: block; /* For centering if margin auto is used */
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Tables from MathText */
+.github-markdown table {
+  border-color: var(--gh-border-default);
+  border-spacing: 0; /* GitHub style */
+  border-collapse: collapse; /* GitHub style */
+  display: block; /* GitHub style for responsiveness */
+  width: max-content; /* GitHub style */
+  max-width: 100%; /* GitHub style */
+  overflow: auto; /* GitHub style */
+}
+.github-markdown thead {
+  background-color: var(--gh-bg-surface-2);
+}
+.github-markdown th {
+  color: var(--gh-text-primary);
+  border-color: var(--gh-border-default);
+  padding: 6px 13px; /* GitHub style */
+}
+.github-markdown td {
+  border-color: var(--gh-border-default);
+  color: var(--gh-text-body);
+  padding: 6px 13px; /* GitHub style */
+}
+.github-markdown tr {
+  background-color: var(--gh-bg-surface-1); /* Base for rows */
+  border-top: 1px solid var(--gh-border-default);
+}
+.github-markdown tr:nth-child(2n) { /* Alternating rows */
+  background-color: var(--gh-bg-surface-2); /* GitHub style: even rows have different bg */
+}
+
+/* Blockquotes from MathText */
+.github-markdown blockquote {
+  border-color: var(--gh-border-default); /* Original was var(--color-border-default) */
+  color: var(--gh-text-secondary); /* Original var(--color-text-secondary) */
+  padding: 0 1em; /* GitHub style */
+}
+
+/* Horizontal Rule from MathText */
+.github-markdown hr {
+  border-color: var(--gh-border-default); /* Original var(--color-border-default) */
+  height: .25em; /* GitHub style */
+  padding: 0; /* GitHub style */
+  margin: 24px 0; /* GitHub style */
+  background-color: var(--gh-border-default); /* GitHub style */
+  border: 0; /* GitHub style */
+}
+
+/* CodeBlock component styling - these classes are used by CodeBlock.tsx */
+.github-markdown .code-block {
+  margin: 1em 0;
+  border: 1px solid var(--gh-border-default);
+  border-radius: 6px; /* GitHub uses 6px */
+  overflow: hidden; /* For rounded corners on children */
+  box-shadow: none; /* GitHub code blocks usually don't have a heavy shadow */
+}
+.github-markdown .code-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 1rem; /* GitHub like padding */
+  background-color: var(--gh-bg-surface-2);
+  border-bottom: 1px solid var(--gh-border-default);
+}
+.github-markdown .code-language {
+  font-size: 0.8em; /* Smaller language text */
+  color: var(--gh-text-secondary);
+  text-transform: lowercase; /* GitHub uses lowercase */
+  font-family: var(--font-mono-github-like); /* Use mono font */
+}
+.github-markdown .copy-button {
+  background-color: transparent;
+  border: 1px solid transparent; /* Matches GitHub */
+  border-radius: 6px;
+  padding: 0.25rem; /* Small padding for icon button */
+  cursor: pointer;
+  color: var(--gh-text-secondary);
+  transition: color 0.2s, background-color 0.2s;
+  display: inline-flex; /* For icon alignment */
+  align-items: center;
+  justify-content: center;
+}
+.github-markdown .copy-button:hover {
+  background-color: var(--gh-bg-surface-3); /* Subtle hover */
+  color: var(--gh-text-primary);
+}
+.github-markdown .copy-button svg {
+  width: 1em; /* Relative to button font size */
+  height: 1em;
+  vertical-align: middle;
+}
+.github-markdown .copy-button .text-[var(--gh-success-accent)] { /* Ensure CheckIconSvg color is applied */
+    color: var(--gh-success-accent);
+}
+.github-markdown .copy-button .text-\[var\(--gh-text-secondary\)\] { /* Ensure CopyIconSvg color is applied */
+    color: var(--gh-text-secondary);
+}
+
+
+.github-markdown .code-content {
+  margin: 0 !important; /* Remove default pre margins */
+  padding: 1rem !important; /* GitHub has more padding */
+  font-family: var(--font-mono-github-like); /* Use specific mono font */
+  font-size: 85%; /* GitHub's code font size */
+  line-height: 1.45;
+  overflow: auto;
+  background-color: var(--gh-bg-surface-1); /* Main code area background */
+  color: var(--gh-text-code); /* Text color inside code block */
+  border-radius: 0 0 6px 6px; /* Only bottom corners if header is present */
+}
+.github-markdown .code-content code {
+  background-color: transparent !important; /* Code tag inside pre should be transparent */
+  color: inherit !important; /* Inherit from pre */
+  padding: 0 !important;
+  border: none !important;
+  font-size: inherit !important;
+  font-family: inherit !important;
+  white-space: pre; /* Important for code formatting */
+  word-wrap: normal; /* Prevent wrapping within code lines */
+}
+
+/* Inline Code from MathText */
+.github-markdown :not(pre) > code {
+  font-family: var(--font-mono-github-like);
+  font-size: 85%; /* Match block code font size */
+  padding: 0.2em 0.4em;
+  margin: 0; /* GitHub doesn't add margin */
+  border-radius: 6px; /* GitHub style */
+  background-color: var(--gh-bg-surface-2); /* Subtle background */
+  border: 1px solid var(--gh-border-default);
+  color: var(--gh-text-code); /* Use code text color */
+}
+
+/* KaTeX Math */
+.github-markdown .katex {
+  font-size: 1.1em; /* Keep KaTeX slightly larger if preferred */
+  color: var(--gh-text-body); /* Ensure KaTeX inherits body color correctly */
+}
+html.dark .github-markdown .katex {
+  color: var(--gh-text-body); /* Ensure dark mode color is also correct */
+}
+.github-markdown .katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.5em 0; /* Vertical padding for block math */
+}
+
+/* Compact Mode */
+.github-markdown.compact-markdown p {
+  margin-bottom: 0.5rem;
+}
+.github-markdown.compact-markdown h1,
+.github-markdown.compact-markdown h2,
+.github-markdown.compact-markdown h3,
+.github-markdown.compact-markdown h4,
+.github-markdown.compact-markdown h5,
+.github-markdown.compact-markdown h6 {
+  margin-top: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+.github-markdown.compact-markdown ul,
+.github-markdown.compact-markdown ol {
+  margin-bottom: 0.5rem;
+}
+.github-markdown.compact-markdown .code-block { /* CodeBlock component */
+  margin-bottom: 0.75rem;
+}
+
+/* Text rendering optimization for all relevant elements */
+.github-markdown p,
+.github-markdown li,
+.github-markdown table,
+.github-markdown blockquote,
+.github-markdown h1, .github-markdown h2, .github-markdown h3, .github-markdown h4, .github-markdown h5, .github-markdown h6 {
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Improved line height for Vietnamese specifically within markdown */
+html[lang="vi"] .github-markdown {
+  line-height: 1.7; /* Or any preferred value for Vietnamese */
+}

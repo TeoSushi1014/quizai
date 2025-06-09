@@ -1,0 +1,40 @@
+/* Styles for combined question titles (Q1. + question text) */
+
+/* Style for the combined title container */
+.combined-question-title {
+  display: flex;
+  align-items: baseline;
+}
+
+/* Style for the question number part */
+.question-number {
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  margin-right: 0.5rem;
+  white-space: nowrap;
+}
+
+/* Style for the question text part */
+.question-text {
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+/* Hide the empty headings with "cu-hi" IDs */
+h1[id^="cu-hi"]:empty,
+h2[id^="cu-hi"]:empty,
+h3[id^="cu-hi"]:empty,
+h4[id^="cu-hi"]:empty,
+h5[id^="cu-hi"]:empty,
+h6[id^="cu-hi"]:empty {
+  display: none !important;
+  height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+
+/* Make sure the question title doesn't have extra space around it */
+.accordion-title .combined-question-title {
+  margin: 0;
+}

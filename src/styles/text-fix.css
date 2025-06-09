@@ -1,0 +1,40 @@
+.no-href-style {
+  text-decoration: none !important;
+  color: var(--color-text-primary) !important;
+  pointer-events: none !important;
+  cursor: default !important;
+}
+
+/* Fix for bold text incorrectly styled as links */
+strong[href], strong a, a.font-bold {
+  text-decoration: none !important;
+  color: inherit !important;
+  pointer-events: none !important;
+  font-weight: bold !important;
+  background-color: transparent !important;
+  border: none !important;
+}
+
+/* Text within code blocks */
+.markdown-github code, .markdown-github pre {
+  color: var(--color-text-body) !important;
+}
+
+/* Remove any link styling from text that shouldn't be links */
+a[href^="#van-de"],
+a[href^="#text-nam"],
+a[href^="#text"],
+a[href^="#trong"] {
+  text-decoration: none !important;
+  color: inherit !important;
+  pointer-events: none !important;
+  cursor: text !important;
+  font-weight: inherit !important;
+}
+
+/* Fix in Vietnamese text styling */
+html[lang="vi"] strong {
+  font-weight: 700 !important;
+  color: var(--color-text-primary) !important;
+  text-decoration: none !important;
+}

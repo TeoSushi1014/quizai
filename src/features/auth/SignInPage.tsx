@@ -46,11 +46,16 @@ const SignInPage: React.FC = () => {
         }
 
         const userInfo = await userInfoResponse.json();
+        // Make sure the picture URL is properly constructed for higher resolution
+        const pictureUrl = userInfo.picture ? 
+          userInfo.picture.replace(/=s\d+-c$/, '=s256-c') : // Replace small size with larger one
+          userInfo.picture;
+
         const userProfile: UserProfile = {
           id: userInfo.sub,
           name: userInfo.name,
           email: userInfo.email,
-          imageUrl: userInfo.picture,
+          imageUrl: pictureUrl,
           // accessToken will be set by the login context function from tokenResponse
         };
         logger.info("User info fetched successfully. Calling login context function.", 'SignInPage', { userId: userProfile.id });
