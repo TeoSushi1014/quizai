@@ -80,6 +80,10 @@ const QuizCreatePage: React.FC = () => {
   // State for formatted quiz detection - moved to component level to avoid hooks in conditional rendering
   const [isFormattedQuiz, setIsFormattedQuiz] = useState(false);
   const [customUserPrompt, setCustomUserPrompt] = useState<string>("");
+  
+  // New state for prompt-only mode
+  const [usePromptOnlyMode, setUsePromptOnlyMode] = useState(false);
+  const [promptOnlyText, setPromptOnlyText] = useState<string>("");
 
   const initialAIMode = true;
   const [useAIMode, setUseAIMode] = useState(initialAIMode);
@@ -334,7 +338,12 @@ const QuizCreatePage: React.FC = () => {
     }
     
     let contentForAI: string | { base64Data: string; mimeType: string };
-    if (uploadedFiles.length > 0) {
+    
+    // Check if we're in prompt-only mode first
+    if (usePromptOnlyMode && customUserPrompt && customUserPrompt.trim()) {
+        // In prompt-only mode, we will use a simple placeholder content and rely on the customUserPrompt
+        contentForAI = "Generate quiz from user prompt.";
+    } else if (uploadedFiles.length > 0) {
         // If multiple files were uploaded, use the combined content.
         // If only one file was an image, imageBase64 might be set.
         // The primary source should be `combinedContent` if available from multi-file processing.
@@ -465,6 +474,46 @@ const QuizCreatePage: React.FC = () => {
         <div className="relative flex py-1 items-center"> <div className="flex-grow border-t border-[var(--color-border-default)]"></div> <span className="flex-shrink mx-4 text-[var(--color-text-muted)] text-xs font-medium uppercase tracking-wider">{t('step1Or')}</span> <div className="flex-grow border-t border-[var(--color-border-default)]"></div> </div> 
         <Textarea label={<p className="text-base font-semibold text-[var(--color-text-primary)]">{t('step1PasteTextLabel')}</p>} value={pastedText} onChange={(e) => setPastedText(e.target.value)} placeholder={t('step1PasteTextPlaceholder')} rows={6} className="min-h-[150px] text-sm paste-text-area" /> 
         <Button onClick={handlePasteText} disabled={!pastedText.trim() || isProcessingFiles} fullWidth size="lg" variant="secondary" className="py-3 shadow-lg"> {t('step1UsePastedText')} </Button> 
+        
+        <div className="relative flex py-1 items-center"> <div className="flex-grow border-t border-[var(--color-border-default)]"></div> <span className="flex-shrink mx-4 text-[var(--color-text-muted)] text-xs font-medium uppercase tracking-wider">{t('step1Or')}</span> <div className="flex-grow border-t border-[var(--color-border-default)]"></div> </div>
+        
+        <Textarea 
+          label={<p className="text-base font-semibold text-[var(--color-text-primary)]">AI Prompt</p>} 
+          value={promptOnlyText} 
+          onChange={(e) => setPromptOnlyText(e.target.value)} 
+          placeholder="Tạo 50 câu hỏi ôn tập tiếng Anh chủ đề gia đình" 
+          rows={6} 
+          className="min-h-[150px] text-sm paste-text-area" 
+        />
+        <Button 
+          onClick={() => {
+            if (promptOnlyText.trim()) {
+              setUsePromptOnlyMode(true);
+              // Set this as the custom user prompt that will be sent to AI
+              setCustomUserPrompt(promptOnlyText);
+              // Clear other content sources
+              setPastedText('');
+              setUploadedFiles([]);
+              setProcessedContents([]);
+              setCombinedContent(null);
+              setImageBase64(null);
+              setInitialImageExtractedText(null);
+              // Set placeholder content so the system knows we have content to process
+              setProcessedContentText(`AI Prompt: ${promptOnlyText.trim()}`);
+              setQuizTitleSuggestion("AI Generated Quiz");
+              setStep(2);
+            } else {
+              setProcessingError("Please enter an AI prompt");
+            }
+          }}
+          disabled={!promptOnlyText.trim() || isProcessingFiles} 
+          fullWidth 
+          size="lg" 
+          variant="primary" 
+          className="py-3 shadow-lg bg-gradient-to-r from-green-500 via-teal-500 to-sky-500 hover:from-green-600 hover:via-teal-600 hover:to-sky-600 text-white"
+        > 
+          Generate Quiz from Prompt
+        </Button>
         {processingError && !isProcessingFiles && (
           <div role="alert" className={`p-3.5 ${processingError.startsWith('✅') ? 'bg-green-500/20 border-green-500/50 text-green-300' : 'bg-red-500/20 border-red-500/50 text-red-300'} border rounded-lg text-sm text-center shadow-md animate-fadeIn`}>
             {processingError}
@@ -481,7 +530,13 @@ const QuizCreatePage: React.FC = () => {
         // Note: isFormattedQuiz state is now managed at the component level
         
         let sourceDisplayContent: ReactNode;
-        if (uploadedFiles.length > 0) {
+        if (usePromptOnlyMode && processedContentText?.startsWith('AI Prompt:')) {
+            sourceDisplayContent = (
+              <div>
+                <span className="text-blue-400 font-medium">AI Prompt:</span> {promptOnlyText}
+              </div>
+            );
+        } else if (uploadedFiles.length > 0) {
             if (uploadedFiles.length === 1) {
                 sourceDisplayContent = (
                   <div>
@@ -554,7 +609,9 @@ const QuizCreatePage: React.FC = () => {
           }
         }
         let sourceSummary: ReactNode;
-        if (uploadedFiles.length > 0) {
+        if (usePromptOnlyMode) {
+            sourceSummary = "AI Prompt";
+        } else if (uploadedFiles.length > 0) {
             if (uploadedFiles.length === 1) {
                 sourceSummary = imageBase64 ? t('step2Image', {fileName: uploadedFiles[0].name}) : t('step2File', {fileName: uploadedFiles[0].name});
             } else {

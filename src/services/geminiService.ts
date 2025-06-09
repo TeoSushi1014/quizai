@@ -324,7 +324,19 @@ const buildGeminiPrompt = (
     prompt += `- Format math with $...$ (inline) and $$...$$ (block).\n`;
     prompt += `- Use blockquotes > for important notes.\n\n`;
 
-    if (config.customUserPrompt && config.customUserPrompt.trim()) {
+    // Check if this is a prompt-only generation
+    const isPromptOnlyModeForInstructions = typeof content === 'string' && 
+                         content === "Generate quiz from user prompt." && 
+                         config.customUserPrompt && 
+                         config.customUserPrompt.trim().length > 0;
+
+    if (isPromptOnlyModeForInstructions && config.customUserPrompt) {
+      // For prompt-only mode, the customUserPrompt is the primary source for quiz generation
+      prompt += `USER-PROVIDED PROMPT (PRIMARY SOURCE):\n${config.customUserPrompt.trim()}\n\n`;
+      prompt += `This is a prompt-only request. The user has not provided any source content. Instead, generate a quiz based ENTIRELY on the user's prompt above.\n`;
+      prompt += `Create appropriate multiple-choice questions that fulfill the requirements in the user's prompt.\n\n`;
+    } else if (config.customUserPrompt && config.customUserPrompt.trim()) {
+      // Regular mode with source content and supplementary prompt
       prompt += `USER-PROVIDED INSTRUCTIONS (OVERRIDE general guidelines if conflicting, otherwise supplement):\n${config.customUserPrompt.trim()}\n\n`;
     } else {
       prompt += `USER-PROVIDED INSTRUCTIONS: No specific user instructions provided. Default quiz generation guidelines apply, strictly adhering to core requirements.\n\n`;
@@ -335,7 +347,19 @@ const buildGeminiPrompt = (
     prompt += `CONTENT TO PROCESS:\n`;
 
 
-    if (typeof content === 'string') {
+    // Check if this is a prompt-only mode again for content handling
+    const isPromptOnlyModeForContent = typeof content === 'string' && 
+                         content === "Generate quiz from user prompt." && 
+                         config.customUserPrompt && 
+                         config.customUserPrompt.trim().length > 0;
+
+    if (isPromptOnlyModeForContent && config.customUserPrompt) {
+        // For prompt-only mode, use the customUserPrompt as the sourceContentSnippet
+        sourceContentSnippet = `AI Prompt: ${config.customUserPrompt.substring(0, 500)}` + 
+                               (config.customUserPrompt.length > 500 ? "..." : "");
+        // In prompt-only mode, we don't need to include the placeholder content
+        parts.push({ text: prompt });
+    } else if (typeof content === 'string') {
         sourceContentSnippet = content.substring(0, 500) + (content.length > 500 ? "..." : "");
         parts.push({ text: `${prompt}"""${content}"""` });
     } else {
@@ -409,8 +433,20 @@ export const generateQuizWithGemini = async (
 ): Promise<Omit<Quiz, 'id' | 'createdAt'>> => {
   logger.info("Attempting to generate quiz with Gemini", "GeminiService", { model: GEMINI_TEXT_MODEL, lang: config.language });
   
-  // Check if the content is a formatted quiz (only for text content)
-  if (typeof content === 'string' && isFormattedQuiz(content)) {
+  // Check if this is a prompt-only generation (content will be minimal, focus on customUserPrompt)
+  const isPromptOnlyModeForLogging = typeof content === 'string' && 
+                         content === "Generate quiz from user prompt." && 
+                         config.customUserPrompt && 
+                         config.customUserPrompt.trim().length > 0;
+                         
+  if (isPromptOnlyModeForLogging) {
+    logger.info("Prompt-only mode detected - using customUserPrompt as primary source", "GeminiService", {
+      promptPreview: config.customUserPrompt?.substring(0, 100),
+      promptOnlyMode: true
+    });
+  }
+  // Check if the content is a formatted quiz (only for text content and not in prompt-only mode)
+  else if (typeof content === 'string' && isFormattedQuiz(content)) {
     // Extract information about the quiz: count questions & options
     const questionMatches = content.match(/(?:Question|Câu)\s*\d+|^\s*\d+\s*[.)]/gmi) || [];
     const optionMatches = content.match(/[A-D]\s*[.)]\s*\S+/gi) || [];
