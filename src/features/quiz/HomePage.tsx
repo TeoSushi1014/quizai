@@ -1,14 +1,13 @@
-import React, { useState, useRef, ReactNode, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Button, Card, Textarea, Tooltip, LoadingSpinner } from '../../components/ui';
+import { Button, Card, Textarea, LoadingSpinner } from '../../components/ui';
 import { useAppContext, useTranslation } from '../../App';
 import { Quiz } from '../../types';
-import { PlusIcon, UserCircleIcon, ChevronRightIcon } from '../../constants';
+import { UserCircleIcon, ChevronRightIcon } from '../../constants';
 import { QuizCard } from './components/QuizCard'; 
 import useShouldReduceMotion from '../../hooks/useShouldReduceMotion';
 
-import { translations } from '../../i18n';
 import MathText from '../../components/MathText';
 
 
@@ -73,7 +72,7 @@ const FeedbackSection: React.FC = () => {
     >
       <Card
         useGlassEffect
-        className={`max-w-2xl mx-auto shadow-2xl !rounded-2xl`} // Removed hardcoded border
+        className={`max-w-2xl mx-auto shadow-2xl !rounded-2xl`}
       >
         <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 sm:gap-8">
           <div className="flex-1 text-center sm:text-left">
@@ -183,9 +182,6 @@ const HomePage: React.FC = () => {
 
   const quizCountForDisplay = useMemo(() => currentStableQuizzes.length, [currentStableQuizzes]);
 
-  const heroButtonTextKey = quizCountForDisplay > 0 ? 'heroCTACreateAnother' : 'heroCTA';
-  const heroButtonText = t(heroButtonTextKey);
-
   const handleDeleteQuiz = (quizId: string) => { deleteQuiz(quizId); };
   const handleEditQuiz = (quiz: Quiz) => { navigate(`/review/${quiz.id}`, { state: { existingQuiz: quiz } }); };
 
@@ -195,25 +191,134 @@ const HomePage: React.FC = () => {
 
 
   const renderPageContent = () => {
-    return (
-      <div className="relative">
-        {contextIsLoading && quizCountForDisplay > 0 && (
-        )}
-      </div>
-    );
+    if (contextIsLoading && currentStableQuizzes.length === 0) {
+      return (
+        <motion.div
+          key="loading-state"
+          className="flex flex-col justify-center items-center py-20 md:py-24"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.3 }}
+        >
+          <LoadingSpinner size="xl" />
+          <p className="mt-4 text-md md:text-lg text-[var(--color-text-secondary)]">
+            {t('loadingQuizzesMessage', 'Loading your quizzes...')}
+          </p>
+        </motion.div>
+      );
+    }
+
+    if (!contextIsLoading && quizCountForDisplay === 0) {
+      return (
+        <motion.section
+          key="hero-empty-state"
+          aria-labelledby="hero-title-empty"
+          className="text-center py-12 md:py-16"
+          variants={currentHeroContainerVariants}
+          initial="hidden"
+          animate="visible"
+        >
+          <motion.h1 variants={currentHeroItemVariants} id="hero-title-empty" className="text-4xl md:text-5xl font-bold text-[var(--color-text-primary)] mb-4 md:mb-6">
+            {t('welcomeToQuizAI', 'Welcome to QuizAI!')} 
+          </motion.h1>
+          <motion.p variants={currentHeroItemVariants} className="text-lg md:text-xl text-[var(--color-text-secondary)] mb-8 md:mb-10 max-w-2xl mx-auto">
+            {t('heroSubtitleUserNoQuizzes')}
+          </motion.p>
+          <motion.div variants={currentHeroItemVariants}>
+            <Button
+              size="lg"
+              variant="primary"
+              onClick={() => navigate('/create')}
+              className="group shadow-lg"
+              aria-label={t('heroCTA')}
+            >
+              <img src="https://stg-images.samsung.com/is/image/samsung/assets/in/unpacked/ai-icon.png" alt="AI Create Quiz Icon" className="w-5 h-5 mr-2" />
+              <MathText text={t('heroCTA')} />
+            </Button>
+          </motion.div>
+        </motion.section>
+      );
+    }
+
+    if (quizCountForDisplay > 0) {
+      return (
+        <motion.div
+            key="quizzes-exist-content"
+            variants={currentContainerVariants}
+            initial="hidden"
+            animate="visible"
+            className="space-y-12 sm:space-y-16"
+        >
+            <motion.section
+            key="hero-existing-quizzes"
+            aria-labelledby="hero-title-existing"
+            className="text-center py-12 md:py-16"
+            variants={currentHeroContainerVariants}
+            >
+            <motion.h1 variants={currentHeroItemVariants} id="hero-title-existing" className="text-4xl md:text-5xl font-bold text-[var(--color-text-primary)] mb-4 md:mb-6">
+                {currentUser ? t('heroTitleUser', { name: currentUser.name?.split(' ')[0] || t('guest') }) : t('heroTitleExistingQuizzes', 'Your Quizzes')}
+            </motion.h1>
+            <motion.p variants={currentHeroItemVariants} className="text-lg md:text-xl text-[var(--color-text-secondary)] mb-8 md:mb-10 max-w-2xl mx-auto">
+                {t('heroSubtitleUserWithQuizzes')}
+            </motion.p>
+            <motion.div variants={currentHeroItemVariants}>
+                <Button
+                size="lg"
+                variant="primary"
+                onClick={() => navigate('/create')}
+                className="group shadow-lg"
+                aria-label={t('heroCTACreateAnother')}
+                >
+                <img src="https://stg-images.samsung.com/is/image/samsung/assets/in/unpacked/ai-icon.png" alt="AI Create Quiz Icon" className="w-5 h-5 mr-2" />
+                <MathText text={t('heroCTACreateAnother')} />
+                </Button>
+            </motion.div>
+            </motion.section>
+
+            {recentQuizzesForDisplay.length > 0 && (
+            <motion.section
+                key="recent-quizzes-list"
+                aria-labelledby="recent-quizzes-title"
+                variants={currentContainerVariants}
+            >
+                <motion.div variants={currentHeroItemVariants} className="flex justify-between items-center mb-6 md:mb-8">
+                <h2 id="recent-quizzes-title" className="text-2xl md:text-3xl font-bold text-[var(--color-text-primary)]">
+                    {t('recentQuizzesTitle')}
+                </h2>
+                {quizCountForDisplay > MAX_RECENT_QUIZZES_HOME && (
+                    <Button variant="ghost" onClick={() => setCurrentView('/dashboard')} className="group text-sm md:text-base">
+                    {t('viewAllButton')}
+                    <ChevronRightIcon className="w-4 h-4 ml-1 transition-transform duration-200 ease-in-out group-hover:translate-x-1" />
+                    </Button>
+                )}
+                </motion.div>
+                <motion.div
+                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+                >
+                {recentQuizzesForDisplay.map((quiz) => (
+                    <motion.div key={quiz.id} variants={currentHeroItemVariants}>
+                    <QuizCard
+                        quiz={quiz}
+                        onDelete={() => handleDeleteQuiz(quiz.id)}
+                        onEdit={() => handleEditQuiz(quiz)}
+                        onSelect={() => navigate(`/quiz/${quiz.id}`)}
+                    />
+                    </motion.div>
+                ))}
+                </motion.div>
+            </motion.section>
+            )}
+        </motion.div>
+      );
+    }
+
+    return null;
   };
   
   return (
     <div className="container mx-auto px-4 sm:px-6 pb-16">
-      <motion.div 
-        initial="hidden"
-        animate="visible"
-        variants={currentContainerVariants}
-        className="space-y-12 sm:space-y-16"
-      >
-        {renderPageContent()}
-        <FeedbackSection /> {/* FeedbackSection is now always rendered here */}
-      </motion.div>
+      {renderPageContent()}
+      <FeedbackSection />
     </div>
   );
 };

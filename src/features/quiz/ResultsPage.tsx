@@ -40,6 +40,9 @@ const QuestionResultItem: React.FC<QuestionResultItemProps> = ({
   sourceContentSnippet,
   initiallyOpen = false, 
 }) => {
+  const { t } = useTranslation(); // Ensure t is available
+  const shouldReduceMotion = useShouldReduceMotion();
+  const currentQuestionItemVariants = useMemo(() => questionItemVariantsFactory(shouldReduceMotion), [shouldReduceMotion]);
 
   return (
     <motion.div
@@ -59,6 +62,30 @@ const QuestionResultItem: React.FC<QuestionResultItemProps> = ({
         contentClassName={`!bg-[var(--color-bg-surface-2)]/30`}
       >
         <div className="space-y-5 text-sm sm:text-base p-4 sm:p-5">
+          <div>
+            <p className="font-semibold text-[var(--color-text-secondary)] mb-1.5">{t('resultsYourAnswerLabel', 'Your Answer:')}</p>
+            <p className={`p-3 rounded-md ${isCorrect ? 'bg-green-500/10 text-green-700 dark:text-green-300' : 'bg-red-500/10 text-red-700 dark:text-red-300'}`}>
+              <MathText text={userAnswerText || t('resultsNoAnswerProvided', 'No answer provided')} />
+            </p>
+          </div>
+
+          {!isCorrect && (
+            <div>
+              <p className="font-semibold text-[var(--color-text-secondary)] mb-1.5">{t('resultsCorrectAnswerLabel', 'Correct Answer:')}</p>
+              <p className="p-3 rounded-md bg-blue-500/10 text-blue-700 dark:text-blue-300">
+                <MathText text={question.correctAnswer} />
+              </p>
+            </div>
+          )}
+
+          {question.explanation && (
+            <div>
+              <p className="font-semibold text-[var(--color-text-secondary)] mb-1.5">{t('resultsExplanationLabel', 'Explanation:')}</p>
+              <p className="p-3 rounded-md bg-gray-500/10 text-[var(--color-text-primary)]">
+                <MathText text={question.explanation} markdownFormatting={true} />
+              </p>
+            </div>
+          )}
         </div>
       </Accordion>
     </motion.div>

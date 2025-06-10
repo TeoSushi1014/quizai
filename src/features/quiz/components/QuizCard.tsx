@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -32,11 +30,12 @@ const durationNormal = 0.35;
 interface QuizCardProps {
   quiz: Quiz;
   onDelete: (id: string) => void;
-  onEditQuiz: (quiz: Quiz) => void;
+  onEdit: (quiz: Quiz) => void; // Changed from onEditQuiz to onEdit
   animationDelay?: number; 
+  onSelect: () => void; // Added onSelect prop
 }
 
-export const QuizCard: React.FC<QuizCardProps> = ({ quiz, onDelete, onEditQuiz, animationDelay = 0 }) => {
+export const QuizCard: React.FC<QuizCardProps> = ({ quiz, onDelete, onEdit, animationDelay = 0, onSelect }) => { // Changed from onEditQuiz to onEdit, added onSelect
   const { t, language } = useTranslation();
   const [isConfirmDeleteModalOpen, setIsConfirmDeleteModalOpen] = useState(false);
   const [isAttemptSettingsModalOpen, setIsAttemptSettingsModalOpen] = useState(false);
@@ -227,7 +226,7 @@ export const QuizCard: React.FC<QuizCardProps> = ({ quiz, onDelete, onEditQuiz, 
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => onEditQuiz(quiz)}
+                    onClick={() => onEdit(quiz)} // Changed to onEdit
                     className="!p-2.5 rounded-lg !border-[var(--color-border-interactive)] hover:!border-[var(--color-primary-accent)] min-w-[40px] min-h-[40px]"
                     aria-label={t('edit')}
                   >

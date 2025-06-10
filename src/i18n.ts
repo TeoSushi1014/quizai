@@ -1,4 +1,3 @@
-
 import { Language } from './types';
 import * as commonTranslations from './i18n/modules/common';
 import * as dashboardTranslations from './i18n/modules/dashboard';
@@ -37,7 +36,10 @@ export const getTranslator = (lang: Language) => {
 
     if (params) {
       Object.keys(params).forEach(paramKey => {
-        const regex = new RegExp(`{${paramKey}}`, 'g');
+        // Escape the paramKey to ensure it's treated as a literal string in the regex
+        // and that the curly braces are also escaped for the RegExp constructor.
+        const escapedParamKey = String(paramKey).replace(/[.*+?^${}()|[\\\]]/g, '\\$&');
+        const regex = new RegExp(`\\{${escapedParamKey}\\}`, 'g'); // Escape curly braces here
         text = text.replace(regex, String(params[paramKey]));
       });
     }
