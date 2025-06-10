@@ -1,5 +1,3 @@
-/* src/styles/markdown-custom.css */
-
 .markdown-body { /* Applied to MathText root by default */
   color: var(--color-text-body);
   font-family: var(--font-primary);

@@ -1,10 +1,3 @@
-
-
-
-
-
-
-
 import React, { useState, useCallback, useEffect, createContext, useContext, ReactNode, useMemo, useRef, lazy, Suspense, useId } from 'react';
 import { HashRouter, Routes, Route, useNavigate, useLocation, NavLink as RouterNavLink, Navigate } from 'react-router-dom'; 
 import { GoogleOAuthProvider, googleLogout, TokenResponse } from '@react-oauth/google';
@@ -192,10 +185,10 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
   useEffect(() => {
     const initializeApp = async () => {
         logger.info('App initializing: Loading initial data', 'AppInit');
-        const geminiKeyStatus = !!process.env.API_KEY;
+        const geminiKeyStatus = !!process.env.GEMINI_API_KEY;
         setIsGeminiKeyAvailable(geminiKeyStatus);
         if (!geminiKeyStatus) {
-            logger.warn('Gemini API key (process.env.API_KEY) not available to the client bundle.', 'AppInit');
+            logger.warn('Gemini API key (process.env.GEMINI_API_KEY) not available to the client bundle.', 'AppInit');
         }
 
         const savedLanguage = localStorage.getItem(LOCALSTORAGE_LANGUAGE_KEY) as Language | null;

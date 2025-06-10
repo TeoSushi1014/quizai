@@ -1,62 +1,50 @@
-/* Fix for answer option alignment issues */
-
-/* Remove bottom margin from paragraphs inside answer options */
 .markdown-content .markdown-github p {
   margin-bottom: 0 !important;
   margin-top: 0 !important;
 }
 
-/* Better vertical centering for all option content */
 .flex.items-center > span.font-medium {
   padding-top: 0.1rem; /* Slight adjustment to align with text */
 }
 
-/* Fix for specific case where answer content is short */
 .flex-grow.markdown-content {
   display: flex;
   align-items: center;
   min-height: 1.5rem;
 }
 
-/* Additional alignment fix for various answer content types */
 .markdown-content .markdown-github {
   display: flex;
   flex-direction: column;
   justify-content: center;
 }
 
-/* Ensure consistent height for short answers */
 .markdown-github p:only-child {
   margin: 0;
 }
 
-/* Fix for numeric-only answers to ensure vertical centering */
 .option-content .markdown-github p:only-child {
   display: flex;
   align-items: center;
   min-height: 1.5rem;
 }
 
-/* Fix specifically for the option-content alignment */
 .option-content {
   display: flex;
   align-items: center;
   min-height: 24px; /* Match the height of the option indicator */
 }
 
-/* Special fix for very short text or numeric answers */
 .option-content .markdown-github {
   display: flex;
   align-items: center;
 }
 
-/* Override unwanted margins in quiz options */
 .flex.items-center .markdown-content .markdown-github p {
   margin: 0 !important;
   padding: 0;
 }
 
-/* Fix for the vertical spacing in the option indicator */
 .option-indicator {
   display: flex;
   align-items: center;

@@ -15,8 +15,7 @@ interface LogEntry {
 }
 
 class Logger {
-  private userId: string | null = null;
-  private isProduction = false; // Initialize based on your env detection
+  private isProduction = false;
 
   constructor() {
     // Attempt to determine environment. In Vite, import.meta.env is used.

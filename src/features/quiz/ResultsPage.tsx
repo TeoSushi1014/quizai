@@ -40,9 +40,6 @@ const QuestionResultItem: React.FC<QuestionResultItemProps> = ({
   sourceContentSnippet,
   initiallyOpen = false, 
 }) => {
-  const { t } = useTranslation();
-  const shouldReduceMotion = useShouldReduceMotion();
-  const currentQuestionItemVariants = useMemo(() => questionItemVariantsFactory(shouldReduceMotion), [shouldReduceMotion]);
 
   return (
     <motion.div
@@ -61,64 +58,7 @@ const QuestionResultItem: React.FC<QuestionResultItemProps> = ({
         titleClassName={`py-3.5 px-4 sm:py-4 sm:px-5 rounded-t-xl ${isCorrect ? `hover:!bg-green-400/15` : `hover:!bg-red-400/15`}`}
         contentClassName={`!bg-[var(--color-bg-surface-2)]/30`}
       >
-        <div className="space-y-5 text-sm sm:text-base p-4 sm:p-5"> {/* Added padding */}
-           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {question.options.map((option, i) => {
-              const isUserAnswer = option === userAnswerText;
-              const isCorrectAnswer = option === question.correctAnswer;
-              let optionStyle = "py-2.5 px-3.5 rounded-lg border text-sm transition-all var(--duration-fast) var(--ease-ios)";
-
-              if (isUserAnswer) {
-                optionStyle += isCorrectAnswer
-                  ? " bg-green-500/20 border-green-500/70 text-green-200 font-semibold ring-2 ring-green-500/50"
-                  : " bg-red-500/20 border-red-500/70 text-red-200 font-semibold ring-2 ring-red-500/50";
-              } else if (isCorrectAnswer) {
-                optionStyle += " bg-green-500/10 border-green-500/40 text-green-300";
-              } else {
-                optionStyle += " bg-[var(--color-bg-surface-2)]/70 border-[var(--color-border-default)] text-[var(--color-text-secondary)] opacity-80";
-              }
-
-              return (
-                <div key={i} className={optionStyle}>
-                  <div className="flex items-center">
-                    <span className="font-medium mr-2.5 flex-shrink-0">{String.fromCharCode(65 + i)}.</span>
-                    <div className="flex-grow markdown-content option-content flex items-center">
-                      <MathText text={option} markdownFormatting={true} stripPrefix={true} compact={true} />
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Updated Explanation Section - Modeled after PracticeQuizExplanation */}
-          <div className="mt-5 border-t border-[var(--color-border-default)] pt-5"> {/* Consistent margin and padding */}
-            <div className="flex items-center gap-2 mb-3"> 
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-[var(--color-primary-accent)]" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2h-1V9a1 1 0 00-1-1z" clipRule="evenodd" />
-              </svg>
-              <span className="font-semibold text-[var(--color-primary-accent)] text-base">{t('resultsExplanationTitle')}</span>
-            </div>
-            
-            <div className="explanation-content"> 
-              <div className="pl-1.5 border-l-2 border-[var(--color-primary-accent)]/20">
-                <div className="explanation-text text-sm leading-relaxed text-[var(--color-text-body)] markdown-content"> {/* Added markdown-content */}
-                  <MathText text={question.explanation || t('resultsNoExplanation')} markdownFormatting={true} />
-                </div>
-              </div>
-            </div>
-          </div>
-          {sourceContentSnippet && (
-            <details className="mt-5 pt-5 border-t border-[var(--color-border-default)]">
-              <summary className="text-xs text-[var(--color-text-muted)] cursor-pointer hover:text-[var(--color-primary-accent)] flex items-center font-semibold group transition-colors var(--duration-fast) var(--ease-ios)">
-                <DocumentTextIcon className="w-4 h-4 mr-2.5 text-[var(--color-text-muted)] group-hover:text-[var(--color-primary-accent)] transition-colors var(--duration-fast) var(--ease-ios)" strokeWidth={2} />
-                {t('resultsViewSourceSnippet')}
-              </summary>
-              <blockquote className={`mt-3 text-xs text-[var(--color-text-muted)]/80 max-h-36 overflow-y-auto p-3.5 bg-[var(--color-bg-surface-2)]/60 border border-[var(--color-border-default)] rounded-lg shadow-inner italic markdown-content`}>
-                <MathText text={sourceContentSnippet} markdownFormatting={true}/>
-              </blockquote>
-            </details>
-          )}
+        <div className="space-y-5 text-sm sm:text-base p-4 sm:p-5">
         </div>
       </Accordion>
     </motion.div>

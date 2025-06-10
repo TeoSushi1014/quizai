@@ -5,7 +5,6 @@
   cursor: default !important;
 }
 
-/* Fix for bold text incorrectly styled as links */
 strong[href], strong a, a.font-bold {
   text-decoration: none !important;
   color: inherit !important;

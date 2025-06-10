@@ -1,4 +1,3 @@
-
 import { useState, useRef, useCallback } from 'react';
 import { useTranslation } from '../App'; // Import useTranslation
 
@@ -15,7 +14,7 @@ export const useDragAndDrop = ({
   onError,
   maxFileSizeMB = 10,
   acceptedFileTypes = '.pdf,.txt,.docx,image/*',
-  multipleFiles = false, // Default to single file
+  multipleFiles = false,
 }: DragDropOptions) => {
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);

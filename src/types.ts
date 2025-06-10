@@ -1,4 +1,3 @@
-
 import { TokenResponse as GoogleTokenResponse } from '@react-oauth/google';
 
 export interface Question {
@@ -20,9 +19,9 @@ export interface Quiz {
   sourceContentSnippet?: string; 
   config?: QuizConfig; 
   userId?: string; 
-  creator?: { name: string; email?: string }; // Added for shared quiz creator
-  isShared?: boolean; // Flag if this quiz object is a shared representation
-  sharedTimestamp?: string; // Timestamp of when it was shared
+  creator?: { name: string; email?: string };
+  isShared?: boolean;
+  sharedTimestamp?: string;
 }
 
 export interface QuizConfig {
@@ -51,7 +50,7 @@ export interface QuizResult {
   sourceMode?: 'practice' | 'take'; 
 }
 
-export type AppView = 'home' | 'dashboard' | 'create-quiz' | 'take-quiz' | 'results' | 'review-quiz' | 'settings' | 'profile'; // Added 'profile'
+export type AppView = 'home' | 'dashboard' | 'create-quiz' | 'take-quiz' | 'results' | 'review-quiz' | 'settings' | 'profile';
 
 export type Language = 'en' | 'vi';
 

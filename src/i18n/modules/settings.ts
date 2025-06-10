@@ -1,5 +1,3 @@
-
-// src/i18n/modules/settings.ts
 export const en = {
   syncSettingsTitle: "Google Drive Sync",
   syncSettingsDescription: "Save and load your quiz data directly with your Google Drive account. This allows you to access your quizzes across devices.",

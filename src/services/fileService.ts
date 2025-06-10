@@ -1,11 +1,9 @@
-
 import * as pdfjsLib from 'pdfjs-dist/build/pdf';
 import mammoth from 'mammoth';
 
 // Configure worker source for pdf.js
 if (typeof window !== 'undefined') {
   // Use esm.sh for the worker, matching the library version from importmap.
-  // Version 4.4.168 is specified in importmap.
   pdfjsLib.GlobalWorkerOptions.workerSrc = `https://esm.sh/pdfjs-dist@4.4.168/build/pdf.worker.min.js`;
 }
 

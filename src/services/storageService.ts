@@ -1,4 +1,3 @@
-
 import localforage from 'localforage';
 import { Quiz } from '../types';
 import { logger } from './logService';

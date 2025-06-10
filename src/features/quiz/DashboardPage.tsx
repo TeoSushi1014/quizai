@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FixedSizeList } from 'react-window';
@@ -138,10 +136,9 @@ const DashboardPage: React.FC = () => {
   const getItemKey = (index: number) => sortedQuizzes[index].id;
 
   const renderContent = () => {
-    // If AppContext.isLoading is true and it's an initial load (no quizzes yet), show skeletons.
     if (isLoading && sortedQuizzes.length === 0) {
       return (
-        <div className="space-y-4"> {/* Consistent spacing for skeletons */}
+        <div className="space-y-4">
           {[...Array(3)].map((_, i) => (
             <div key={i} className="h-[344px] px-1"> {/* Height of card, horizontal padding */}
               <QuizCardSkeleton />

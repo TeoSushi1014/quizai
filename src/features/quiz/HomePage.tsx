@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, ReactNode, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -196,120 +195,10 @@ const HomePage: React.FC = () => {
 
 
   const renderPageContent = () => {
-    // Case 1: Big Hero section if no quizzes and not loading context
-    if (quizCountForDisplay === 0 && !contextIsLoading) {
-      return (
-        <>
-          <section
-            className={`relative text-center py-20 md:py-28 rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl
-            bg-gradient-to-br from-[var(--color-primary-accent)]/20 via-[var(--color-bg-surface-1)]/50 to-[var(--color-secondary-accent)]/20
-            border border-[var(--color-border-default)]`} // Themed gradient and border
-          >
-            <motion.div
-              className="relative z-10 container mx-auto px-4"
-              initial="hidden"
-              animate="visible" 
-              variants={currentHeroContainerVariants}
-            >
-              <motion.h1
-                variants={currentHeroItemVariants}
-                className={`text-3xl sm:text-4xl md:text-5xl xl:text-6xl font-extrabold text-[var(--color-text-primary)] leading-tight mb-6 sm:mb-8`}
-              >
-                {t('heroTitle').split(': ')[0]}: <br className="sm:hidden" /> <span className="text-transparent bg-clip-text bg-gradient-to-r from-[var(--color-primary-accent)] via-indigo-400 to-purple-400">{t('heroTitle').split(': ')[1]}</span>
-              </motion.h1>
-              <motion.p
-                variants={currentHeroItemVariants}
-                className={`text-sm sm:text-base md:text-lg text-[var(--color-text-secondary)] max-w-xl md:max-w-2xl xl:max-w-3xl mx-auto mb-10 sm:mb-12`}
-              >
-                {t('heroSubtitle')}
-              </motion.p>
-              <motion.div variants={currentHeroItemVariants}>
-                <Button
-                  size="md"
-                  variant="primary"
-                  onClick={() => setCurrentView('/create')}
-                  leftIcon={<PlusIcon className="w-5 h-5" strokeWidth={2.5}/>}
-                  className="shadow-2xl hover:shadow-[var(--color-primary-accent)]/50 focus:ring-offset-transparent py-3 px-8 sm:py-3.5 sm:px-10 text-sm sm:text-base rounded-xl"
-                >
-                  {heroButtonText}
-                </Button>
-              </motion.div>
-            </motion.div>
-          </section>
-        </>
-      );
-    }
-
-    // Case 2: Dashboard-like view (with potential loading overlay) or loading state
     return (
-      <div className="relative"> {/* Wrapper for potential loading overlay */}
-        {contextIsLoading && quizCountForDisplay > 0 && ( // Loading overlay if quizzes exist but context is refreshing
-          <div className="absolute inset-0 bg-[var(--color-bg-body)]/50 backdrop-blur-sm rounded-xl z-10 flex items-center justify-center">
-            <LoadingSpinner text={t('homeSyncingQuizzesMessage')} size="lg" />
-          </div>
+      <div className="relative">
+        {contextIsLoading && quizCountForDisplay > 0 && (
         )}
-        <div className={contextIsLoading && quizCountForDisplay > 0 ? 'opacity-50' : ''}> {/* Apply opacity if overlay is active */}
-          {quizCountForDisplay > 0 && (
-            <section className={shouldReduceMotion ? '' : 'animate-fadeInUp'}>
-              <Card useGlassEffect className={`!p-6 sm:!p-8 text-center sm:text-left !rounded-2xl shadow-2xl`}> 
-                <div className="flex flex-col sm:flex-row justify-between items-center gap-6">
-                  <div>
-                    <h1 className="text-2xl sm:text-3xl font-bold text-[var(--color-text-primary)] mb-2">
-                      {currentUser ? t('homeDashboardUserTitle', { name: currentUser.name || t('user') }) : t('homeDashboardTitle')}
-                    </h1>
-                    <p className="text-[var(--color-text-secondary)] text-sm sm:text-base">
-                      {t('homeStatsQuizzes', { count: quizCountForDisplay })}
-                    </p>
-                  </div>
-                  <div>
-                    <Button
-                      variant="primary"
-                      size="lg"
-                      onClick={() => navigate('/create')}
-                      leftIcon={<PlusIcon className="w-5 h-5" strokeWidth={2.5} />}
-                      className="shadow-xl hover:shadow-[var(--color-primary-accent)]/50 py-3 px-7 rounded-xl w-full sm:w-auto flex-shrink-0"
-                    >
-                      {t('dashboardCreateNew')}
-                    </Button>
-                  </div>
-                </div>
-              </Card>
-            </section>
-          )}
-
-          {recentQuizzesForDisplay.length > 0 && (
-            <section className={shouldReduceMotion ? '' : 'animate-fadeInUp'}>
-              <div className={`flex flex-wrap justify-between items-center mb-6 sm:mb-8 gap-4`}>
-                <h2 className="text-2xl sm:text-3xl font-semibold text-[var(--color-text-primary)]">
-                  {t('homeRecentQuizzesTitle')}
-                </h2>
-                {quizCountForDisplay > MAX_RECENT_QUIZZES_HOME && (
-                  <Button variant="link" onClick={() => navigate('/dashboard')} className="text-sm !text-[var(--color-primary-accent)] hover:!text-[var(--color-primary-accent-hover)]" rightIcon={<ChevronRightIcon className="w-4 h-4" />}>
-                    {t('homeViewAllQuizzes')}
-                  </Button>
-                )}
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 xl:gap-8">
-                {recentQuizzesForDisplay.map((quiz, index) => (
-                  <QuizCard key={quiz.id} quiz={quiz} onDelete={handleDeleteQuiz} onEditQuiz={handleEditQuiz} animationDelay={shouldReduceMotion ? 0 : index * 0.1} />
-                ))}
-              </div>
-              {quizCountForDisplay > 0 && quizCountForDisplay <= MAX_RECENT_QUIZZES_HOME && (
-                <div className={`mt-8 sm:mt-10 text-center`}>
-                  <Button variant="secondary" onClick={() => navigate('/dashboard')} size="md" className="py-2.5 px-6 rounded-lg shadow-lg" rightIcon={<ChevronRightIcon className="w-4 h-4" />}>
-                    {t('homeViewAllQuizzes')}
-                  </Button>
-                </div>
-              )}
-            </section>
-          )}
-           {(quizCountForDisplay === 0 && contextIsLoading) && ( // Case where buffer is empty AND context is loading
-              <div className="flex flex-col items-center justify-center min-h-[300px] text-center">
-                <LoadingSpinner text={t('loading')} size="xl" />
-                <p className="mt-4 text-[var(--color-text-secondary)]">{t('homeInitialLoadMessage')}</p>
-              </div>
-            )}
-        </div>
       </div>
     );
   };

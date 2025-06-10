@@ -3,7 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAppContext, useTranslation } from '../../App';
 import { Question, QuizResult, UserAnswer } from '../../types';
 import { Button, Card, ProgressBar, LoadingSpinner, Modal } from '../../components/ui';
-// MathText is not directly used here anymore if PracticeQuizQuestion handles all markdown
 import { CheckCircleIcon, CircleIcon, ChevronLeftIcon, ChevronRightIcon, XCircleIcon } from '../../constants';
 import { useQuizFlow } from './hooks/useQuizFlow';
 import PracticeQuizQuestion from './components/PracticeQuizQuestion'; 

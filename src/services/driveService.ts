@@ -1,5 +1,3 @@
-
-
 import { Quiz } from '../types';
 import { logger } from './logService';
 import { getCircuitBreaker } from './circuitBreaker';

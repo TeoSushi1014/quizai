@@ -1,7 +1,7 @@
 /* Special fix for numeric answers to ensure proper vertical alignment */
 
 /* Target specifically numeric-only content within options for better vertical alignment */
-.option-content .markdown-github p:only-child:not(:empty) { /* Scoped to .option-content */
+.option-content .markdown-github p:only-child:not(:empty) {
   display: flex;
   align-items: center;
   min-height: 24px;
@@ -15,7 +15,7 @@ button .option-content {
 }
 
 /* When options are purely numeric, ensure proper vertical alignment */
-.option-content .markdown-github p:only-child { /* Changed from .markdown-content to .option-content */
+.option-content .markdown-github p:only-child {
   display: flex;
   align-items: center;
   justify-content: flex-start;

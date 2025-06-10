@@ -1,6 +1,3 @@
-/* Fix for question title and content alignment */
-
-/* Ensure question title and content are properly spaced */
 .question-title {
   display: flex;
   flex-direction: column;

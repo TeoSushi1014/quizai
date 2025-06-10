@@ -1,5 +1,3 @@
-
-// src/i18n/modules/quizTaking.ts
 export const en = {
   quizTakingLoading: "Loading quiz...",
   quizTakingErrorQuestionNotFound: "Error: Question not found. This might be an issue with the quiz data.",

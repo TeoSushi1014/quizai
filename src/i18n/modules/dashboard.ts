@@ -1,5 +1,3 @@
-
-// src/i18n/modules/dashboard.ts
 export const en = {
   dashboardTitle: "My Quizzes", // Page title - Kept for potential use in browser tab, but can be same as myQuizzesTitle
   myQuizzesTitle: "My Quizzes", // Main header title on the dashboard page

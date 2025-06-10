@@ -10,31 +10,41 @@ export default defineConfig(({ mode }) => {
     // Also load from Vite's method which handles .env.[mode] files
     const env = loadEnv(mode, process.cwd(), '');
     
-    // Per user instruction, process.env.GEMINI_API_KEY is set to a placeholder.
-    // Use this value directly. This ensures that the placeholder is used and
-    // the app does not accidentally pick up a real API key from other environment variables
-    // (e.g., from .env files via the `env` object if process.env.GEMINI_API_KEY was unset).
-    const geminiApiKey = process.env.GEMINI_API_KEY;
-    
-    console.log(
-        "Building with Gemini API Key (should be placeholder from process.env.GEMINI_API_KEY):",
-        geminiApiKey ? "Found" : "Not found/unset"
-    );
-    if (!geminiApiKey) {
-        console.warn(
-            "Warning: process.env.GEMINI_API_KEY is not set. " +
-            "The application expects this to be a placeholder for the Gemini API key. " +
-            "AI features may not work as expected if this is not provided by the environment or a .env file."
+    // Determine the effective Gemini API key placeholder
+    let geminiApiKeyFromProcessEnv = process.env.GEMINI_API_KEY;
+    const defaultPlaceholder = 'AIzaSyDDcYcb1JB-NKFRDC28KK0yVH_Z3GX9lU0'; // Consistent default placeholder
+    let effectiveGeminiApiKey: string;
+
+    if (typeof geminiApiKeyFromProcessEnv === 'string' && geminiApiKeyFromProcessEnv.trim() !== '') {
+        effectiveGeminiApiKey = geminiApiKeyFromProcessEnv;
+        console.log(
+            "Using Gemini API Key placeholder from environment variable process.env.GEMINI_API_KEY:",
+            effectiveGeminiApiKey
         );
+    } else {
+        if (geminiApiKeyFromProcessEnv !== undefined && geminiApiKeyFromProcessEnv !== null) { // It was set but empty or not a valid string
+             console.warn(
+                `Warning: process.env.GEMINI_API_KEY was set to an invalid value ('${geminiApiKeyFromProcessEnv}'). ` +
+                `Using default placeholder: '${defaultPlaceholder}'. ` +
+                "Ensure process.env.GEMINI_API_KEY is a non-empty string placeholder."
+            );
+        } else { // It was not set at all
+            console.warn(
+                "Warning: Environment variable process.env.GEMINI_API_KEY was not set. " +
+                `Using default placeholder: '${defaultPlaceholder}'. ` +
+                "For production or specific configurations, it's recommended to set process.env.GEMINI_API_KEY to your desired placeholder (e.g., in your .env file or build environment)."
+            );
+        }
+        effectiveGeminiApiKey = defaultPlaceholder;
     }
     
     return {
       base: "/quizai/",
       plugins: [react()],
       define: {
-        'process.env.API_KEY': JSON.stringify(geminiApiKey),
-        'process.env.GEMINI_API_KEY': JSON.stringify(geminiApiKey),
-        'import.meta.env.VITE_GEMINI_API_KEY': JSON.stringify(geminiApiKey)
+        'process.env.API_KEY': JSON.stringify(effectiveGeminiApiKey),
+        'process.env.GEMINI_API_KEY': JSON.stringify(effectiveGeminiApiKey),
+        'import.meta.env.VITE_GEMINI_API_KEY': JSON.stringify(effectiveGeminiApiKey)
       },
       resolve: {
         alias: {

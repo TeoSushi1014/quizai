@@ -1,4 +1,3 @@
-
 import { Quiz, Question, UserProfile } from '../types'; 
 import { logger } from './logService';
 

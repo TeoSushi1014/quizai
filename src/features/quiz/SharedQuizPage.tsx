@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAppContext, useTranslation } from '../../App';
@@ -135,7 +133,7 @@ const SharedQuizPage: React.FC = () => {
         {(sharedQuiz as any).creator?.name && (
             <div className="flex items-center text-sm text-[var(--color-text-secondary)] mt-3">
             <UserCircleIcon className="w-4 h-4 mr-2 text-[var(--color-text-muted)]" />
-            <span>{t('dashboardQuizCardCreated', { date: '' }) /* Using for "Created by:" semantic */} {(sharedQuiz as any).creator.name || t('unknownCreator')}</span>
+            <span>{t('dashboardQuizCardCreated', { date: '' })} </span>
             </div>
         )}
       </div>

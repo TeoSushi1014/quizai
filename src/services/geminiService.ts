@@ -2,7 +2,7 @@ import { GoogleGenAI, GenerateContentResponse, Part, Content } from "@google/gen
 import { Question, QuizConfig, Quiz, Language } from "../types";
 import { GEMINI_TEXT_MODEL, GEMINI_MODEL_ID } from "../constants";
 import { logger } from './logService';
-import { getTranslator } from "../i18n"; // Import getTranslator
+import { getTranslator } from "../i18n";
 
 // Helper function to detect if content appears to be a formatted quiz
 export const isFormattedQuiz = (content: string): boolean => {

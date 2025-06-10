@@ -170,16 +170,15 @@ const QuizTakingPage: React.FC = () => {
       </div>
 
     <div className="mt-6 md:mt-8">
-      <div className="quiz-question-text text-base sm:text-lg text-[var(--color-text-body)] leading-relaxed mb-4"> {/* Added mb-4 like in PracticeQuizQuestion */}
+      <div className="quiz-question-text text-base sm:text-lg text-[var(--color-text-body)] leading-relaxed mb-4">
         <MathText text={currentQuestion.questionText} markdownFormatting={true} />
       </div>
       
-      <div className="quiz-options space-y-3"> {/* Removed mt-6, relies on mb-4 from question text now, matching PracticeQuizQuestion structure */}
+      <div className="quiz-options space-y-3">
         {currentQuestion.options.map((option, index) => {
           const isSelectedForDisplay = selectedOption === option;
           
-          // Matched button styling with PracticeQuizQuestion's non-feedback state
-          const baseButtonClasses = "w-full flex items-center text-left p-3.5 sm:p-4 rounded-xl border-2 focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--color-primary-accent)]/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-bg-default)] shadow-lg transition-all var(--duration-fast) var(--ease-ios) will-change-transform, border, background-color"; // Corrected will-change
+          const baseButtonClasses = "w-full flex items-center text-left p-3.5 sm:p-4 rounded-xl border-2 focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--color-primary-accent)]/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-bg-default)] shadow-lg transition-all var(--duration-fast) var(--ease-ios) will-change-transform, border, background-color";
           const selectedButtonClasses = "bg-[var(--color-primary-accent)]/50 border-[var(--color-primary-accent)] text-[var(--color-primary-accent-text)] font-semibold scale-[1.01]";
           const unselectedButtonClasses = "bg-[var(--color-bg-surface-3)]/70 hover:bg-[var(--color-bg-surface-3)]/40 border-[var(--color-border-interactive)] hover:border-[var(--color-primary-accent)] text-[var(--color-text-primary)]";
 
@@ -195,7 +194,6 @@ const QuizTakingPage: React.FC = () => {
               aria-pressed={isSelectedForDisplay}
             >
               <span className={`${indicatorBaseClasses} ${isSelectedForDisplay ? selectedIndicatorClasses : unselectedIndicatorClasses}`}>
-                {/* Visual is from its own bg/border */}
               </span>
               <div className="text-sm sm:text-base flex-grow markdown-content">
                 <MathText text={option} markdownFormatting={true} />

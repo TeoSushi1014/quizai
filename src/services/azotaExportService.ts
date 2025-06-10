@@ -1,5 +1,4 @@
-
-import { Quiz, Question, QuizConfig } from '../types'; // Removed QuestionType
+import { Quiz, Question, QuizConfig } from '../types';
 import { translations } from '../i18n';
 
 // Helper to map difficulty to common Vietnamese educational abbreviations

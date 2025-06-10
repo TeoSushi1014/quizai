@@ -1,6 +1,3 @@
-// A utility function to filter out unnecessary question links in HTML content
-// This is for links like <a href="#cu-hi-1">Câu hỏi 1</a> that we want to remove
-
 /**
  * Filters out unnecessary links from HTML content
  * 

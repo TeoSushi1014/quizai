@@ -1,4 +1,3 @@
-// src/i18n/modules/quizCreation.ts
 export const en = {
   step1Title: "Provide Content",
   step1UploadOrDrag: "Click to upload or drag and drop",

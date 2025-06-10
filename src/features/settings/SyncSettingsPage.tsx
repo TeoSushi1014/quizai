@@ -1,6 +1,3 @@
-
-
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppContext, useTranslation } from '../../App';
@@ -50,8 +47,6 @@ const SyncSettingsPage: React.FC = () => {
         </div>
 
         <div className="space-y-8">
-          {/* Theme Settings Card Removed */}
-
           {/* Google Drive Sync Card */}
           <Card className="!bg-[var(--color-bg-surface-2)]/80 !border-[var(--color-border-default)] p-5 sm:p-6 rounded-xl shadow-lg">
             <div className="flex items-center mb-1.5">

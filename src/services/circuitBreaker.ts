@@ -1,4 +1,4 @@
-import { logger } from './logService'; // Using the new logger
+import { logger } from './logService';
 
 export enum CircuitState {
   CLOSED,
