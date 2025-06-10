@@ -46,14 +46,14 @@ let geminiAI: GoogleGenAI | null = null;
 
 const initializeGeminiAI = (): GoogleGenAI => {
   if (!geminiAI) {
-    const apiKeyFromEnv = process.env.API_KEY;
+    const apiKeyFromEnv = process.env.GEMINI_API_KEY;
     
     if (typeof apiKeyFromEnv !== 'string' || !apiKeyFromEnv) {
-      const errorMessage = "Google Gemini API Key (process.env.API_KEY) not set or not available to the client. Quiz generation may fail.";
+      const errorMessage = "Google Gemini API Key (process.env.GEMINI_API_KEY) not set or not available to the client. Quiz generation may fail.";
       logger.error(errorMessage, "GeminiServiceInit");
       throw new Error(errorMessage); 
     }
-    logger.info("Gemini AI SDK Initializing with API Key from process.env.API_KEY.", "GeminiServiceInit");
+    logger.info("Gemini AI SDK Initializing with API Key from process.env.GEMINI_API_KEY.", "GeminiServiceInit");
     geminiAI = new GoogleGenAI({ apiKey: apiKeyFromEnv });
   }
   return geminiAI;
