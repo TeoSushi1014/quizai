@@ -10,17 +10,23 @@ export default defineConfig(({ mode }) => {
     // Also load from Vite's method which handles .env.[mode] files
     const env = loadEnv(mode, process.cwd(), '');
     
-    // Try multiple sources for API key with priorities:
-    // 1. dotenv loaded vars from .env
-    // 2. env vars from loadEnv (which handles .env.[mode] files)
-    // 3. process.env directly (for CI/CD)
-    const geminiApiKey = 
-        process.env.GEMINI_API_KEY || 
-        env.GEMINI_API_KEY || 
-        env.VITE_GEMINI_API_KEY || 
-        process.env.VITE_GEMINI_API_KEY;
+    // Per user instruction, process.env.GEMINI_API_KEY is set to a placeholder.
+    // Use this value directly. This ensures that the placeholder is used and
+    // the app does not accidentally pick up a real API key from other environment variables
+    // (e.g., from .env files via the `env` object if process.env.GEMINI_API_KEY was unset).
+    const geminiApiKey = process.env.GEMINI_API_KEY;
     
-    console.log("Building with Gemini API Key:", geminiApiKey ? "Found" : "Not found");
+    console.log(
+        "Building with Gemini API Key (should be placeholder from process.env.GEMINI_API_KEY):",
+        geminiApiKey ? "Found" : "Not found/unset"
+    );
+    if (!geminiApiKey) {
+        console.warn(
+            "Warning: process.env.GEMINI_API_KEY is not set. " +
+            "The application expects this to be a placeholder for the Gemini API key. " +
+            "AI features may not work as expected if this is not provided by the environment or a .env file."
+        );
+    }
     
     return {
       base: "/quizai/",
