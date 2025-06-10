@@ -84,10 +84,9 @@ export const XCircleIcon: React.FC<IconProps> = ({ className = "w-6 h-6 text-red
 );
 XCircleIcon.displayName = "XCircleIcon";
 
-export const LightbulbIcon: React.FC<IconProps> = ({ className = "w-6 h-6", strokeWidth = 1.5 }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={strokeWidth} stroke="currentColor" className={className}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.355a7.5 7.5 0 01-4.5 0m4.5 0v.75A2.25 2.25 0 0113.5 21h-3a2.25 2.25 0 01-2.25-2.25v-.75m4.5 0A7.468 7.468 0 0016.5 12c0-1.806-.666-3.445-1.757-4.687M12 18c-2.064 0-3.93.901-5.243 2.313M12 3.75c2.353 0 4.48.834 6.033 2.198M12 3.75c-2.353 0-4.48.834-6.033 2.198m12.066 0A12.028 12.028 0 0012 3.75z" />
-  </svg>
+// LightbulbIcon has been removed as requested
+export const LightbulbIcon: React.FC<IconProps> = ({ className = "w-6 h-6" }) => (
+  <span className={className}>💡</span>
 );
 LightbulbIcon.displayName = "LightbulbIcon";
 

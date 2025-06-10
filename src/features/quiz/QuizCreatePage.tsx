@@ -10,7 +10,7 @@ import MathText from '../../components/MathText';
 import { generateQuizWithSelectedModel } from '../../services/aiQuizService';
 import { extractTextFromPdf, convertImageToBase64, extractTextFromDocx } from '../../services/fileService';
 import { extractTextFromImageWithGemini } from '../../services/geminiService'; 
-import { DocumentTextIcon, ChevronRightIcon, ChevronLeftIcon, InformationCircleIcon, KeyIcon, GEMINI_MODEL_ID, LightbulbIcon, ChartBarIcon, CopyIcon } from '../../constants'; 
+import { DocumentTextIcon, ChevronRightIcon, ChevronLeftIcon, InformationCircleIcon, KeyIcon, GEMINI_MODEL_ID, ChartBarIcon, CopyIcon } from '../../constants'; 
 import { translations } from '../../i18n';
 import { logger } from '../../services/logService'; // Import logger
 

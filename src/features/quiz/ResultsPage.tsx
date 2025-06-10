@@ -1,10 +1,9 @@
-
-import React, { useEffect, useRef, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAppContext, useTranslation } from '../../App';
 import { Quiz, Question } from '../../types';
-import { Button, Card, Accordion, ProgressBar, LoadingSpinner, Tooltip } from '../../components/ui';
+import { Button, Card, Accordion, ProgressBar, LoadingSpinner } from '../../components/ui';
 import MathText from '../../components/MathText';
 import AccordionQuestionTitle from './components/AccordionQuestionTitle';
 import { XCircleIcon, DocumentTextIcon, ArrowUturnLeftIcon, PlusCircleIcon, HomeIcon } from '../../constants';
@@ -17,7 +16,6 @@ interface QuestionResultItemProps {
   isCorrect: boolean;
   index: number;
   sourceContentSnippet?: string;
-  explanationIconUrl: string;
   initiallyOpen: boolean;
 }
 
@@ -40,13 +38,11 @@ const QuestionResultItem: React.FC<QuestionResultItemProps> = ({
   isCorrect,
   index,
   sourceContentSnippet,
-  explanationIconUrl,
   initiallyOpen = false, 
 }) => {
   const { t } = useTranslation();
   const shouldReduceMotion = useShouldReduceMotion();
   const currentQuestionItemVariants = useMemo(() => questionItemVariantsFactory(shouldReduceMotion), [shouldReduceMotion]);
-
 
   return (
     <motion.div
@@ -65,7 +61,7 @@ const QuestionResultItem: React.FC<QuestionResultItemProps> = ({
         titleClassName={`py-3.5 px-4 sm:py-4 sm:px-5 rounded-t-xl ${isCorrect ? `hover:!bg-green-400/15` : `hover:!bg-red-400/15`}`}
         contentClassName={`!bg-[var(--color-bg-surface-2)]/30`}
       >
-        <div className="space-y-5 text-sm sm:text-base">
+        <div className="space-y-5 text-sm sm:text-base p-4 sm:p-5"> {/* Added padding */}
            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {question.options.map((option, i) => {
               const isUserAnswer = option === userAnswerText;
@@ -84,7 +80,7 @@ const QuestionResultItem: React.FC<QuestionResultItemProps> = ({
 
               return (
                 <div key={i} className={optionStyle}>
-                  <div className="flex items-center"> {/* Changed from items-start to items-center */}
+                  <div className="flex items-center">
                     <span className="font-medium mr-2.5 flex-shrink-0">{String.fromCharCode(65 + i)}.</span>
                     <div className="flex-grow markdown-content option-content flex items-center">
                       <MathText text={option} markdownFormatting={true} stripPrefix={true} compact={true} />
@@ -95,13 +91,21 @@ const QuestionResultItem: React.FC<QuestionResultItemProps> = ({
             })}
           </div>
 
-          <div className="mt-5 border-t border-[var(--color-border-default)]">
-            <p className="flex items-start text-base font-semibold text-[var(--color-primary-accent)] mb-2.5">
-              <img src={explanationIconUrl} alt={t('resultsExplanationTitle')} className="w-5 h-5 mr-3 flex-shrink-0 mt-0.5" />
-              {t('resultsExplanationTitle')}
-            </p>
-            <div className="text-[var(--color-text-body)]/90 leading-relaxed break-words markdown-content">
-              <MathText text={question.explanation || t('resultsNoExplanation')} markdownFormatting={true} />
+          {/* Updated Explanation Section - Modeled after PracticeQuizExplanation */}
+          <div className="mt-5 border-t border-[var(--color-border-default)] pt-5"> {/* Consistent margin and padding */}
+            <div className="flex items-center gap-2 mb-3"> 
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-[var(--color-primary-accent)]" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2h-1V9a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+              <span className="font-semibold text-[var(--color-primary-accent)] text-base">{t('resultsExplanationTitle')}</span>
+            </div>
+            
+            <div className="explanation-content"> 
+              <div className="pl-1.5 border-l-2 border-[var(--color-primary-accent)]/20">
+                <div className="explanation-text text-sm leading-relaxed text-[var(--color-text-body)] markdown-content"> {/* Added markdown-content */}
+                  <MathText text={question.explanation || t('resultsNoExplanation')} markdownFormatting={true} />
+                </div>
+              </div>
             </div>
           </div>
           {sourceContentSnippet && (
@@ -286,8 +290,6 @@ const ResultsPage: React.FC = () => {
                                 : score >= 40 ? 'bg-gradient-to-r from-amber-400 to-yellow-400'
                                 : 'bg-gradient-to-r from-red-400 to-rose-400';
 
-  const explanationIconUrl = "https://img.icons8.com/?size=256&id=eoxMN35Z6JKg&format=png";
-
   const pageTitle = sourceMode === 'practice'
     ? t('practiceSummaryTitle', { quizTitle: currentDisplayQuiz.title })
     : t('resultsTitle', { quizTitle: currentDisplayQuiz.title });
@@ -344,7 +346,6 @@ const ResultsPage: React.FC = () => {
                 isCorrect={correct}
                 index={index}
                 sourceContentSnippet={currentDisplayQuiz.sourceContentSnippet}
-                explanationIconUrl={explanationIconUrl}
                 initiallyOpen={!correct}
               />
             );

@@ -201,8 +201,8 @@ const MathText: React.FC<MathTextProps> = ({
           },
 
           strong: ({node, children, ...props}) => {
-            // Make sure strong text never gets href attributes
-            return <strong className="font-bold text-[var(--color-text-primary)] no-href-style" {...props}>{children}</strong>;
+            // Make sure strong text never gets href attributes and inherits proper text color
+            return <strong className="font-bold text-current no-href-style inline align-baseline" style={{display: 'inline', lineHeight: 'inherit'}} {...props}>{children}</strong>;
           },
           em: ({node, ...props}) => <em className="italic" {...props} />,
           
@@ -299,8 +299,9 @@ const MathText: React.FC<MathTextProps> = ({
               typeof props.children === 'string' && 
               props.children.length < 10;
             
+            // Do not use text-[var(--color-text-body)] directly in paragraphs
+            // This can cause style conflicts with nested elements
             const contentClasses = [
-              'text-[var(--color-text-body)]',
               compact || isShortContent ? 'my-0' : 'mb-4',
               // Add special class for number-only content to improve vertical alignment
               typeof props.children === 'string' && /^\d+(\.\d+)?$/.test(props.children as string) ? 'flex items-center h-full' : ''

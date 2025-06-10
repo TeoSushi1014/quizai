@@ -8,6 +8,15 @@
   overflow-wrap: break-word; /* Changed from word-wrap */
 }
 
+/* Fix for explanation text rendering */
+.markdown-body p {
+  color: var(--color-text-body);
+}
+
+.markdown-body p strong {
+  color: var(--color-text-primary);
+}
+
 /* Enhanced text rendering for better Unicode and Vietnamese support */
 .markdown-body p,
 .markdown-body li,
@@ -236,7 +245,22 @@ html.light .markdown-body tr:nth-child(even) td {
 .option-content .markdown-body p,
 .explanation-content .markdown-body p { /* Assuming these parent classes are used */
     margin-bottom: 0.5em !important;
+    color: var(--color-text-body) !important;
+    line-height: 1.5 !important;
+    display: block !important;
 }
+
+/* Fix for strong elements in explanation */
+.explanation-content .markdown-body strong {
+    font-weight: bold !important;
+    color: var(--color-primary-accent) !important;
+    text-decoration: none !important;
+    display: inline !important;
+    vertical-align: baseline !important;
+    position: relative !important;
+    line-height: inherit !important;
+}
+
 .option-content .markdown-body > *:first-child,
 .explanation-content .markdown-body > *:first-child {
     margin-top: 0 !important;

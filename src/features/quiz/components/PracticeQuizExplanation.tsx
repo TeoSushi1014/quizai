@@ -1,13 +1,16 @@
 import React from 'react';
-import MathText from '../../../components/MathText';
 import { useTranslation } from '../../../App';
+import MathText from '../../../components/MathText'; // Added import
 
 interface PracticeQuizExplanationProps {
   explanation: string;
   className?: string;
 }
 
-const PracticeQuizExplanation: React.FC<PracticeQuizExplanationProps> = ({ explanation, className = '' }) => {
+const PracticeQuizExplanation: React.FC<PracticeQuizExplanationProps> = ({ 
+  explanation, 
+  className = ''
+}) => {
   const { t } = useTranslation();
 
   return (
@@ -20,13 +23,14 @@ const PracticeQuizExplanation: React.FC<PracticeQuizExplanationProps> = ({ expla
         <span className="font-semibold text-[var(--color-primary-accent)] text-base">{t('resultsExplanationTitle')}</span>
       </div>
       
-      <div className="pl-1.5 border-l-2 border-[var(--color-primary-accent)]/20"> 
-        <MathText 
-          text={explanation} 
-          markdownFormatting={true} 
-          compact={true} 
-          className="text-sm text-[var(--color-text-body)] leading-relaxed" 
-        />
+      <div className="explanation-content"> 
+        
+        <div className="pl-1.5 border-l-2 border-[var(--color-primary-accent)]/20">
+          {/* Updated to use MathText for robust markdown rendering */}
+          <div className="explanation-text text-sm leading-relaxed text-[var(--color-text-body)] markdown-content">
+            <MathText text={explanation} markdownFormatting={true} />
+          </div>
+        </div>
       </div>
     </div>
   );

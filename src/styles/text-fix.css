@@ -38,3 +38,24 @@ html[lang="vi"] strong {
   color: var(--color-text-primary) !important;
   text-decoration: none !important;
 }
+
+/* Specific fix for explanation text */
+.explanation-content strong {
+  color: var(--color-text-primary) !important;
+  text-decoration: none !important;
+  display: inline !important;
+  vertical-align: baseline !important;
+  line-height: inherit !important;
+  font-size: inherit !important;
+}
+
+/* Fix for explanation text alignment */
+.explanation-text p {
+  margin: 0;
+}
+
+.explanation-text strong {
+  display: inline;
+  vertical-align: baseline;
+  line-height: inherit;
+}

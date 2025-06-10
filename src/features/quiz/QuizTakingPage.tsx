@@ -1,13 +1,11 @@
-
-
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAppContext, useTranslation } from '../../App';
-import { Quiz, Question, UserAnswer, QuizResult } from '../../types';
-import { Button, Card, LoadingSpinner, ProgressBar, Modal, Tooltip } from '../../components/ui';
+import { UserAnswer, QuizResult } from '../../types';
+import { Button, Card, LoadingSpinner, ProgressBar, Modal } from '../../components/ui';
 import MathText from '../../components/MathText';
-import { CircleIcon, ChevronLeftIcon, ChevronRightIcon, LightbulbIcon } from '../../constants';
-import { useQuizFlow } from './hooks/useQuizFlow'; 
+import { ChevronLeftIcon, ChevronRightIcon } from '../../constants';
+import { useQuizFlow } from './hooks/useQuizFlow';
 
 const QuizTakingPage: React.FC = () => {
   const { setQuizResult } = useAppContext();
@@ -143,7 +141,9 @@ const QuizTakingPage: React.FC = () => {
   
   if (!currentQuestion) {
      return (
-        <Card className="max-w-3xl mx-auto shadow-2xl !rounded-2xl animate-fadeInUp" useGlassEffect>
+        <Card 
+          className="max-w-3xl mx-auto p-5 sm:p-6 md:p-8 animate-fadeInUp rounded-lg bg-[var(--color-bg-surface-2)]/50 border border-[var(--color-border-default)] shadow-md"
+        >
             <LoadingSpinner text={t('quizTakingLoading')} />
             <p className="text-center text-[var(--color-text-secondary)] mt-4">{t('quizTakingErrorQuestionNotFound')}</p>
         </Card>
@@ -155,51 +155,49 @@ const QuizTakingPage: React.FC = () => {
   const isLastQuestion = currentQuestionIndex === totalQuestions - 1;
 
   return (
-    <Card className="max-w-3xl mx-auto shadow-2xl !rounded-2xl animate-page-slide-fade-in" useGlassEffect>
+    <Card 
+      className="max-w-3xl mx-auto p-5 sm:p-6 md:p-8 animate-fadeInUp rounded-lg bg-[var(--color-bg-surface-2)]/50 border border-[var(--color-border-default)] shadow-md"
+    >
       <div className="mb-6 sm:mb-8">
         <h1 className="text-2xl sm:text-3xl font-bold text-[var(--color-text-primary)] mb-3 sm:mb-4 leading-tight tracking-tight line-clamp-2" title={localActiveQuiz.title}>
           <MathText text={localActiveQuiz.title} markdownFormatting={true} />
         </h1>
         <div className="flex justify-between items-center text-sm text-[var(--color-text-secondary)] mb-4 sm:mb-5">
           <span>{t('quizTakingQuestionProgress', {current: currentQuestionIndex + 1, total: totalQuestions})}</span>
-          {localActiveQuiz.config?.customUserPrompt && (
-            <Tooltip content={<div className="max-w-xs text-left text-xs"><MathText text={localActiveQuiz.config.customUserPrompt} markdownFormatting={true}/></div>} placement="bottom-end">
-                <LightbulbIcon className="w-5 h-5 text-yellow-300 cursor-help"/>
-            </Tooltip>
-          )}
           {timeLeft !== null && <span className={`font-semibold ${timeLeft <= 60 ? 'text-red-400 animate-pulse' : 'text-[var(--color-primary-accent)]'}`}>{t('quizTakingTimeLeft', { time: formatTime(timeLeft) })}</span>}
         </div>
-        <ProgressBar progress={progressPercent} size="lg" barClassName="bg-gradient-to-r from-[var(--color-primary-accent)] to-indigo-500"/>
+        <ProgressBar progress={progressPercent} size="md" />
       </div>
 
-    <div className="mt-8">
-      <div className="quiz-question-text"> {/* User provided class */}
+    <div className="mt-6 md:mt-8">
+      <div className="quiz-question-text text-base sm:text-lg text-[var(--color-text-body)] leading-relaxed mb-4"> {/* Added mb-4 like in PracticeQuizQuestion */}
         <MathText text={currentQuestion.questionText} markdownFormatting={true} />
       </div>
       
-      <div className="quiz-options"> {/* User provided class */}
+      <div className="quiz-options space-y-3"> {/* Removed mt-6, relies on mb-4 from question text now, matching PracticeQuizQuestion structure */}
         {currentQuestion.options.map((option, index) => {
           const isSelectedForDisplay = selectedOption === option;
+          
+          // Matched button styling with PracticeQuizQuestion's non-feedback state
+          const baseButtonClasses = "w-full flex items-center text-left p-3.5 sm:p-4 rounded-xl border-2 focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--color-primary-accent)]/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-bg-default)] shadow-lg transition-all var(--duration-fast) var(--ease-ios) will-change-transform, border, background-color"; // Corrected will-change
+          const selectedButtonClasses = "bg-[var(--color-primary-accent)]/50 border-[var(--color-primary-accent)] text-[var(--color-primary-accent-text)] font-semibold scale-[1.01]";
+          const unselectedButtonClasses = "bg-[var(--color-bg-surface-3)]/70 hover:bg-[var(--color-bg-surface-3)]/40 border-[var(--color-border-interactive)] hover:border-[var(--color-primary-accent)] text-[var(--color-text-primary)]";
+
+          const indicatorBaseClasses = "option-indicator mr-3.5 flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors var(--duration-fast) var(--ease-ios)";
+          const selectedIndicatorClasses = "border-[var(--color-primary-accent-text)] bg-[var(--color-primary-accent)]";
+          const unselectedIndicatorClasses = "border-[var(--color-text-muted)] bg-[var(--color-bg-surface-2)] group-hover:border-[var(--color-primary-accent)]";
           
           return (
             <button
               key={index}
               onClick={() => handleSelectOption(option)}
-              // Using user's new class structure for options
-              className={`w-full flex items-center text-left p-3.5 sm:p-4 rounded-xl border-2 focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--color-primary-accent)]/50 focus-visible:ring-offset-2 shadow-lg 
-                         transition-all var(--duration-fast) var(--ease-ios) will-change-transform, border, background-color
-                         ${isSelectedForDisplay 
-                            ? 'bg-[var(--color-primary-accent)]/50 border-[var(--color-primary-accent)] text-[var(--color-primary-accent-text)] font-semibold scale-[1.01]' 
-                            : 'bg-[var(--color-bg-surface-3)]/70 hover:bg-[var(--color-bg-surface-3)]/40 border-[var(--color-border-interactive)] hover:border-[var(--color-primary-accent)] text-[var(--color-text-primary)]'}`}
+              className={`${baseButtonClasses} ${isSelectedForDisplay ? selectedButtonClasses : unselectedButtonClasses}`}
               aria-pressed={isSelectedForDisplay}
             >
-              <span className="mr-3.5 flex-shrink-0">
-                {isSelectedForDisplay 
-                  ? <CircleIcon className="w-6 h-6 text-[var(--color-primary-accent-text)]" isFilled={true} strokeWidth={1}/>
-                  : <CircleIcon className="w-6 h-6 text-[var(--color-text-muted)] group-hover:text-[var(--color-primary-accent)] transition-colors var(--duration-fast) var(--ease-ios)" strokeWidth={2.5}/>
-                }
+              <span className={`${indicatorBaseClasses} ${isSelectedForDisplay ? selectedIndicatorClasses : unselectedIndicatorClasses}`}>
+                {/* Visual is from its own bg/border */}
               </span>
-              <div className="text-sm sm:text-base flex-grow markdown-content"> {/* Ensure .markdown-content is applied here for options too */}
+              <div className="text-sm sm:text-base flex-grow markdown-content">
                 <MathText text={option} markdownFormatting={true} />
               </div>
             </button>

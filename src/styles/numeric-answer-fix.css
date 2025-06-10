@@ -1,8 +1,8 @@
 /* Special fix for numeric answers to ensure proper vertical alignment */
 
-/* Target specifically numeric-only content for better vertical alignment */
-.markdown-github p:only-child:not(:empty) {
-  display: flex; 
+/* Target specifically numeric-only content within options for better vertical alignment */
+.option-content .markdown-github p:only-child:not(:empty) { /* Scoped to .option-content */
+  display: flex;
   align-items: center;
   min-height: 24px;
 }
@@ -15,7 +15,7 @@ button .option-content {
 }
 
 /* When options are purely numeric, ensure proper vertical alignment */
-.markdown-content .markdown-github p:only-child {
+.option-content .markdown-github p:only-child { /* Changed from .markdown-content to .option-content */
   display: flex;
   align-items: center;
   justify-content: flex-start;

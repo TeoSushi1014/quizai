@@ -1,11 +1,10 @@
-
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAppContext, useTranslation } from '../../App';
 import { Question, QuizResult, UserAnswer } from '../../types';
-import { Button, Card, ProgressBar, LoadingSpinner, Tooltip, Modal } from '../../components/ui';
+import { Button, Card, ProgressBar, LoadingSpinner, Modal } from '../../components/ui';
 // MathText is not directly used here anymore if PracticeQuizQuestion handles all markdown
-import { CheckCircleIcon, CircleIcon, ChevronLeftIcon, ChevronRightIcon, XCircleIcon, LightbulbIcon } from '../../constants';
+import { CheckCircleIcon, CircleIcon, ChevronLeftIcon, ChevronRightIcon, XCircleIcon } from '../../constants';
 import { useQuizFlow } from './hooks/useQuizFlow';
 import PracticeQuizQuestion from './components/PracticeQuizQuestion'; 
 import PracticeQuizExplanation from './components/PracticeQuizExplanation'; // Import the new explanation component
@@ -247,6 +246,46 @@ const QuizPracticePage: React.FC = () => {
   }, [triggerFinishPractice]);
 
 
+  // Add helper function to get option label from option value
+  const getOptionLabel = (optionValue: string, options: string[]) => {
+    const index = options.findIndex(option => option === optionValue);
+    if (index === -1) return optionValue;
+    return `${String.fromCharCode(65 + index)}. ${optionValue}`;
+  };
+
+  // Define renderQuizContent function
+  const renderQuizContent = () => {
+    if (!currentQuestion) return null;
+  
+    return (
+      <div className="space-y-4">
+        <PracticeQuizQuestion
+          question={currentQuestion.questionText}
+          options={currentQuestion.options}
+          currentIndex={currentQuestionIndex}
+          totalQuestions={totalQuestions}
+          selectedOption={currentTentativeSelection}
+          onSelectOption={handleSelectOption}
+          onCheckAnswer={handleCheckAnswer}
+          onSkipQuestion={handleSkipQuestionLogic}
+          isSubmitting={isFinishingOrChecking}
+          isAnswerChecked={isCurrentSelectionChecked}
+          isAnswerCorrect={isCurrentSelectionCorrectFeedback}
+          correctAnswer={currentQuestion.correctAnswer}
+        />
+        
+        {isCurrentSelectionChecked && (
+          <PracticeQuizExplanation 
+            explanation={currentQuestion.explanation || t('resultsNoExplanation')}
+            isCorrect={isCurrentSelectionCorrectFeedback === true}
+            correctOptionLabel={getOptionLabel(currentQuestion.correctAnswer, currentQuestion.options)}
+            showFeedbackBanner={false}
+          />
+        )}
+      </div>
+    );
+  };
+
   if (isFinishingOrChecking && isFinishingPracticeRef.current) { // Show loading only when truly finishing
     return (
       <div className="flex flex-col items-center justify-center p-8 min-h-[400px]">
@@ -282,34 +321,6 @@ const QuizPracticePage: React.FC = () => {
 
   const isLastQuestion = currentQuestionIndex === totalQuestions - 1;
   
-  const renderQuizContent = () => {
-    if (!currentQuestion) return null;
-  
-    return (
-      <div className="space-y-4">
-        <PracticeQuizQuestion
-          question={currentQuestion.questionText}
-          options={currentQuestion.options}
-          currentIndex={currentQuestionIndex}
-          totalQuestions={totalQuestions}
-          selectedOption={currentTentativeSelection}
-          onSelectOption={handleSelectOption}
-          onCheckAnswer={handleCheckAnswer}
-          onSkipQuestion={handleSkipQuestionLogic}
-          isSubmitting={isFinishingOrChecking}
-          isAnswerChecked={isCurrentSelectionChecked}
-          isAnswerCorrect={isCurrentSelectionCorrectFeedback}
-          correctAnswer={currentQuestion.correctAnswer}
-        />
-        
-        {isCurrentSelectionChecked && (
-          <PracticeQuizExplanation 
-            explanation={currentQuestion.explanation || t('resultsNoExplanation')} 
-          />
-        )}
-      </div>
-    );
-  };
 
   return (
     <Card className="max-w-2xl mx-auto shadow-2xl !rounded-2xl animate-page-slide-fade-in p-5 sm:p-6" useGlassEffect>
@@ -319,11 +330,7 @@ const QuizPracticePage: React.FC = () => {
         </h1>
         <div className="flex justify-between items-center text-xs text-[var(--color-text-secondary)] mb-2">
           {timeLeft !== null && <span className={`font-semibold ${timeLeft <= 60 ? 'text-red-400 animate-pulse' : 'text-[var(--color-primary-accent)]'}`}>{t('quizTakingTimeLeft', { time: formatTime(timeLeft) })}</span>}
-          {localActiveQuiz.config?.customUserPrompt && (
-            <Tooltip content={<div className="max-w-xs text-left text-xs"><PracticeQuizExplanation explanation={localActiveQuiz.config.customUserPrompt}/></div>} placement="bottom-end">
-                <LightbulbIcon className="w-4 h-4 text-yellow-300 cursor-help"/>
-            </Tooltip>
-          )}
+          {/* Removed LightbulbIcon tooltip */}
         </div>
       </div>
 
