@@ -16,9 +16,37 @@ export function isValidUUID(uuid: string): boolean {
 }
 
 export function generateQuizId(): string {
-  return generateUUID();
+  const uuid = generateUUID();
+  if (!isValidUUID(uuid)) {
+    console.error('Generated invalid UUID for quiz:', uuid);
+    // Fallback to crypto.randomUUID if available, otherwise generate again
+    if (window.crypto && window.crypto.randomUUID) {
+      return window.crypto.randomUUID();
+    }
+    // Try one more time with manual generation
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      const r = Math.random() * 16 | 0;
+      const v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+  }
+  return uuid;
 }
 
 export function generateQuestionId(): string {
-  return generateUUID();
+  const uuid = generateUUID();
+  if (!isValidUUID(uuid)) {
+    console.error('Generated invalid UUID for question:', uuid);
+    // Fallback to crypto.randomUUID if available, otherwise generate again
+    if (window.crypto && window.crypto.randomUUID) {
+      return window.crypto.randomUUID();
+    }
+    // Try one more time with manual generation
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      const r = Math.random() * 16 | 0;
+      const v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+  }
+  return uuid;
 }

@@ -1,6 +1,7 @@
 import localforage from 'localforage';
 import { Quiz } from '../types';
 import { logger } from './logService';
+import { validateAndCleanQuizzes } from '../utils/quizValidationUtils';
 
 // --- Configuration for LocalForage ---
 const LOCALFORAGE_CONFIG = {
@@ -20,7 +21,13 @@ export const quizStorage = {
       const quizzesLF = await localforage.getItem<Quiz[]>(QUIZAI_LOCALFORAGE_KEY_QUIZZES);
       if (quizzesLF !== null && quizzesLF !== undefined) {
         logger.info('Quizzes loaded from LocalForage.', 'StorageService', { count: quizzesLF.length });
-        return quizzesLF;
+        // Validate and clean quizzes before returning
+        const validQuizzes = validateAndCleanQuizzes(quizzesLF);
+        if (validQuizzes.length !== quizzesLF.length) {
+          // Save the cleaned data back to storage
+          await localforage.setItem(QUIZAI_LOCALFORAGE_KEY_QUIZZES, validQuizzes);
+        }
+        return validQuizzes;
       }
       
       logger.info('No quizzes in LocalForage, trying legacy localStorage.', 'StorageService');
@@ -28,8 +35,10 @@ export const quizStorage = {
       if (localQuizzesJson) {
         const parsedQuizzes = JSON.parse(localQuizzesJson);
         logger.info('Quizzes loaded from legacy localStorage.', 'StorageService', { count: parsedQuizzes.length });
-        // Optionally, migrate to LocalForage here: await localforage.setItem(QUIZAI_LOCALFORAGE_KEY_QUIZZES, parsedQuizzes);
-        return parsedQuizzes;
+        // Validate and clean quizzes
+        const validQuizzes = validateAndCleanQuizzes(parsedQuizzes);
+        // Optionally, migrate to LocalForage here: await localforage.setItem(QUIZAI_LOCALFORAGE_KEY_QUIZZES, validQuizzes);
+        return validQuizzes;
       }
       logger.info('No quizzes found in any local storage.', 'StorageService');
       return [];
@@ -41,7 +50,9 @@ export const quizStorage = {
         if (localQuizzesJson) {
           const parsedFallback = JSON.parse(localQuizzesJson);
           logger.warn('Fell back to localStorage for reading quizzes.', 'StorageService', { count: parsedFallback.length });
-          return parsedFallback;
+          // Validate and clean quizzes before returning
+          const validQuizzes = validateAndCleanQuizzes(parsedFallback);
+          return validQuizzes;
         }
         return [];
       } catch (lsError) {

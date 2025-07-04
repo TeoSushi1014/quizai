@@ -556,6 +556,15 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
       throw new Error('User must be logged in to delete quizzes')
     }
 
+    // Validate UUID format before attempting deletion
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(quizId)) {
+      logger.error('Attempted to delete quiz with invalid UUID format', 'AppContext', { quizId });
+      // Remove from local state even if it has invalid ID
+      setAllQuizzes(prev => prev.filter(q => q.id !== quizId));
+      throw new Error(`Cannot delete quiz: Invalid UUID format (${quizId})`);
+    }
+
     const success = await supabaseService.deleteQuiz(quizId)
     
     if (success) {

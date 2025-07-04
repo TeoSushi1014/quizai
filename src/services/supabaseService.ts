@@ -211,6 +211,13 @@ export class SupabaseService {
 
   async deleteQuiz(quizId: string): Promise<boolean> {
     try {
+      // Validate the UUID format before attempting deletion
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(quizId)) {
+        logger.error('Attempted to delete quiz with invalid UUID format', 'SupabaseService', { quizId });
+        throw new Error(`Invalid UUID format: ${quizId}`);
+      }
+
       const { error } = await supabase
         .from('quizzes')
         .delete()

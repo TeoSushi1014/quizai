@@ -316,3 +316,26 @@ html[lang="vi"] {
 html[lang="vi"] body {
   line-height: 1.7;
 }
+
+/* Fix for deprecated -ms-high-contrast */
+@media (forced-colors: active) {
+  .glass-effect { 
+    background-color: Canvas;
+    border: 1px solid ButtonText;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  
+  .card-glass {
+    background-color: Canvas !important;
+    border: 1px solid ButtonText !important;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  
+  .modal-backdrop-enhanced { 
+    background-color: Canvas;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
