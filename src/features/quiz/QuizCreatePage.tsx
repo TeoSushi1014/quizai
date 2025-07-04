@@ -1,6 +1,6 @@
 
 
-import React, { useState, useCallback, ReactNode, useEffect } from 'react';
+import React, { useState, useCallback, ReactNode, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion'; 
 import { useAppContext, useTranslation } from '../../App';
@@ -12,7 +12,7 @@ import { extractTextFromPdf, convertImageToBase64, extractTextFromDocx } from '.
 import { extractTextFromImageWithGemini } from '../../services/geminiService'; 
 import { DocumentTextIcon, ChevronRightIcon, ChevronLeftIcon, InformationCircleIcon, KeyIcon, GEMINI_MODEL_ID, ChartBarIcon, CopyIcon } from '../../constants'; 
 import { translations } from '../../i18n';
-import { logger } from '../../services/logService'; // Import logger
+import { logger } from '../../services/logService';
 
 type CreationStep = 1 | 2 | 3;
 const MAX_UNAUTH_QUIZZES_PER_DAY = 5;
@@ -56,7 +56,7 @@ const findCommonPrefix = (strings: string[]): string => {
 
 
 const QuizCreatePage: React.FC = () => {
-  const { language, isGeminiKeyAvailable, currentUser } = useAppContext(); 
+  const { language, currentUser } = useAppContext(); 
   const { t } = useTranslation(); // Ensure t is initialized for findCommonPrefix if it's outside component
   const navigate = useNavigate();
   const [step, setStep] = useState<CreationStep>(1);
@@ -148,9 +148,10 @@ const QuizCreatePage: React.FC = () => {
   }, [processedContentText]);
 
 
-  const isApiKeyMissingForGemini = () => !isGeminiKeyAvailable;
+  // API keys are now managed through Supabase
+  const isApiKeyMissingForGemini = () => false; // Always return false since we have default system keys
 
-  const handleFileUpload = async (files: File[]) => {
+  const handleFileUpload = useCallback(async (files: File[]) => {
     if (files.length === 0) {
       setUploadedFiles([]); setPastedText(''); setImageBase64(null); 
       setProcessedContents([]); setCombinedContent(null);
@@ -159,23 +160,20 @@ const QuizCreatePage: React.FC = () => {
       return;
     }
 
-    logger.info('File upload initiated.', 'QuizCreatePage', { 
-        count: files.length, 
-        fileTypes: files.map(f => f.type).join(', ') 
-    });
-    
+    // Show immediate feedback
     setUploadedFiles(files); 
-    setPastedText(''); setImageBase64(null); // Clear other input types
-    setIsProcessingFiles(true); setProcessingError(null); setProgress(0); // For AI gen progress
-    setProcessingProgress({current: 0, total: files.length}); // For file processing progress
+    setPastedText(''); setImageBase64(null);
+    setIsProcessingFiles(true); setProcessingError(null); setProgress(0);
+    setProcessingProgress({current: 0, total: files.length});
 
-    // Generate quiz title suggestion
+    // Generate quiz title suggestion immediately
     setQuizTitleSuggestion(findCommonPrefix(files.map(f => f.name)) || t('step2MultipleFilesQuizTitle'));
 
     try {
       const tempProcessedContents: {text: string, fileName: string}[] = [];
       let allTextsCombined = "";
       
+      // Process files with progress updates
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         setProcessingProgress({current: i + 1, total: files.length});
@@ -183,6 +181,7 @@ const QuizCreatePage: React.FC = () => {
         let textContentForFile: string | null = null; 
         let isImageFile = false;
 
+        // Optimized file processing
         if (file.type === 'application/pdf') {
           textContentForFile = await extractTextFromPdf(file);
         } else if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || file.name.endsWith('.docx')) {
@@ -190,11 +189,9 @@ const QuizCreatePage: React.FC = () => {
         } else if (file.type.startsWith('image/')) {
           isImageFile = true;
           const imgData = await convertImageToBase64(file);
-          // Keep imageBase64 for potential single image use case or direct Gemini image input
           if (files.length === 1) setImageBase64(imgData); 
           
           if (isApiKeyMissingForGemini()) {
-            logger.warn("API key for Gemini is missing. Skipping text extraction from image for display.", 'QuizCreatePageFileProcessing');
             textContentForFile = t('step1ErrorProcessingFile') + ` (${file.name} - API Key missing for text extraction)`;
           } else {
             const extractedImageText = await extractTextFromImageWithGemini(imgData);
@@ -211,7 +208,6 @@ const QuizCreatePage: React.FC = () => {
           tempProcessedContents.push({ text: textContentForFile, fileName: file.name });
           allTextsCombined += `=== [${file.name}] ===\n\n${textContentForFile}\n\n`;
         } else if (isImageFile && files.length > 1) { 
-          // If it's an image in a multi-file upload and text extraction failed or was skipped
           allTextsCombined += `=== [${file.name}] ===\n\n[Image content - text extraction may have been skipped or failed]\n\n`;
         }
       }
@@ -219,63 +215,57 @@ const QuizCreatePage: React.FC = () => {
       const trimmedContent = allTextsCombined.trim();
       setProcessedContents(tempProcessedContents);
       setCombinedContent(trimmedContent);
-      setProcessedContentText(trimmedContent); // For display in modal and summary
+      setProcessedContentText(trimmedContent);
       
-      // Import isFormattedQuiz at the top of the file to use this
-      const isFormatted = await import('../../services/geminiService').then(module => {
-        return module.isFormattedQuiz(trimmedContent);
-      }).catch(() => false);
+      // Check for formatted quiz asynchronously (don't block UI)
+      import('../../services/geminiService').then(module => {
+        const isFormatted = module.isFormattedQuiz(trimmedContent);
+        setIsFormattedQuiz(isFormatted);
+        if (isFormatted) {
+          setProcessingError("✅ Quiz format detected! The system will preserve all questions and options exactly as provided.");
+        }
+      }).catch(() => setIsFormattedQuiz(false));
       
-      if (isFormatted) {
-        logger.info('Formatted quiz detected in uploaded files.', 'QuizCreatePage');
-        // Show a notification message (not an error)
-        setProcessingError("✅ Quiz format detected! The system will preserve all questions and options exactly as provided.");
-      }
-      
-      logger.info('Files processed successfully.', 'QuizCreatePage', { 
-        combinedTextLength: trimmedContent.length,
-        isFormattedQuiz: isFormatted 
-      });
       setStep(2);
     } catch (err) {
       logger.error("Error processing files:", 'QuizCreatePageFileProcessing', undefined, err as Error);
       setProcessingError(err instanceof Error ? err.message : t('step1ErrorProcessingFile'));
     } finally { 
       setIsProcessingFiles(false); 
-      setProcessingProgress({current: files.length, total: files.length}); // Ensure progress is full
+      setProcessingProgress({current: files.length, total: files.length});
     }
-  };
+  }, [t, isApiKeyMissingForGemini]);
 
 
-  const handlePasteText = async () => {
+  const handlePasteText = useCallback(async () => {
     if (pastedText.trim()) {
       const trimmedPastedText = pastedText.trim();
-      logger.info('Using pasted text.', 'QuizCreatePage', { textLength: trimmedPastedText.length });
+      
       // Clear file related states
       setUploadedFiles([]); setProcessedContents([]); setCombinedContent(null); setImageBase64(null); setInitialImageExtractedText(null);
       
       setProcessedContentText(trimmedPastedText);
       setQuizTitleSuggestion(t('step2PastedText') + " Quiz");
       
-      // Check if the pasted text is a formatted quiz
-      const isFormatted = await import('../../services/geminiService').then(module => {
-        return module.isFormattedQuiz(trimmedPastedText);
-      }).catch(() => false);
-      
-      if (isFormatted) {
-        logger.info('Formatted quiz detected in pasted text.', 'QuizCreatePage');
-        // Show formatted quiz detected notification (not an error, but as a notification)
-        setProcessingError("✅ Quiz format detected! The system will preserve your quiz exactly as provided.");
-      } else {
+      // Check if the pasted text is a formatted quiz asynchronously
+      import('../../services/geminiService').then(module => {
+        const isFormatted = module.isFormattedQuiz(trimmedPastedText);
+        setIsFormattedQuiz(isFormatted);
+        if (isFormatted) {
+          setProcessingError("✅ Quiz format detected! The system will preserve your quiz exactly as provided.");
+        } else {
+          setProcessingError(null);
+        }
+      }).catch(() => {
+        setIsFormattedQuiz(false);
         setProcessingError(null);
-      }
+      });
        
       setStep(2);
     } else { 
       setProcessingError(t('step1ErrorPasteText'));
-      logger.warn('Attempted to use empty pasted text.', 'QuizCreatePage');
     }
-  };
+  }, [pastedText, t]);
 
   const handleConfigChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -301,7 +291,7 @@ const QuizCreatePage: React.FC = () => {
     }
   };
   
-  const handleAIModeToggle = (checked: boolean) => {
+  const handleAIModeToggle = useCallback((checked: boolean) => {
     setUseAIMode(checked);
     if (checked) { 
       if (quizConfig.difficulty !== 'AI-Determined') setUserSelectedDifficulty(quizConfig.difficulty);
@@ -310,14 +300,12 @@ const QuizCreatePage: React.FC = () => {
     } else { 
       setQuizConfig(prev => ({ ...prev, difficulty: userSelectedDifficulty === 'AI-Determined' ? 'Medium' : userSelectedDifficulty, numQuestions: userSelectedNumQuestions > 0 ? userSelectedNumQuestions : 10 }));
     }
-  };
+  }, [quizConfig.difficulty, quizConfig.numQuestions, userSelectedDifficulty, userSelectedNumQuestions]);
   
   const handleGenerateQuiz = async () => {
     logger.info('Quiz generation initiated.', 'QuizCreatePageGenerate', { config: quizConfig });
-    if (isApiKeyMissingForGemini()) { 
-      setProcessingError(t('step3ErrorAPIKeyMissingForModel', {modelName: "Google Gemini"})); 
-      return; 
-    }
+    // API keys are now managed through Supabase, no need to check environment variables
+    
     if (!currentUser) {
         const now = Date.now();
         const oneDayAgo = now - (24 * 60 * 60 * 1000);
@@ -586,7 +574,7 @@ const QuizCreatePage: React.FC = () => {
           {processingError && (<div role="alert" className={`p-3.5 bg-red-500/20 border border-red-500/50 rounded-lg text-sm text-red-300 text-center shadow-md animate-fadeIn`}>{processingError}</div>)} 
           <div className="flex flex-col sm:flex-row justify-between items-center pt-5 gap-4"> 
             <Button variant="outline" onClick={() => { setStep(1); setProcessedContentText(null); setCombinedContent(null); setProcessedContents([]); setImageBase64(null); setUploadedFiles([]); setPastedText(''); setProcessingError(null); setInitialImageExtractedText(null); }} leftIcon={<ChevronLeftIcon className="w-4 h-4"/>} size="lg" className="w-full sm:w-auto py-3"> {t('back')} </Button> 
-            <Button onClick={() => { setStep(3); setProcessingError(null); }} disabled={(isApiKeyMissingForGemini() && quizConfig.selectedModel === GEMINI_MODEL_ID)} rightIcon={<ChevronRightIcon className="w-4 h-4"/>} variant="primary" size="lg" tooltip={(isApiKeyMissingForGemini() && quizConfig.selectedModel === GEMINI_MODEL_ID) ? t('apiKeyMissingTooltip') : undefined} className="w-full sm:w-auto py-3"> {t('step2NextButton')} </Button> 
+            <Button onClick={() => { setStep(3); setProcessingError(null); }} disabled={false} rightIcon={<ChevronRightIcon className="w-4 h-4"/>} variant="primary" size="lg" className="w-full sm:w-auto py-3"> {t('step2NextButton')} </Button> 
           </div> 
         </div> 
         {isFullTextModalOpen && (<Modal isOpen={isFullTextModalOpen} onClose={handleCloseFullTextModal} title={t('fullTextModalTitle')} size="3xl" footerContent={ <div className="flex flex-col sm:flex-row sm:justify-between items-center w-full gap-3 sm:gap-0"> <Button variant="outline" onClick={handleCopyToClipboard} leftIcon={<CopyIcon className="w-4 h-4"/>} size="md" className="w-full sm:w-auto"> {copySuccess ? t('azotaExportCopied') : t('azotaExportCopy')} </Button> <Button onClick={handleCloseFullTextModal} variant="secondary" size="md" className="w-full sm:w-auto"> {t('close')} </Button> </div> }> 
@@ -637,8 +625,8 @@ const QuizCreatePage: React.FC = () => {
               </div> 
             </div> 
           </div> 
-          {(isApiKeyMissingForGemini() && quizConfig.selectedModel === GEMINI_MODEL_ID) && (<div role="alert" className={`my-5 p-3.5 bg-red-500/20 border border-red-500/50 rounded-lg text-sm text-red-300 text-center shadow-md animate-fadeIn`}>{t('error')}! {t('step3ErrorAPIKeyMissingForModel', {modelName: "Google Gemini"})}</div>)} 
-          <Button onClick={handleGenerateQuiz} isLoading={isGeneratingQuiz} disabled={isGeneratingQuiz || (isApiKeyMissingForGemini() && quizConfig.selectedModel === GEMINI_MODEL_ID)} fullWidth size="lg" variant="primary" leftIcon={<img src={generateIconUrl} alt={t('step3GenerateButton')} className="w-5 h-5" />} className="bg-gradient-to-r from-green-500 via-teal-500 to-sky-500 hover:from-green-600 hover:via-teal-600 hover:to-sky-600 text-white dark:text-white shadow-xl hover:shadow-green-500/40 py-3.5 rounded-xl"> {currentButtonText} </Button> 
+          {/* API keys are managed through Supabase, no error messages needed */}
+          <Button onClick={handleGenerateQuiz} isLoading={isGeneratingQuiz} disabled={isGeneratingQuiz} fullWidth size="lg" variant="primary" leftIcon={<img src={generateIconUrl} alt={t('step3GenerateButton')} className="w-5 h-5" />} className="bg-gradient-to-r from-green-500 via-teal-500 to-sky-500 hover:from-green-600 hover:via-teal-600 hover:to-sky-600 text-white dark:text-white shadow-xl hover:shadow-green-500/40 py-3.5 rounded-xl"> {currentButtonText} </Button> 
           {isGeneratingQuiz && <ProgressBar progress={progress} label={generationStatusText || t('step3AIIsThinking')} className="mt-6 animate-fadeIn" />} 
           {processingError && !isGeneratingQuiz && (<div role="alert" className={`mt-5 p-3.5 bg-red-500/20 border border-red-500/50 rounded-lg text-sm text-red-300 text-center shadow-md animate-fadeIn`}>{processingError}</div>)} 
           <div className="mt-8 text-center"> <Button variant="outline" onClick={() => {setStep(2); setProcessingError(null); setGenerationStatusText('');}} leftIcon={<ChevronLeftIcon className="w-4 h-4"/>} size="lg" className="w-full sm:w-auto py-3"> {t('step3BackButtonCfg')} </Button> </div> 

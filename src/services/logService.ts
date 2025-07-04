@@ -16,6 +16,7 @@ interface LogEntry {
 
 class Logger {
   private isProduction = false;
+  private userId: string | null = null;
 
   constructor() {
     // Attempt to determine environment. In Vite, import.meta.env is used.
@@ -68,15 +69,19 @@ class Logger {
     }
 
     if (this.isProduction) {
-      // In production, we might send to a logging service
-      // this.sendToLoggingService(entry);
-      // For now, still log to console but perhaps less verbosely or selectively
-      this.consoleLog(entry);
+      // In production, only log warnings and errors to reduce console spam
+      if (level === 'warn' || level === 'error') {
+        this.consoleLog(entry);
+      }
+      // Store critical logs for debugging
+      if (level === 'error') {
+        this.storeRecentLog(entry);
+      }
     } else {
-      // In development, log to console with full details
+      // In development, log everything to console
       this.consoleLog(entry);
+      this.storeRecentLog(entry);
     }
-    this.storeRecentLog(entry);
   }
 
   private consoleLog(entry: LogEntry) {

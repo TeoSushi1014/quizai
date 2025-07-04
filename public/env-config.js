@@ -1,4 +1,4 @@
 window.__ENV__ = {
   VITE_GEMINI_API_KEY: '__RUNTIME_GEMINI_API_KEY__',
-  GEMINI_API_KEY: 'AIzaSyDDcYcb1JB-NKFRDC28KK0yVH_Z3GX9lU0' // Fallback hardcoded API key
+  // API keys now stored securely in Supabase
 };

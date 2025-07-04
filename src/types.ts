@@ -92,7 +92,6 @@ export interface AppContextType {
   logout: () => void;
   updateUserProfile: (updatedProfile: Partial<UserProfile>) => Promise<boolean>;
 
-  isGeminiKeyAvailable: boolean;
   isLoading: boolean;
   isDriveLoading: boolean; 
   driveSyncError: string | null; 

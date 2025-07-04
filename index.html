@@ -43,25 +43,64 @@
 }
 </script>
   
+  <!-- Analytics - load async, không block rendering -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-PPLMXLJNZT"></script>
   <script>
     window.dataLayer = window.dataLayer || [];
     function gtag(){dataLayer.push(arguments);}
     gtag('js', new Date());
-
     gtag('config', 'G-PPLMXLJNZT');
   </script>
   
-  <script src="https://www.google.com/recaptcha/enterprise.js?render=6LfjXkorAAAAAOk4X5LwVd-8RgwMGS0IWxZLtFGQ"></script>
+  <!-- ReCaptcha - load async -->
+  <script async src="https://www.google.com/recaptcha/enterprise.js?render=6LfjXkorAAAAAOk4X5LwVd-8RgwMGS0IWxZLtFGQ"></script>
   <meta charset="UTF-8" />
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <!-- Performance optimizations -->
+  <meta name="format-detection" content="telephone=no">
+  <meta name="theme-color" content="#0f172a">
+  
+  <!-- Preconnect to external domains -->
+  <link rel="preconnect" href="https://www.google.com">
+  <link rel="preconnect" href="https://www.gstatic.com">
+  <link rel="preconnect" href="https://esm.sh">
+  
   <title>QuizAI</title>
   <link rel="icon" type="image/x-icon" href="/assets/logo/avt.ico">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Noto+Sans+Vietnamese:wght@400;500;600;700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
-  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Preload critical CSS -->
+  <link rel="preload" href="https://cdn.tailwindcss.com" as="script">
+  
+  <!-- Load Tailwind with defer to not block rendering -->
+  <script defer src="https://cdn.tailwindcss.com"></script>
+  <script>
+    // Configure Tailwind để giảm production warnings và tối ưu
+    document.addEventListener('DOMContentLoaded', function() {
+      if (typeof tailwind !== 'undefined') {
+        tailwind.config = {
+          darkMode: 'class',
+          corePlugins: {
+            // Tắt các plugin không cần thiết để giảm bundle size
+            preflight: true,
+            container: false,
+            accessibility: false,
+          },
+          theme: {
+            extend: {
+              fontFamily: {
+                primary: ['Inter', 'Roboto', 'Noto Sans Vietnamese', 'system-ui', 'sans-serif'],
+              }
+            }
+          }
+        }
+      }
+    });
+  </script>
   <style>
     :root {
       /* Animation Variables */
@@ -556,8 +595,64 @@
 </head>
 <body>
   <noscript>You need to enable JavaScript to run this app.</noscript>
+  
+  <!-- Loading placeholder để cải thiện perceived performance -->
+  <div id="initial-loader" style="
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: var(--color-bg-body, #0f172a);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    color: var(--color-text-primary, #f1f5f9);
+    font-family: var(--font-primary, system-ui);
+  ">
+    <div style="
+      width: 40px;
+      height: 40px;
+      border: 3px solid transparent;
+      border-top: 3px solid var(--color-primary-accent, #38bdf8);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 16px;
+    "></div>
+    <p style="margin: 0; font-size: 14px; opacity: 0.8;">Đang tải QuizAI...</p>
+  </div>
+  
+  <style>
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    #initial-loader {
+      transition: opacity 0.3s ease-out;
+    }
+  </style>
+
   <div id="root"></div>
+  
   <script type="module" src="/src/main.tsx"></script>
   <script src="/env-config.js"></script>
+  
+  <!-- Hide loading placeholder sau khi app đã load -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Đợi một chút để React render xong
+      setTimeout(function() {
+        const loader = document.getElementById('initial-loader');
+        if (loader) {
+          loader.style.opacity = '0';
+          setTimeout(function() {
+            loader.remove();
+          }, 300);
+        }
+      }, 500);
+    });
+  </script>
 </body>
 </html>

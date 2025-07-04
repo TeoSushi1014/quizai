@@ -4,6 +4,7 @@ import { GEMINI_TEXT_MODEL, GEMINI_MODEL_ID } from "../constants";
 import { logger } from './logService';
 import { getTranslator } from "../i18n";
 import { generateQuestionId } from '../utils/uuidUtils';
+import { secureConfig } from './secureConfigService';
 
 // Helper function to detect if content appears to be a formatted quiz
 export const isFormattedQuiz = (content: string): boolean => {
@@ -45,17 +46,25 @@ export const isFormattedQuiz = (content: string): boolean => {
 
 let geminiAI: GoogleGenAI | null = null;
 
-const initializeGeminiAI = (): GoogleGenAI => {
+const initializeGeminiAI = async (): Promise<GoogleGenAI> => {
   if (!geminiAI) {
-    const apiKeyFromEnv = process.env.GEMINI_API_KEY;
+    // Try to get API key from Supabase first
+    let apiKey = await secureConfig.getApiKey('GEMINI_API_KEY');
     
-    if (typeof apiKeyFromEnv !== 'string' || !apiKeyFromEnv) {
-      const errorMessage = "Google Gemini API Key (process.env.GEMINI_API_KEY) not set or not available to the client. Quiz generation may fail.";
+    // Fallback to environment variable if not found in Supabase
+    if (!apiKey) {
+      apiKey = process.env.GEMINI_API_KEY || null;
+      logger.warn("Using fallback API key from environment", "GeminiServiceInit");
+    }
+    
+    if (typeof apiKey !== 'string' || !apiKey) {
+      const errorMessage = "Google Gemini API Key not available. Please configure it in Supabase or environment variables. Quiz generation may fail.";
       logger.error(errorMessage, "GeminiServiceInit");
       throw new Error(errorMessage); 
     }
-    logger.info("Gemini AI SDK Initializing with API Key from process.env.GEMINI_API_KEY.", "GeminiServiceInit");
-    geminiAI = new GoogleGenAI({ apiKey: apiKeyFromEnv });
+    
+    logger.info("Gemini AI SDK Initializing with secure API Key.", "GeminiServiceInit");
+    geminiAI = new GoogleGenAI({ apiKey });
   }
   return geminiAI;
 };
@@ -461,7 +470,7 @@ export const generateQuizWithGemini = async (
     // We will still use the AI to process the quiz, but with instructions to preserve the format
   }
   
-  const genAIInstance = initializeGeminiAI(); 
+  const genAIInstance = await initializeGeminiAI(); 
   const { requestContents, sourceContentSnippet, systemInstructionString } = buildGeminiPrompt(content, config, titleSuggestion);
 
   try {
@@ -522,7 +531,7 @@ export const extractTextFromImageWithGemini = async (
   imageData: { base64Data: string; mimeType: string }
 ): Promise<string | null> => {
   logger.info("Attempting to extract text from image with Gemini", "GeminiServiceImage", { mimeType: imageData.mimeType });
-  const genAIInstance = initializeGeminiAI();
+  const genAIInstance = await initializeGeminiAI();
   const imagePart: Part = { inlineData: { data: imageData.base64Data, mimeType: imageData.mimeType } };
   const textPart: Part = { text: "Extract all visible text from this image. Respond with only the extracted text, without any additional commentary, formatting, or markdown. Just return the raw text content found in the image." };
   const contents: Content = { parts: [imagePart, textPart] };

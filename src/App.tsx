@@ -110,7 +110,6 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
   const [language, setLanguageState] = useState<Language>('en');
   const [currentUser, setCurrentUserInternal] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true); 
-  const [isGeminiKeyAvailable, setIsGeminiKeyAvailable] = useState(false);
   const [appInitialized, setAppInitialized] = useState(false);
   const [initializationStarted, setInitializationStarted] = useState(false);
 
@@ -211,18 +210,13 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
   useEffect(() => {
     const initializeApp = async () => {
         if (initializationStarted) {
-            logger.info('App initialization already started, skipping duplicate call', 'AppInit');
-            return;
+            return; // Remove excessive logging
         }
         
         setInitializationStarted(true);
-        logger.info('App initializing: Loading initial data', 'AppInit');
-        const geminiKeyStatus = !!process.env.GEMINI_API_KEY;
-        setIsGeminiKeyAvailable(geminiKeyStatus);
-        if (!geminiKeyStatus) {
-            logger.warn('Gemini API key (process.env.GEMINI_API_KEY) not available to the client bundle.', 'AppInit');
-        }
-
+        
+        // API keys are now managed through Supabase, no need to check environment variables
+        
         const savedLanguage = localStorage.getItem(LOCALSTORAGE_LANGUAGE_KEY) as Language | null;
         if (savedLanguage && translations[savedLanguage]) {
             setLanguageState(savedLanguage);
@@ -232,7 +226,6 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
         const savedToken = localStorage.getItem(LOCALSTORAGE_AUTH_TOKEN_KEY);
 
         if (savedToken && isTokenStillValid()) {
-            logger.info('Attempting to restore session with stored token.', 'AppInit');
             try {
                 const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
                     headers: { Authorization: `Bearer ${savedToken}` },
@@ -267,13 +260,10 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
                             averageScore: authenticatedUser.averageScore || locallyStoredUser.averageScore || null,
                         };
                         setCurrentUser(userWithToken);
-                        logger.info('Session restored successfully using stored token.', 'AppInit', { userId: userWithToken.id });
                     } else {
-                        logger.warn('Supabase authentication failed during session restore.', 'AppInit');
                         setCurrentUser(null);
                     }
                 } else {
-                    logger.warn('Stored token invalid or userinfo fetch failed. Clearing token.', 'AppInit', { status: userInfoResponse.status });
                     setCurrentUser(null); 
                 }
             } catch (e) {
@@ -281,17 +271,16 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
                 setCurrentUser(null);
             }
         } else if (savedUserJson && !savedToken) { 
-            logger.info('Found legacy user data, but no separate token. Clearing for re-auth.', 'AppInit');
             setCurrentUser(null); 
-        } else if (!savedToken) {
-            logger.info('No stored token found. User is not logged in.', 'AppInit');
         }
-
 
         const savedResultJson = localStorage.getItem(LOCALSTORAGE_QUIZ_RESULT_KEY);
         if (savedResultJson) {
             try { setQuizResult(JSON.parse(savedResultJson) as QuizResult); }
-            catch (e) { logger.error("Failed to parse quiz result from localStorage", 'AppInit', undefined, e as Error); localStorage.removeItem(LOCALSTORAGE_QUIZ_RESULT_KEY); }
+            catch (e) { 
+                logger.error("Failed to parse quiz result from localStorage", 'AppInit', undefined, e as Error); 
+                localStorage.removeItem(LOCALSTORAGE_QUIZ_RESULT_KEY); 
+            }
         }
 
         const lastSyncTimestamp = localStorage.getItem(LOCALSTORAGE_DRIVE_SYNC_KEY);
@@ -304,7 +293,6 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
           
           if (hasExistingDriveSync && !hasSettingsConfigured) {
             // User has used Drive sync before but hasn't configured new settings
-            logger.info('Migrating existing Drive sync user to new settings', 'DriveMigration');
             setIsDriveSyncEnabled(true);
             setDriveSyncModeState('auto'); // Keep existing behavior
             localStorage.setItem('driveSyncEnabled', 'true');
@@ -315,7 +303,6 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
         migrateDriveSyncSettings();
 
         setAppInitialized(true);
-        logger.info('App initialization complete.', 'AppInit');
     };
     initializeApp();
   }, [setCurrentUser, isTokenStillValid]); 
@@ -324,102 +311,79 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     if (!appInitialized) return;
 
     const loadInitialQuizzesAndSync = async () => {
-      logger.info('Loading initial quizzes from Supabase and potentially syncing with Drive.', 'QuizLoading', { isLoggedIn: !!currentUser?.accessToken });
       setIsLoading(true);
       setDriveSyncError(null);
       
-      let finalQuizzesToSet: Quiz[] = [];
-      let operationSuccessful = false;
-
-      if (currentUser?.accessToken) {
-        setIsDriveLoading(true);
-        setSyncState('syncing');
-        setCurrentSyncActivityMessage(tForProvider('initialSyncMessage'));
+      try {
+        // Load local quizzes first for immediate UI response
+        const localQuizzes = await quizStorage.getAllQuizzes();
+        setAllQuizzes(localQuizzes); // Show local quizzes immediately
+        setIsLoading(false); // Stop loading spinner for better UX
         
-        try {
-          // Load from Supabase first
-          logger.info("Initial load: Loading quizzes from Supabase.", 'QuizLoading', { userId: currentUser.id });
-          const supabaseQuizzes = await supabaseService.getUserQuizzes(currentUser.id);
-          logger.info("Initial load: Supabase quizzes loaded.", 'QuizLoading', { count: supabaseQuizzes.length });
-
-          // Then try to sync with Drive
-          const driveQuizzes = await loadQuizDataFromDrive(currentUser.accessToken);
-          const localQuizzes = await quizStorage.getAllQuizzes();
-
-          if (driveQuizzes !== null) { 
-            logger.info("Initial load: Data found on Drive. Merging Supabase, local, and Drive data.", 'QuizLoading', { 
-              supabaseCount: supabaseQuizzes.length,
-              driveCount: driveQuizzes.length, 
-              localCount: localQuizzes.length 
-            });
-            
-            // Merge all three sources: Supabase (primary), Drive, and local
-            const tempMerged = mergeQuizzes(localQuizzes, driveQuizzes);
-            finalQuizzesToSet = mergeQuizzes(tempMerged, supabaseQuizzes); // Supabase takes priority
-            
-            await quizStorage.saveQuizzes(finalQuizzesToSet); // Update local backup
-            await saveQuizDataToDrive(currentUser.accessToken, finalQuizzesToSet); // Update Drive
-            logger.info("Initial load: Merged data saved locally and to Drive.", 'QuizLoading', { count: finalQuizzesToSet.length });
-          } else { 
-            logger.info("Initial load: No data file on Drive. Merging Supabase and local.", 'QuizLoading', { 
-              supabaseCount: supabaseQuizzes.length,
-              localCount: localQuizzes.length 
-            });
-            
-            finalQuizzesToSet = mergeQuizzes(localQuizzes, supabaseQuizzes); // Supabase takes priority
-            await quizStorage.saveQuizzes(finalQuizzesToSet); // Update local backup
-            
-            if (finalQuizzesToSet.length > 0) {
-              logger.info("Initial load: Uploading merged data to new Drive file.", 'QuizLoading', { count: finalQuizzesToSet.length });
-              await saveQuizDataToDrive(currentUser.accessToken, finalQuizzesToSet);
-            }
-          }
-          setLastDriveSync(new Date());
-          localStorage.setItem(LOCALSTORAGE_DRIVE_SYNC_KEY, new Date().toISOString());
-          setSyncState('success');
-          setCurrentSyncActivityMessage(tForProvider('syncCompleteMessage'));
-          operationSuccessful = true;
-        } catch (error: any) {
-          logger.error("Initial load: Failed to load or sync quizzes.", 'QuizLoading', { errorMsg: error.message }, error);
-          
-          // Fallback strategy: try Supabase only, then local storage
-          try {
-            const supabaseQuizzes = await supabaseService.getUserQuizzes(currentUser.id);
-            finalQuizzesToSet = supabaseQuizzes;
-            logger.info("Initial load: Fell back to Supabase-only data.", 'QuizLoading', { count: finalQuizzesToSet.length });
-          } catch (supabaseError) {
-            logger.error("Initial load: Supabase fallback also failed, using local storage.", 'QuizLoading', {}, supabaseError as Error);
-            finalQuizzesToSet = await quizStorage.getAllQuizzes(); 
-            logger.info("Initial load: Final fallback to local storage.", 'QuizLoading', { count: finalQuizzesToSet.length });
-          }
-          
-          const errorKey = error.message as keyof typeof translations.en;
-          const knownError = translations.en[errorKey] ? errorKey : 'driveErrorLoading';
-          setDriveSyncError(knownError); 
-          operationSuccessful = false; 
-        } finally {
-          setAllQuizzes(finalQuizzesToSet); 
-          setIsDriveLoading(false);
-          setTimeout(() => {
-             if ((syncState === 'success' && operationSuccessful) || (syncState === 'error' && !operationSuccessful)) {
-               setCurrentSyncActivityMessage(null);
-             }
-          }, SYNC_CONFIG.MESSAGE_DISPLAY_DURATION_MS);
+        // Then sync in background if user is logged in
+        if (currentUser?.accessToken) {
+          // Run background sync without blocking UI
+          syncInBackground(localQuizzes);
         }
-      } else { 
-        // Not logged in - load from local storage only
-        finalQuizzesToSet = await quizStorage.getAllQuizzes();
-        setAllQuizzes(finalQuizzesToSet);
+      } catch (error) {
+        logger.error('Error loading initial quizzes', 'QuizLoading', undefined, error as Error);
+        setIsLoading(false);
+        setAllQuizzes([]); // Fallback to empty array
+      }
+    };
+
+    const syncInBackground = async (localQuizzes: Quiz[]) => {
+      setIsDriveLoading(true);
+      setSyncState('syncing');
+      setCurrentSyncActivityMessage(tForProvider('initialSyncMessage'));
+      
+      try {
+        // Load from Supabase
+        const supabaseQuizzes = await supabaseService.getUserQuizzes(currentUser!.id);
+        
+        // Merge with local data immediately
+        const mergedAfterSupabase = mergeQuizzes(localQuizzes, supabaseQuizzes);
+        setAllQuizzes(mergedAfterSupabase);
+        await quizStorage.saveQuizzes(mergedAfterSupabase);
+        
+        // Check if Drive sync is enabled before attempting
+        if (isDriveSyncEnabled) {
+          try {
+            const driveQuizzes = await loadQuizDataFromDrive(currentUser!.accessToken);
+            
+            if (driveQuizzes !== null) {
+              const finalMerged = mergeQuizzes(mergedAfterSupabase, driveQuizzes);
+              setAllQuizzes(finalMerged);
+              await quizStorage.saveQuizzes(finalMerged);
+              
+              // Background save to Drive (don't block UI)
+              saveQuizDataToDrive(currentUser!.accessToken, finalMerged).catch(error => {
+                logger.warn('Background Drive save failed', 'DriveSync', undefined, error as Error);
+              });
+              
+              localStorage.setItem(LOCALSTORAGE_DRIVE_SYNC_KEY, new Date().toISOString());
+              setLastDriveSync(new Date());
+            }
+          } catch (driveError) {
+            // Drive errors shouldn't block the rest of the flow
+            logger.warn('Drive sync failed during background load', 'DriveSync', undefined, driveError as Error);
+          }
+        }
+        
         setSyncState('idle');
         setCurrentSyncActivityMessage(null);
-        logger.info("Initial load: User not logged in, loaded from local storage.", 'QuizLoading', { count: finalQuizzesToSet.length });
+        
+      } catch (error) {
+        logger.error('Background sync failed', 'QuizLoading', undefined, error as Error);
+        setSyncState('error');
+        setDriveSyncError('driveErrorGeneric');
+      } finally {
+        setIsDriveLoading(false);
       }
-      setIsLoading(false);
-      logger.info('Initial quiz loading and sync attempt finished.', 'QuizLoading');
     };
 
     loadInitialQuizzesAndSync();
-  }, [appInitialized, currentUser?.accessToken, setDriveSyncError, tForProvider]);
+  }, [appInitialized, currentUser?.id, currentUser?.accessToken, tForProvider, isDriveSyncEnabled]);
 
 
   const triggerSaveToDrive = useCallback((quizzesToSave: Quiz[]) => {
@@ -888,7 +852,6 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     login,
     logout: handleLogout, 
     updateUserProfile,
-    isGeminiKeyAvailable,
     isLoading: combinedIsLoading,
     isDriveLoading,
     driveSyncError,
@@ -906,7 +869,7 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
   }), [
     location.pathname, setCurrentView, language, setLanguage, quizzesForContext, 
     addQuiz, deleteQuiz, updateQuiz, getQuizByIdFromAll, activeQuiz, setActiveQuiz, quizResult, 
-    setQuizResultWithPersistence, currentUser, login, handleLogout, updateUserProfile, isGeminiKeyAvailable, combinedIsLoading,
+    setQuizResultWithPersistence, currentUser, login, handleLogout, updateUserProfile, combinedIsLoading,
     isDriveLoading, driveSyncError, lastDriveSync, syncWithGoogleDrive, setDriveSyncError, 
     syncState, currentSyncActivityMessage, isDriveSyncEnabled, setDriveSyncEnabled, driveSyncMode, setDriveSyncMode,
     showSuccessNotification, showErrorNotification,
@@ -1111,7 +1074,7 @@ RouteLoadingFallback.displayName = "RouteLoadingFallback";
 
 const AppLayout: React.FC = () => {
   const { 
-    language, setLanguage, currentUser, isGeminiKeyAvailable, 
+    language, setLanguage, currentUser, 
     isLoading: globalIsLoading, isDriveLoading, driveSyncError, 
     lastDriveSync, setDriveSyncError, syncState, currentSyncActivityMessage
   } = useAppContext(); 
@@ -1121,10 +1084,8 @@ const AppLayout: React.FC = () => {
   const [isMobileProfileOpen, setIsMobileProfileOpen] = useState(false);
   const generalSettingsIconUrl = "https://img.icons8.com/?size=256&id=s5NUIabJrb4C&format=png"; 
   
-  const apiKeyWarnings = [];
-  if (!isGeminiKeyAvailable) {
-    apiKeyWarnings.push("Google Gemini API Key (process.env.API_KEY)");
-  }
+  const apiKeyWarnings: string[] = [];
+  // API keys are now managed through Supabase - no warnings needed
   
   const appInitialized = true; 
   if (globalIsLoading && !appInitialized) { 

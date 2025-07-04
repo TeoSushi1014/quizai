@@ -4,7 +4,8 @@ import { useAppContext, useTranslation } from '../../App';
 import { Button, Card, LoadingSpinner, Tooltip, Toggle } from '../../components/ui'; 
 import { GoogleDriveIcon, RefreshIcon, CheckCircleIcon, XCircleIcon, InformationCircleIcon, SunIcon, MoonIcon } from '../../constants'; 
 import MathText from '../../components/MathText';
-import { useTheme } from '../../contexts/ThemeContext'; 
+import { useTheme } from '../../contexts/ThemeContext';
+import ApiKeyManager from './components/ApiKeyManager'; 
 
 const SyncSettingsPage: React.FC = () => {
   const { 
@@ -51,6 +52,12 @@ const SyncSettingsPage: React.FC = () => {
         </div>
 
         <div className="space-y-8">
+          {/* API Key Management */}
+          <ApiKeyManager onApiKeyUpdate={() => {
+            // Refresh any necessary state after API key update
+            console.log('API keys updated');
+          }} />
+
           {/* Drive Sync Enable/Disable */}
           <Card className="!bg-[var(--color-bg-surface-2)]/80 !border-[var(--color-border-default)] p-5 sm:p-6 rounded-xl shadow-lg">
             <div className="flex items-center justify-between mb-4">
