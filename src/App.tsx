@@ -559,10 +559,25 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     // Validate UUID format before attempting deletion
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     if (!uuidRegex.test(quizId)) {
-      logger.error('Attempted to delete quiz with invalid UUID format', 'AppContext', { quizId });
-      // Remove from local state even if it has invalid ID
+      logger.warn('Attempting to delete quiz with invalid UUID format (legacy quiz)', 'AppContext', { quizId });
+      
+      // For old/invalid quiz IDs, just remove from local state and storage
+      // These quizzes likely don't exist in the database anyway
       setAllQuizzes(prev => prev.filter(q => q.id !== quizId));
-      throw new Error(`Cannot delete quiz: Invalid UUID format (${quizId})`);
+      
+      try {
+        // Also clean up local storage
+        const currentQuizzes = await quizStorage.getAllQuizzes();
+        const cleanedQuizzes = currentQuizzes.filter(q => q.id !== quizId);
+        await quizStorage.saveQuizzes(cleanedQuizzes);
+        logger.info('Legacy quiz removed from local storage', 'AppContext', { quizId });
+      } catch (e) {
+        logger.warn('Failed to clean up legacy quiz from local storage', 'AppContext', { quizId }, e as Error);
+      }
+      
+      // Don't throw an error for legacy quizzes - just log and return
+      logger.info('Legacy quiz successfully removed from application', 'AppContext', { quizId });
+      return;
     }
 
     const success = await supabaseService.deleteQuiz(quizId)

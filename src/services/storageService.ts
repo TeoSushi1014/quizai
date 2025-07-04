@@ -2,6 +2,7 @@ import localforage from 'localforage';
 import { Quiz } from '../types';
 import { logger } from './logService';
 import { validateAndCleanQuizzes } from '../utils/quizValidationUtils';
+import { migrateLegacyQuizIds, needsLegacyMigration } from '../utils/legacyMigrationUtils';
 
 // --- Configuration for LocalForage ---
 const LOCALFORAGE_CONFIG = {
@@ -21,6 +22,19 @@ export const quizStorage = {
       const quizzesLF = await localforage.getItem<Quiz[]>(QUIZAI_LOCALFORAGE_KEY_QUIZZES);
       if (quizzesLF !== null && quizzesLF !== undefined) {
         logger.info('Quizzes loaded from LocalForage.', 'StorageService', { count: quizzesLF.length });
+        
+        // Check if migration is needed for legacy quiz IDs
+        if (needsLegacyMigration(quizzesLF)) {
+          logger.info('Legacy quiz IDs detected, performing migration', 'StorageService');
+          const { migratedQuizzes, migrationReport } = migrateLegacyQuizIds(quizzesLF);
+          
+          // Save migrated data back to storage
+          await localforage.setItem(QUIZAI_LOCALFORAGE_KEY_QUIZZES, migratedQuizzes);
+          logger.info('Legacy quiz migration completed and saved', 'StorageService', migrationReport);
+          
+          return migratedQuizzes;
+        }
+        
         // Validate and clean quizzes before returning
         const validQuizzes = validateAndCleanQuizzes(quizzesLF);
         if (validQuizzes.length !== quizzesLF.length) {
@@ -35,9 +49,22 @@ export const quizStorage = {
       if (localQuizzesJson) {
         const parsedQuizzes = JSON.parse(localQuizzesJson);
         logger.info('Quizzes loaded from legacy localStorage.', 'StorageService', { count: parsedQuizzes.length });
+        
+        // Check if migration is needed for legacy quiz IDs
+        if (needsLegacyMigration(parsedQuizzes)) {
+          logger.info('Legacy quiz IDs detected in localStorage, performing migration', 'StorageService');
+          const { migratedQuizzes, migrationReport } = migrateLegacyQuizIds(parsedQuizzes);
+          
+          // Save migrated data to LocalForage and update localStorage
+          await localforage.setItem(QUIZAI_LOCALFORAGE_KEY_QUIZZES, migratedQuizzes);
+          localStorage.setItem(QUIZAI_LEGACY_LOCALSTORAGE_KEY_QUIZZES, JSON.stringify(migratedQuizzes));
+          logger.info('Legacy quiz migration completed and saved to both storage systems', 'StorageService', migrationReport);
+          
+          return migratedQuizzes;
+        }
+        
         // Validate and clean quizzes
         const validQuizzes = validateAndCleanQuizzes(parsedQuizzes);
-        // Optionally, migrate to LocalForage here: await localforage.setItem(QUIZAI_LOCALFORAGE_KEY_QUIZZES, validQuizzes);
         return validQuizzes;
       }
       logger.info('No quizzes found in any local storage.', 'StorageService');
@@ -50,6 +77,15 @@ export const quizStorage = {
         if (localQuizzesJson) {
           const parsedFallback = JSON.parse(localQuizzesJson);
           logger.warn('Fell back to localStorage for reading quizzes.', 'StorageService', { count: parsedFallback.length });
+          
+          // Check for migration even in fallback scenario
+          if (needsLegacyMigration(parsedFallback)) {
+            logger.info('Legacy quiz IDs detected in fallback localStorage, performing migration', 'StorageService');
+            const { migratedQuizzes } = migrateLegacyQuizIds(parsedFallback);
+            localStorage.setItem(QUIZAI_LEGACY_LOCALSTORAGE_KEY_QUIZZES, JSON.stringify(migratedQuizzes));
+            return migratedQuizzes;
+          }
+          
           // Validate and clean quizzes before returning
           const validQuizzes = validateAndCleanQuizzes(parsedFallback);
           return validQuizzes;

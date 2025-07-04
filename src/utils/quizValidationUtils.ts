@@ -14,18 +14,32 @@ export function validateAndCleanQuizzes(quizzes: Quiz[]): Quiz[] {
       validQuizzes.push(quiz);
     } else {
       invalidQuizzes.push(quiz);
-      logger.warn('Found quiz with invalid UUID, removing from collection', 'QuizValidation', { 
-        quizId: quiz.id, 
-        title: quiz.title 
-      });
+      // Check if it's a legacy quiz ID format
+      if (quiz.id.startsWith('new-quiz-')) {
+        logger.warn('Found legacy quiz with old ID format, removing from collection', 'QuizValidation', { 
+          quizId: quiz.id, 
+          title: quiz.title,
+          type: 'legacy'
+        });
+      } else {
+        logger.warn('Found quiz with invalid UUID, removing from collection', 'QuizValidation', { 
+          quizId: quiz.id, 
+          title: quiz.title,
+          type: 'invalid'
+        });
+      }
     }
   }
 
   if (invalidQuizzes.length > 0) {
+    const legacyCount = invalidQuizzes.filter(q => q.id.startsWith('new-quiz-')).length;
+    const otherInvalidCount = invalidQuizzes.length - legacyCount;
+    
     logger.info('Cleaned up invalid quizzes from collection', 'QuizValidation', { 
       totalQuizzes: quizzes.length,
       validQuizzes: validQuizzes.length,
-      invalidQuizzes: invalidQuizzes.length
+      legacyQuizzes: legacyCount,
+      otherInvalidQuizzes: otherInvalidCount
     });
   }
 
@@ -40,6 +54,13 @@ export function validateQuizId(quizId: string): boolean {
 }
 
 /**
+ * Checks if a quiz ID is a legacy format
+ */
+export function isLegacyQuizId(quizId: string): boolean {
+  return typeof quizId === 'string' && quizId.startsWith('new-quiz-') && /^new-quiz-\d+$/.test(quizId);
+}
+
+/**
  * Generates a detailed error message for invalid quiz IDs
  */
 export function getInvalidQuizIdError(quizId: string): string {
@@ -51,9 +72,38 @@ export function getInvalidQuizIdError(quizId: string): string {
     return `Quiz ID must be a string, got ${typeof quizId}`;
   }
   
-  if (quizId.includes('new-quiz-')) {
-    return `Quiz ID appears to be a temporary ID (${quizId}). This should have been replaced with a proper UUID.`;
+  if (isLegacyQuizId(quizId)) {
+    return `Quiz ID is in legacy format (${quizId}). This quiz was created before the UUID system was implemented and should be migrated or removed.`;
   }
   
   return `Quiz ID "${quizId}" is not a valid UUID format`;
+}
+
+/**
+ * Gets statistics about quiz ID validity in a collection
+ */
+export function getQuizValidationStats(quizzes: Quiz[]): {
+  total: number;
+  valid: number;
+  legacy: number;
+  invalid: number;
+} {
+  const stats = {
+    total: quizzes.length,
+    valid: 0,
+    legacy: 0,
+    invalid: 0
+  };
+
+  for (const quiz of quizzes) {
+    if (isValidUUID(quiz.id)) {
+      stats.valid++;
+    } else if (isLegacyQuizId(quiz.id)) {
+      stats.legacy++;
+    } else {
+      stats.invalid++;
+    }
+  }
+
+  return stats;
 }
