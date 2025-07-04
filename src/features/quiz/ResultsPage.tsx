@@ -81,9 +81,9 @@ const QuestionResultItem: React.FC<QuestionResultItemProps> = ({
           {question.explanation && (
             <div>
               <p className="font-semibold text-[var(--color-text-secondary)] mb-1.5">{t('resultsExplanationLabel', 'Explanation:')}</p>
-              <p className="p-3 rounded-md bg-gray-500/10 text-[var(--color-text-primary)]">
+              <div className="p-3 rounded-md bg-gray-500/10 text-[var(--color-text-primary)]">
                 <MathText text={question.explanation} markdownFormatting={true} />
-              </p>
+              </div>
             </div>
           )}
         </div>
@@ -134,6 +134,7 @@ const ResultsPage: React.FC = () => {
     isLoading: appContextIsLoading,
     getQuizByIdFromAll,
     setActiveQuiz,
+    setQuizResult,
   } = useAppContext();
   const { t } = useTranslation();
   const { quizId: paramQuizId } = useParams<{ quizId: string }>();
@@ -159,7 +160,23 @@ const ResultsPage: React.FC = () => {
 
     if (!quizResult) {
       console.warn(`ResultsPage: App context loaded, but quizResult is null. Param quizId from URL: ${paramQuizId}.`);
-      setErrorState(t('resultsErrorNotFound', { quizId: paramQuizId || "unknown" }));
+      
+      const savedResult = localStorage.getItem('quizResult');
+      if (savedResult) {
+        try {
+          const parsedResult = JSON.parse(savedResult);
+          if (parsedResult && parsedResult.quizId === paramQuizId) {
+            console.log('Found quiz result in localStorage, manually setting...');
+            // Manually trigger a context update by calling setQuizResult
+            setQuizResult(parsedResult);
+            return;
+          }
+        } catch (e) {
+          console.error('Failed to parse localStorage quiz result:', e);
+        }
+      }
+      
+      setErrorState(t('resultsErrorNotFound', { quizId: paramQuizId || "unknown" }) + " - " + t('resultsErrorNoData'));
       setCurrentDisplayQuiz(null);
       setIsLoadingQuizData(false);
       return;
@@ -271,9 +288,9 @@ const ResultsPage: React.FC = () => {
         <motion.h1 variants={generalItemVariants} className="text-3xl sm:text-4xl font-bold text-[var(--color-text-primary)] mb-4 text-center leading-tight tracking-tight line-clamp-2" title={currentDisplayQuiz.title}>
           <MathText text={pageTitle} markdownFormatting={true} />
         </motion.h1>
-        <motion.p variants={generalItemVariants} className="text-base text-[var(--color-text-secondary)] mb-12 text-center">
+        <motion.div variants={generalItemVariants} className="text-base text-[var(--color-text-secondary)] mb-12 text-center">
             <MathText text={sourceMode === 'practice' ? t('practiceSummarySubtitle') : t('resultsSubtitle')} markdownFormatting={true} />
-        </motion.p>
+        </motion.div>
 
         <motion.div variants={generalItemVariants}>
           <Card className={`mb-12 !bg-[var(--color-bg-surface-2)]/70 shadow-xl !border-[var(--color-border-default)] p-0 overflow-hidden !rounded-2xl`} useGlassEffect={false}>

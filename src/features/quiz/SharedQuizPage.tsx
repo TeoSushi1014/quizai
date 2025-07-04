@@ -164,10 +164,10 @@ const SharedQuizPage: React.FC = () => {
           <div className="space-y-4">
             {sharedQuiz.questions.slice(0, 3).map((question, index) => ( // Show up to 3 questions
               <div key={question.id} className="bg-[var(--color-bg-surface-2)]/60 p-4 sm:p-5 rounded-xl border border-[var(--color-border-default)] shadow-md">
-                <p className="font-medium text-[var(--color-text-primary)] mb-2 text-sm sm:text-base">
+                <div className="font-medium text-[var(--color-text-primary)] mb-2 text-sm sm:text-base">
                   <span className="text-[var(--color-primary-accent)] mr-2 font-semibold">{index + 1}.</span>
                   <MathText text={question.questionText} markdownFormatting={true} />
-                </p>
+                </div>
                 {index === 2 && sharedQuiz.questions.length > 3 && (
                    <p className="text-xs text-[var(--color-text-muted)] italic text-center mt-3">{t('andMoreQuestions', {count: sharedQuiz.questions.length - 3})}</p>
                 )}

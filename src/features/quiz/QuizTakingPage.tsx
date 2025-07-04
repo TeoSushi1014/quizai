@@ -6,9 +6,10 @@ import { Button, Card, LoadingSpinner, ProgressBar, Modal } from '../../componen
 import MathText from '../../components/MathText';
 import { ChevronLeftIcon, ChevronRightIcon } from '../../constants';
 import { useQuizFlow } from './hooks/useQuizFlow';
+import { supabaseService } from '../../services/supabaseService';
 
 const QuizTakingPage: React.FC = () => {
-  const { setQuizResult } = useAppContext();
+  const { setQuizResult, currentUser } = useAppContext();
   const { t } = useTranslation();
   const { quizId } = useParams<{ quizId: string }>();
   const navigate = useNavigate();
@@ -61,7 +62,7 @@ const QuizTakingPage: React.FC = () => {
     }
   }, [currentQuestion, selectedOption, userAnswers]);
 
-  const handleFinalSubmit = useCallback(() => {
+  const handleFinalSubmit = useCallback(async () => {
     if (!localActiveQuiz) return;
     
     let finalUserAnswersMap = { ...userAnswers };
@@ -99,6 +100,18 @@ const QuizTakingPage: React.FC = () => {
       createdAt: new Date().toISOString(),
     };
     setQuizResult(result);
+    
+    // Save to database if user is logged in
+    if (currentUser) {
+      try {
+        await supabaseService.saveQuizResult(result, currentUser.id);
+        console.log('Quiz result saved to database successfully');
+      } catch (error) {
+        console.error('Failed to save quiz result to database:', error);
+        // Continue anyway - result is still saved locally
+      }
+    }
+    
     setShowConfirmationModal(false);
     setShowTimesUpModalState(false);
     navigate(`/results/${localActiveQuiz.id}`);
@@ -111,7 +124,8 @@ const QuizTakingPage: React.FC = () => {
     setQuizResult, 
     navigate, 
     totalQuestions, 
-    attemptSettings.timeLimit
+    attemptSettings.timeLimit,
+    currentUser
   ]);
 
 

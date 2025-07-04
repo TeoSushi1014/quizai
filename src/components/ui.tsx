@@ -1,7 +1,7 @@
 
 import React, { ReactNode, useState, useRef, useEffect, Children, useId } from 'react';
 import ReactDOM from 'react-dom'; 
-import { ChevronDownIcon, UploadIcon as DefaultUploadIcon, InformationCircleIcon, XCircleIcon as CloseIcon, CheckCircleIcon, XCircleIcon as ErrorIcon, DocumentTextIcon } from '../constants'; // Added DocumentTextIcon
+import { ChevronDownIcon, UploadIcon as DefaultUploadIcon, InformationCircleIcon, XCircleIcon as CloseIcon, CheckCircleIcon, XCircleIcon as ErrorIcon, DocumentTextIcon } from '../constants';
 import { useTranslation } from '../App';
 import { NotificationState } from '../hooks/useNotification'; 
 import { useDragAndDrop } from '../hooks/useDragAndDrop';
@@ -13,7 +13,7 @@ export interface TooltipProps {
   wrapperClassName?: string;
   tooltipClassName?: string;
   delayDuration?: number;
-  disabled?: boolean; // Added disabled prop
+  disabled?: boolean;
 }
 
 export const Tooltip: React.FC<TooltipProps> = ({
@@ -23,7 +23,7 @@ export const Tooltip: React.FC<TooltipProps> = ({
   wrapperClassName = '',
   tooltipClassName = '',
   delayDuration = 100, 
-  disabled = false, // Initialize disabled prop
+  disabled = false,
 }) => {
   const [isVisible, setIsVisible] = useState(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -40,7 +40,7 @@ export const Tooltip: React.FC<TooltipProps> = ({
   }, []);
 
   const showTooltip = () => {
-    if (disabled) return; // Don't show if disabled
+    if (disabled) return;
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
     }

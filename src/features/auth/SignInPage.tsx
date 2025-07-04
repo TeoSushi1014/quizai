@@ -5,7 +5,7 @@ import { TokenResponse, useGoogleLogin } from '@react-oauth/google';
 import { useAppContext, useTranslation } from '../../App';
 import { UserProfile } from '../../types';
 import { Button, Card } from '../../components/ui';
-import { logger } from '../../services/logService'; // Import logger
+import { logger } from '../../services/logService';
 
 
 declare const grecaptcha: any;
@@ -46,9 +46,8 @@ const SignInPage: React.FC = () => {
         }
 
         const userInfo = await userInfoResponse.json();
-        // Make sure the picture URL is properly constructed for higher resolution
         const pictureUrl = userInfo.picture ? 
-          userInfo.picture.replace(/=s\d+-c$/, '=s256-c') : // Replace small size with larger one
+          userInfo.picture.replace(/=s\d+-c$/, '=s256-c') :
           userInfo.picture;
 
         const userProfile: UserProfile = {
@@ -56,11 +55,9 @@ const SignInPage: React.FC = () => {
           name: userInfo.name,
           email: userInfo.email,
           imageUrl: pictureUrl,
-          // accessToken will be set by the login context function from tokenResponse
         };
         logger.info("User info fetched successfully. Calling login context function.", 'SignInPage', { userId: userProfile.id });
         
-        // Await the login function since it's now async
         try {
           const loginResult = await login(userProfile, tokenResponse);
           

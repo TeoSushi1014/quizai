@@ -15,12 +15,10 @@ import { useNotification } from './hooks/useNotification';
 import { supabaseService } from './services/supabaseService';
 import { logger } from './services/logService';
 import { migrateLocalDataToSupabase, checkMigrationNeeded } from './utils/migrationUtils';
-import './styles/markdown.css'; // Existing markdown styles
-import 'github-markdown-css/github-markdown.css'; // GitHub Markdown library styles
-import './styles/markdown-custom.css'; // Existing general custom markdown styles
-// import './styles/github-fonts.css'; // Removed, new markdown-github.css handles fonts for its scope
-// import './styles/github-markdown-custom.css'; // Removed, replaced by new markdown-github.css
-import './styles/markdown-github.css'; // New GitHub-style specific CSS
+import './styles/markdown.css';
+import 'github-markdown-css/github-markdown.css';
+import './styles/markdown-custom.css';
+import './styles/markdown-github.css';
 
 import HomePage from './features/quiz/HomePage';
 import DashboardPage from './features/quiz/DashboardPage';
@@ -55,8 +53,8 @@ export const useTranslation = () => {
   };
 };
 
-const GOOGLE_CLIENT_ID = "486123633428-14f8o50husb82sho688e0qvc962ucr4n.apps.googleusercontent.com"; 
-const LOCALSTORAGE_USER_KEY = 'quizai_currentUser_v2'; 
+const GOOGLE_CLIENT_ID = "486123633428-14f8o50husb82sho688e0qvc962ucr4n.apps.googleusercontent.com";
+const LOCALSTORAGE_USER_KEY = 'quizai_currentUser_v2';
 const LOCALSTORAGE_LANGUAGE_KEY = 'appLanguage';
 const LOCALSTORAGE_DRIVE_SYNC_KEY = 'driveLastSyncTimestamp';
 const LOCALSTORAGE_QUIZ_RESULT_KEY = 'quizResult';
@@ -119,19 +117,18 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
   const [syncState, setSyncState] = useState<SyncState>('idle');
   const [currentSyncActivityMessage, setCurrentSyncActivityMessage] = useState<string | null>(null);
   
-  // Drive sync settings - default to backup-only mode for new users
   const [isDriveSyncEnabled, setIsDriveSyncEnabled] = useState(() => {
     const saved = localStorage.getItem('driveSyncEnabled');
-    return saved !== null ? JSON.parse(saved) : false; // Default to disabled for new users
+    return saved !== null ? JSON.parse(saved) : false;
   });
   const [driveSyncMode, setDriveSyncModeState] = useState<'auto' | 'manual' | 'backup-only'>(() => {
     const saved = localStorage.getItem('driveSyncMode');
-    return (saved as 'auto' | 'manual' | 'backup-only') || 'backup-only'; // Default to backup-only
+    return (saved as 'auto' | 'manual' | 'backup-only') || 'backup-only';
   });
   
   const saveToDriveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const saveToDriveMinIntervalRef = useRef(0); 
-  const autoSyncAttemptLimitRef = useRef({ count: 0, lastWindowStart: 0 }); 
+  const saveToDriveMinIntervalRef = useRef(0);
+  const autoSyncAttemptLimitRef = useRef({ count: 0, lastWindowStart: 0 });
   const manualSyncAttemptLimitRef = useRef({ count: 0, lastWindowStart: 0 }); 
   
   const tForProvider = useMemo(() => getTranslator(language), [language]);
@@ -215,8 +212,6 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
         
         setInitializationStarted(true);
         
-        // API keys are now managed through Supabase, no need to check environment variables
-        
         const savedLanguage = localStorage.getItem(LOCALSTORAGE_LANGUAGE_KEY) as Language | null;
         if (savedLanguage && translations[savedLanguage]) {
             setLanguageState(savedLanguage);
@@ -232,12 +227,10 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
                 });
                 if (userInfoResponse.ok) {
                     const userInfo = await userInfoResponse.json();
-                    // Make sure the picture URL is properly constructed for higher resolution
                     const pictureUrl = userInfo.picture ? 
-                      userInfo.picture.replace(/=s\d+-c$/, '=s256-c') : // Replace small size with larger one
+                      userInfo.picture.replace(/=s\d+-c$/, '=s256-c') : 
                       userInfo.picture;
                     
-                    // Use the Supabase authentication flow to get the correct UUID
                     const googleUserInfo = {
                         sub: userInfo.sub,
                         email: userInfo.email,
@@ -250,9 +243,8 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
                     
                     if (authenticatedUser) {
                         const locallyStoredUser = savedUserJson ? JSON.parse(savedUserJson) as Partial<UserProfile> : {};
-                        // Use the Supabase UUID, not the Google ID
                         const userWithToken = {
-                            ...authenticatedUser, // This has the correct Supabase UUID
+                            ...authenticatedUser,
                             accessToken: savedToken,
                             bio: authenticatedUser.bio || locallyStoredUser.bio || null,
                             quizCount: authenticatedUser.quizCount || locallyStoredUser.quizCount || 0,
@@ -264,37 +256,35 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
                         setCurrentUser(null);
                     }
                 } else {
-                    setCurrentUser(null); 
+                    setCurrentUser(null);
                 }
             } catch (e) {
                 logger.error("Error restoring session with token", 'AppInit', undefined, e as Error);
                 setCurrentUser(null);
             }
-        } else if (savedUserJson && !savedToken) { 
-            setCurrentUser(null); 
+        } else if (savedUserJson && !savedToken) {
+            setCurrentUser(null);
         }
 
         const savedResultJson = localStorage.getItem(LOCALSTORAGE_QUIZ_RESULT_KEY);
         if (savedResultJson) {
             try { setQuizResult(JSON.parse(savedResultJson) as QuizResult); }
-            catch (e) { 
-                logger.error("Failed to parse quiz result from localStorage", 'AppInit', undefined, e as Error); 
-                localStorage.removeItem(LOCALSTORAGE_QUIZ_RESULT_KEY); 
+            catch (e) {
+                logger.error("Failed to parse quiz result from localStorage", 'AppInit', undefined, e as Error);
+                localStorage.removeItem(LOCALSTORAGE_QUIZ_RESULT_KEY);
             }
         }
 
         const lastSyncTimestamp = localStorage.getItem(LOCALSTORAGE_DRIVE_SYNC_KEY);
         if (lastSyncTimestamp) setLastDriveSync(new Date(lastSyncTimestamp));
 
-        // Migration: Check if user has existing Drive sync data and offer to enable
         const migrateDriveSyncSettings = () => {
           const hasExistingDriveSync = !!lastSyncTimestamp;
           const hasSettingsConfigured = localStorage.getItem('driveSyncEnabled') !== null;
           
           if (hasExistingDriveSync && !hasSettingsConfigured) {
-            // User has used Drive sync before but hasn't configured new settings
             setIsDriveSyncEnabled(true);
-            setDriveSyncModeState('auto'); // Keep existing behavior
+            setDriveSyncModeState('auto');
             localStorage.setItem('driveSyncEnabled', 'true');
             localStorage.setItem('driveSyncMode', 'auto');
           }
@@ -315,20 +305,17 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
       setDriveSyncError(null);
       
       try {
-        // Load local quizzes first for immediate UI response
         const localQuizzes = await quizStorage.getAllQuizzes();
-        setAllQuizzes(localQuizzes); // Show local quizzes immediately
-        setIsLoading(false); // Stop loading spinner for better UX
+        setAllQuizzes(localQuizzes);
+        setIsLoading(false);
         
-        // Then sync in background if user is logged in
         if (currentUser?.accessToken) {
-          // Run background sync without blocking UI
           syncInBackground(localQuizzes);
         }
       } catch (error) {
         logger.error('Error loading initial quizzes', 'QuizLoading', undefined, error as Error);
         setIsLoading(false);
-        setAllQuizzes([]); // Fallback to empty array
+        setAllQuizzes([]);
       }
     };
 
@@ -338,15 +325,12 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
       setCurrentSyncActivityMessage(tForProvider('initialSyncMessage'));
       
       try {
-        // Load from Supabase
         const supabaseQuizzes = await supabaseService.getUserQuizzes(currentUser!.id);
         
-        // Merge with local data immediately
         const mergedAfterSupabase = mergeQuizzes(localQuizzes, supabaseQuizzes);
         setAllQuizzes(mergedAfterSupabase);
         await quizStorage.saveQuizzes(mergedAfterSupabase);
         
-        // Check if Drive sync is enabled before attempting
         if (isDriveSyncEnabled) {
           try {
             const driveQuizzes = await loadQuizDataFromDrive(currentUser!.accessToken);
@@ -356,7 +340,6 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
               setAllQuizzes(finalMerged);
               await quizStorage.saveQuizzes(finalMerged);
               
-              // Background save to Drive (don't block UI)
               saveQuizDataToDrive(currentUser!.accessToken, finalMerged).catch(error => {
                 logger.warn('Background Drive save failed', 'DriveSync', undefined, error as Error);
               });
@@ -365,7 +348,6 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
               setLastDriveSync(new Date());
             }
           } catch (driveError) {
-            // Drive errors shouldn't block the rest of the flow
             logger.warn('Drive sync failed during background load', 'DriveSync', undefined, driveError as Error);
           }
         }
@@ -387,7 +369,6 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
 
 
   const triggerSaveToDrive = useCallback((quizzesToSave: Quiz[]) => {
-    // Check if Drive sync is enabled and in appropriate mode
     if (!isDriveSyncEnabled || driveSyncMode === 'manual') {
       logger.debug("triggerSaveToDrive: Skipping - Drive sync disabled or manual mode", 'DriveSync', { 
         enabled: isDriveSyncEnabled, 
@@ -1085,7 +1066,6 @@ const AppLayout: React.FC = () => {
   const generalSettingsIconUrl = "https://img.icons8.com/?size=256&id=s5NUIabJrb4C&format=png"; 
   
   const apiKeyWarnings: string[] = [];
-  // API keys are now managed through Supabase - no warnings needed
   
   const appInitialized = true; 
   if (globalIsLoading && !appInitialized) { 

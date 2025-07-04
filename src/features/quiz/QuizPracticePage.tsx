@@ -7,6 +7,7 @@ import { CheckCircleIcon, CircleIcon, ChevronLeftIcon, ChevronRightIcon, XCircle
 import { useQuizFlow } from './hooks/useQuizFlow';
 import PracticeQuizQuestion from './components/PracticeQuizQuestion'; 
 import PracticeQuizExplanation from './components/PracticeQuizExplanation'; // Import the new explanation component
+import { supabaseService } from '../../services/supabaseService';
 
 interface PracticeAttempt {
   questionId: string;
@@ -20,7 +21,7 @@ const QuizPracticePage: React.FC = () => {
   const { t } = useTranslation();
   const { quizId } = useParams<{ quizId: string }>();
   const navigate = useNavigate();
-  const { setQuizResult: setGlobalQuizResult } = useAppContext();
+  const { setQuizResult: setGlobalQuizResult, currentUser } = useAppContext();
 
   const [currentTentativeSelection, setCurrentTentativeSelection] = useState<string | null>(null);
   const [isCurrentSelectionChecked, setIsCurrentSelectionChecked] = useState(false);
@@ -86,7 +87,7 @@ const QuizPracticePage: React.FC = () => {
   }, [currentQuestionIndex, currentQuestion, practiceAttempts]);
 
 
-  const triggerFinishPractice = useCallback(() => {
+  const triggerFinishPractice = useCallback(async () => {
     if (isFinishingPracticeRef.current || !localActiveQuiz) return;
     isFinishingPracticeRef.current = true; 
     setIsFinishingOrChecking(true); 
@@ -135,6 +136,18 @@ const QuizPracticePage: React.FC = () => {
     };
     
     setGlobalQuizResult(resultData);
+    
+    // Save to database if user is logged in
+    if (currentUser) {
+      try {
+        await supabaseService.saveQuizResult(resultData, currentUser.id);
+        console.log('Practice result saved to database successfully');
+      } catch (error) {
+        console.error('Failed to save practice result to database:', error);
+        // Continue anyway - result is still saved locally
+      }
+    }
+    
     navigate(`/results/${localActiveQuiz.id}`);
   }, [
     localActiveQuiz, 
@@ -145,7 +158,8 @@ const QuizPracticePage: React.FC = () => {
     setGlobalQuizResult, 
     attemptSettings.timeLimit, 
     timeLeft,
-    navigate
+    navigate,
+    currentUser
   ]);
 
 

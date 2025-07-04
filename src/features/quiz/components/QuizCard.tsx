@@ -289,9 +289,9 @@ export const QuizCard: React.FC<QuizCardProps> = ({ quiz, onDelete, onEdit, anim
             </div>
           }
         >
-          <p className="text-[var(--color-text-body)] text-base">
+          <div className="text-[var(--color-text-body)] text-base">
             <MathText text={t('confirmDeletionMessage', { quizName: quiz.title })} markdownFormatting={true}/>
-          </p>
+          </div>
         </Modal>
       )}
       

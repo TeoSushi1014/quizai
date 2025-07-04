@@ -1,26 +1,18 @@
 
-
 import React from 'react';
 import { Pencil as LucidePencil } from 'lucide-react';
 
 export const APP_NAME = "QuizAI";
 
-
 export const GEMINI_MODEL_ID: 'gemini' = 'gemini';
 
-
-export const GEMINI_TEXT_MODEL = "gemini-2.5-flash-preview-04-17"; 
-
-
+export const GEMINI_TEXT_MODEL = "gemini-2.5-flash-preview-04-17";
 
 interface IconProps {
   className?: string;
-  strokeWidth?: number; // Kept for SVG icons, will be ignored by img tags
+  strokeWidth?: number;
 }
 
-// Export Pencil from lucide-react as EditIcon for consistent naming if desired,
-// or allow direct import of Pencil where needed.
-// Lucide icons accept className, size, color, strokeWidth directly.
 export { LucidePencil as EditIcon };
 
 
@@ -32,7 +24,7 @@ export const UploadIcon: React.FC<IconProps> = ({ className = "w-6 h-6", strokeW
 UploadIcon.displayName = "UploadIcon";
 
 
-export const ShareIcon: React.FC<IconProps> = ({ className = "w-6 h-6" }) => ( // Removed strokeWidth as it's an img
+export const ShareIcon: React.FC<IconProps> = ({ className = "w-6 h-6" }) => (
   <img src="https://img.icons8.com/?size=256&id=fe3NTBhh8IKg&format=png" alt="Share" className={className} />
 );
 ShareIcon.displayName = "ShareIcon";
@@ -84,7 +76,6 @@ export const XCircleIcon: React.FC<IconProps> = ({ className = "w-6 h-6 text-red
 );
 XCircleIcon.displayName = "XCircleIcon";
 
-// LightbulbIcon has been removed as requested
 export const LightbulbIcon: React.FC<IconProps> = ({ className = "w-6 h-6" }) => (
   <span className={className}>💡</span>
 );
@@ -197,10 +188,8 @@ export const SettingsIconSvg: React.FC<IconProps> = ({ className = "w-6 h-6" }) 
 );
 SettingsIconSvg.displayName = "SettingsIconSvg";
 
-// General SettingsIcon (used for Settings link in dropdown and profile sheet)
 export const SettingsIcon: React.FC<IconProps> = SettingsIconSvg;
 
-// Specific Settings Icon for Mobile Nav bar
 export const SettingsIconMobileNav: React.FC<IconProps> = ({ className = "w-5 h-5" }) => (
   <img src="https://img.icons8.com/?size=256&id=s5NUIabJrb4C&format=png" alt="Settings" className={className} />
 );
@@ -212,7 +201,6 @@ export const GoogleDriveIcon: React.FC<IconProps> = ({ className = "w-5 h-5" }) 
 );
 GoogleDriveIcon.displayName = "GoogleDriveIcon";
 
-// Theme Icons
 export const SunIcon: React.FC<IconProps> = ({ className = "w-5 h-5" }) => (
   <img src="https://img.icons8.com/?size=256&id=8EUmYhfLPTCF&format=png" alt="Light Mode" className={className} />
 );
@@ -223,13 +211,11 @@ export const MoonIcon: React.FC<IconProps> = ({ className = "w-5 h-5" }) => (
 );
 MoonIcon.displayName = "MoonIcon";
 
-// User Icon (alternative to UserCircleIcon if needed)
 export const UserIcon: React.FC<IconProps> = ({ className = "w-6 h-6" }) => (
   <img src="https://img.icons8.com/?size=256&id=7820&format=png" alt="User" className={className} />
 );
 UserIcon.displayName = "UserIcon";
 
-// Play Icon
 export const PlayIcon: React.FC<IconProps> = ({ className = "w-6 h-6", strokeWidth = 1.5 }) => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24" strokeWidth={strokeWidth} stroke="currentColor" className={className}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z" />
@@ -237,7 +223,6 @@ export const PlayIcon: React.FC<IconProps> = ({ className = "w-6 h-6", strokeWid
 );
 PlayIcon.displayName = "PlayIcon";
 
-// Social Media Icons
 export const FacebookIcon: React.FC<IconProps> = ({ className = "w-6 h-6" }) => (
   <img src="https://img.icons8.com/?size=256&id=uLWV5A9vXIPu&format=png" alt="Facebook" className={className} />
 );
@@ -254,7 +239,6 @@ export const XIcon: React.FC<IconProps> = ({ className = "w-6 h-6" }) => (
     <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
   </svg>
 );
-XIcon.displayName = "XIcon";
 
 
 export const LinkedInIcon: React.FC<IconProps> = ({ className = "w-6 h-6" }) => (

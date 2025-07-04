@@ -367,7 +367,6 @@ const buildGeminiPrompt = (
         // For prompt-only mode, use the customUserPrompt as the sourceContentSnippet
         sourceContentSnippet = `AI Prompt: ${config.customUserPrompt.substring(0, 500)}` + 
                                (config.customUserPrompt.length > 500 ? "..." : "");
-        // In prompt-only mode, we don't need to include the placeholder content
         parts.push({ text: prompt });
     } else if (typeof content === 'string') {
         sourceContentSnippet = content.substring(0, 500) + (content.length > 500 ? "..." : "");

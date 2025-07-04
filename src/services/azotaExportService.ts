@@ -105,7 +105,7 @@ export const formatQuizToAzotaStyle2 = (quiz: Quiz, t: TFunction): string => {
   let overallQuestionIndex = 1;
 
   if (quiz.questions.length > 0) {
-    output += `${t('azotaFormatMCQSection')}\n`; // All questions are MCQs
+    output += `${t('azotaFormatMCQSection')}\n`;
     quiz.questions.forEach(q => {
       output += formatQuestionTextAndOptions(q, overallQuestionIndex, t, overallDifficultyAbbr);
       output += `${t('azotaFormatExplanationTitle')}\n`;
@@ -114,8 +114,6 @@ export const formatQuizToAzotaStyle2 = (quiz: Quiz, t: TFunction): string => {
       overallQuestionIndex++;
     });
   }
-
-  // Removed OpenEndedQuestions section
   return output;
 };
 
@@ -125,13 +123,11 @@ export const formatQuizToAzotaStyle4 = (quiz: Quiz, t: TFunction): string => {
   let overallQuestionIndex = 1;
 
   if (quiz.questions.length > 0) {
-    output += `${t('azotaFormatMCQSection')}\n`; // All questions are MCQs
+    output += `${t('azotaFormatMCQSection')}\n`;
     quiz.questions.forEach(q => {
-      output += formatQuestionTextAndOptions(q, overallQuestionIndex++, t, overallDifficultyAbbr, true); // Mark correct answer inline
+      output += formatQuestionTextAndOptions(q, overallQuestionIndex++, t, overallDifficultyAbbr, true);
       output += '\n';
     });
   }
-
-  // Removed OpenEndedQuestions section
   return output;
 };

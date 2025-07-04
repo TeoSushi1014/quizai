@@ -21,7 +21,7 @@ const MAX_GENERATION_RETRIES = 2;
 
 const easeIOS = [0.25, 0.1, 0.25, 1]; 
 
-const SummaryItem: React.FC<{icon: ReactNode, label: string, value: ReactNode, iconClassName?: string}> = ({ icon, label, value, iconClassName = "text-[var(--color-primary-accent)]" }) => ( // Adjusted icon color
+const SummaryItem: React.FC<{icon: ReactNode, label: string, value: ReactNode, iconClassName?: string}> = ({ icon, label, value, iconClassName = "text-[var(--color-primary-accent)]" }) => (
   <div className="flex items-start py-2.5">
       <span className={`mr-3.5 mt-0.5 flex-shrink-0 ${iconClassName}`}>{icon}</span>
       <div className="flex-grow">
@@ -32,7 +32,6 @@ const SummaryItem: React.FC<{icon: ReactNode, label: string, value: ReactNode, i
 );
 SummaryItem.displayName = "SummaryItem";
 
-// Utility function to find common prefix among filenames
 const findCommonPrefix = (strings: string[]): string => {
   if (strings.length === 0) return '';
   if (strings.length === 1) return strings[0].split('.').slice(0, -1).join('.') || strings[0];
@@ -50,38 +49,32 @@ const findCommonPrefix = (strings: string[]): string => {
       break;
     }
   }
-  // Removed direct call to 't' here. Fallback is handled at the call site.
-  return prefix.replace(/[^a-zA-Z0-9\s_-]+$/, '').trim(); 
+  return prefix.replace(/[^a-zA-Z0-9\s_-]+$/, '').trim();
 };
 
 
 const QuizCreatePage: React.FC = () => {
   const { language, currentUser } = useAppContext(); 
-  const { t } = useTranslation(); // Ensure t is initialized for findCommonPrefix if it's outside component
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [step, setStep] = useState<CreationStep>(1);
   
-  // States for multiple files
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [processedContents, setProcessedContents] = useState<{text: string, fileName: string}[]>([]);
-  const [combinedContent, setCombinedContent] = useState<string | null>(null); // Will store the merged text
-  const [isProcessingFiles, setIsProcessingFiles] = useState(false); // For multi-file progress
+  const [combinedContent, setCombinedContent] = useState<string | null>(null);
+  const [isProcessingFiles, setIsProcessingFiles] = useState(false);
   const [processingProgress, setProcessingProgress] = useState<{current: number, total: number}>({current: 0, total: 0});
 
 
   const [pastedText, setPastedText] = useState<string>('');
-  // processedContentText will now be used for display/summary of the combined content or pasted text
   const [processedContentText, setProcessedContentText] = useState<string | null>(null); 
-  const [imageBase64, setImageBase64] = useState<{ base64Data: string; mimeType: string } | null>(null); // Remains for single image upload if kept
+  const [imageBase64, setImageBase64] = useState<{ base64Data: string; mimeType: string } | null>(null);
   const [initialImageExtractedText, setInitialImageExtractedText] = useState<string | null>(null); 
   
   const [quizTitleSuggestion, setQuizTitleSuggestion] = useState<string>("");
   
-  // State for formatted quiz detection - moved to component level to avoid hooks in conditional rendering
   const [isFormattedQuiz, setIsFormattedQuiz] = useState(false);
   const [customUserPrompt, setCustomUserPrompt] = useState<string>("");
-  
-  // New state for prompt-only mode
   const [usePromptOnlyMode, setUsePromptOnlyMode] = useState(false);
   const [promptOnlyText, setPromptOnlyText] = useState<string>("");
 
@@ -101,7 +94,7 @@ const QuizCreatePage: React.FC = () => {
 
   const [isGeneratingQuiz, setIsGeneratingQuiz] = useState(false);
   const [processingError, setProcessingErrorState] = useState<string | null>(null);
-  const [progress, setProgress] = useState(0); // General progress for AI generation or single file processing
+  const [progress, setProgress] = useState(0);
   const [generationStatusText, setGenerationStatusText] = useState<string>(''); 
   const [isFullTextModalOpen, setIsFullTextModalOpen] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
@@ -127,7 +120,6 @@ const QuizCreatePage: React.FC = () => {
     window.scrollTo(0, 0);
   }, [step]);
   
-  // Effect for formatted quiz detection
   useEffect(() => {
     if (processedContentText && typeof processedContentText === 'string') {
       import('../../services/geminiService').then(module => {
@@ -146,10 +138,7 @@ const QuizCreatePage: React.FC = () => {
       setIsFormattedQuiz(false);
     }
   }, [processedContentText]);
-
-
-  // API keys are now managed through Supabase
-  const isApiKeyMissingForGemini = () => false; // Always return false since we have default system keys
+  const isApiKeyMissingForGemini = () => false;
 
   const handleFileUpload = useCallback(async (files: File[]) => {
     if (files.length === 0) {
@@ -159,29 +148,21 @@ const QuizCreatePage: React.FC = () => {
       setQuizTitleSuggestion('');
       return;
     }
-
-    // Show immediate feedback
     setUploadedFiles(files); 
     setPastedText(''); setImageBase64(null);
     setIsProcessingFiles(true); setProcessingError(null); setProgress(0);
     setProcessingProgress({current: 0, total: files.length});
-
-    // Generate quiz title suggestion immediately
     setQuizTitleSuggestion(findCommonPrefix(files.map(f => f.name)) || t('step2MultipleFilesQuizTitle'));
 
     try {
       const tempProcessedContents: {text: string, fileName: string}[] = [];
       let allTextsCombined = "";
-      
-      // Process files with progress updates
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         setProcessingProgress({current: i + 1, total: files.length});
         
         let textContentForFile: string | null = null; 
         let isImageFile = false;
-
-        // Optimized file processing
         if (file.type === 'application/pdf') {
           textContentForFile = await extractTextFromPdf(file);
         } else if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || file.name.endsWith('.docx')) {
@@ -216,8 +197,6 @@ const QuizCreatePage: React.FC = () => {
       setProcessedContents(tempProcessedContents);
       setCombinedContent(trimmedContent);
       setProcessedContentText(trimmedContent);
-      
-      // Check for formatted quiz asynchronously (don't block UI)
       import('../../services/geminiService').then(module => {
         const isFormatted = module.isFormattedQuiz(trimmedContent);
         setIsFormattedQuiz(isFormatted);
@@ -240,14 +219,10 @@ const QuizCreatePage: React.FC = () => {
   const handlePasteText = useCallback(async () => {
     if (pastedText.trim()) {
       const trimmedPastedText = pastedText.trim();
-      
-      // Clear file related states
       setUploadedFiles([]); setProcessedContents([]); setCombinedContent(null); setImageBase64(null); setInitialImageExtractedText(null);
       
       setProcessedContentText(trimmedPastedText);
       setQuizTitleSuggestion(t('step2PastedText') + " Quiz");
-      
-      // Check if the pasted text is a formatted quiz asynchronously
       import('../../services/geminiService').then(module => {
         const isFormatted = module.isFormattedQuiz(trimmedPastedText);
         setIsFormattedQuiz(isFormatted);
@@ -304,7 +279,6 @@ const QuizCreatePage: React.FC = () => {
   
   const handleGenerateQuiz = async () => {
     logger.info('Quiz generation initiated.', 'QuizCreatePageGenerate', { config: quizConfig });
-    // API keys are now managed through Supabase, no need to check environment variables
     
     if (!currentUser) {
         const now = Date.now();
@@ -326,27 +300,12 @@ const QuizCreatePage: React.FC = () => {
     }
     
     let contentForAI: string | { base64Data: string; mimeType: string };
-    
-    // Check if we're in prompt-only mode first
     if (usePromptOnlyMode && customUserPrompt && customUserPrompt.trim()) {
-        // In prompt-only mode, we will use a simple placeholder content and rely on the customUserPrompt
         contentForAI = "Generate quiz from user prompt.";
     } else if (uploadedFiles.length > 0) {
-        // If multiple files were uploaded, use the combined content.
-        // If only one file was an image, imageBase64 might be set.
-        // The primary source should be `combinedContent` if available from multi-file processing.
-        // If it was a single image, `combinedContent` will also hold its extracted text.
         if (combinedContent && combinedContent.trim()) {
             contentForAI = combinedContent;
         } else if (imageBase64 && uploadedFiles.length === 1 && uploadedFiles[0].type.startsWith('image/')) {
-            // Fallback for single image if combinedContent somehow failed but imageBase64 is available
-            // (This path needs careful review: should we send image directly or its extracted text?)
-            // For now, assume combinedContent would have the extracted text. If AI supports direct multi-part for quiz gen from image, this changes.
-            // Let's assume the text from the image is in combinedContent. If not, it's an error state.
-            // Or, if the AI service can take an image directly for quiz gen:
-            // contentForAI = imageBase64;
-            // However, geminiService current generateQuizWithGemini expects string or {base64, mime}
-            // If combinedContent is null/empty from files, it's an error.
              setProcessingError(t('step1ErrorProcessingFile')); return;
         } else {
             setProcessingError(t('step1ErrorProcessingFile')); return;
@@ -415,7 +374,7 @@ const QuizCreatePage: React.FC = () => {
   const handleCloseFullTextModal = useCallback(() => setIsFullTextModalOpen(false), []);
   const generateIconUrl = "https://img.icons8.com/?size=256&id=eoxMN35Z6JKg&format=png";
   const getStepIndicator = (currentStep: number, targetStep: CreationStep, titleKey: keyof typeof translations.en, defaultIcon: ReactNode, _isLastStep: boolean = false) => {
-    const isActive = currentStep === targetStep; const isCompleted = currentStep > targetStep; const inactiveTextColorCls = 'text-[var(--color-text-muted)]'; // Themed
+    const isActive = currentStep === targetStep; const isCompleted = currentStep > targetStep; const inactiveTextColorCls = 'text-[var(--color-text-muted)]';
     let displayIconNode: ReactNode; const newCompletedIconUrl = "https://img.icons8.com/?size=256&id=VFaz7MkjAiu0&format=png"; const iconClassName = "w-5 h-5 sm:w-6 sm:h-6 transition-transform var(--duration-fast) var(--ease-ios)";
     if (isCompleted) displayIconNode = <img src={newCompletedIconUrl} alt={t('stepCompleted')} className={iconClassName} />;
     else if (isActive) {
@@ -447,7 +406,7 @@ const QuizCreatePage: React.FC = () => {
             icon={<img src="https://img.icons8.com/?size=256&id=hwKgsZN5Is2H&format=png" alt={t('upload')} className="w-12 h-12 sm:w-14 sm:h-14 mb-3.5 text-[var(--color-text-muted)] group-hover:text-[var(--color-primary-accent)] transition-all var(--duration-fast) var(--ease-ios) group-hover:scale-105" />} 
             isLoading={isProcessingFiles} 
             currentFiles={uploadedFiles.length > 0 ? uploadedFiles : null}
-            multipleFiles={true} // Enable multiple file selection
+            multipleFiles={true}
         /> 
         {isProcessingFiles && (
             <div className="mt-4 animate-fadeIn">

@@ -43,7 +43,6 @@
 }
 </script>
   
-  <!-- Analytics - load async, không block rendering -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-PPLMXLJNZT"></script>
   <script>
     window.dataLayer = window.dataLayer || [];
@@ -52,17 +51,14 @@
     gtag('config', 'G-PPLMXLJNZT');
   </script>
   
-  <!-- ReCaptcha - load async -->
   <script async src="https://www.google.com/recaptcha/enterprise.js?render=6LfjXkorAAAAAOk4X5LwVd-8RgwMGS0IWxZLtFGQ"></script>
   <meta charset="UTF-8" />
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
-  <!-- Performance optimizations -->
   <meta name="format-detection" content="telephone=no">
   <meta name="theme-color" content="#0f172a">
   
-  <!-- Preconnect to external domains -->
   <link rel="preconnect" href="https://www.google.com">
   <link rel="preconnect" href="https://www.gstatic.com">
   <link rel="preconnect" href="https://esm.sh">
@@ -73,72 +69,41 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Noto+Sans+Vietnamese:wght@400;500;600;700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
   
-  <!-- Preload critical CSS -->
-  <link rel="preload" href="https://cdn.tailwindcss.com" as="script">
-  
-  <!-- Load Tailwind with defer to not block rendering -->
-  <script defer src="https://cdn.tailwindcss.com"></script>
-  <script>
-    // Configure Tailwind để giảm production warnings và tối ưu
-    document.addEventListener('DOMContentLoaded', function() {
-      if (typeof tailwind !== 'undefined') {
-        tailwind.config = {
-          darkMode: 'class',
-          corePlugins: {
-            // Tắt các plugin không cần thiết để giảm bundle size
-            preflight: true,
-            container: false,
-            accessibility: false,
-          },
-          theme: {
-            extend: {
-              fontFamily: {
-                primary: ['Inter', 'Roboto', 'Noto Sans Vietnamese', 'system-ui', 'sans-serif'],
-              }
-            }
-          }
-        }
-      }
-    });
-  </script>
   <style>
     :root {
-      /* Animation Variables */
       --duration-fast: 150ms; 
       --duration-normal: 250ms;
       --duration-slow: 350ms;
       --ease-ios: cubic-bezier(0.23, 1, 0.32, 1);
       --ease-in-out-quad: cubic-bezier(0.455, 0.03, 0.515, 0.955); 
 
-      /* Fonts - Updated for better Vietnamese support */
       --font-primary: 'Inter', 'Roboto', 'Noto Sans Vietnamese', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
 
-      /* Dark Theme (default) */
-      --color-bg-body: rgb(15, 23, 42); /* slate-900 */
-      --color-bg-primary: rgb(15, 23, 42); /* slate-900 */
-      --color-bg-surface-1: rgb(30, 41, 59); /* slate-800 */
-      --color-bg-surface-2: rgb(51, 65, 85); /* slate-700 */
-      --color-bg-surface-3: rgb(71, 85, 105); /* slate-600 */
+      --color-bg-body: rgb(15, 23, 42);
+      --color-bg-primary: rgb(15, 23, 42);
+      --color-bg-surface-1: rgb(30, 41, 59);
+      --color-bg-surface-2: rgb(51, 65, 85);
+      --color-bg-surface-3: rgb(71, 85, 105);
       
-      --color-text-primary: rgb(241, 245, 249); /* slate-100 */
-      --color-text-secondary: rgb(148, 163, 184); /* slate-400 */
-      --color-text-body: rgb(203, 213, 225); /* slate-300 */
-      --color-text-muted: rgb(100, 116, 139); /* slate-500 */
+      --color-text-primary: rgb(241, 245, 249);
+      --color-text-secondary: rgb(148, 163, 184);
+      --color-text-body: rgb(203, 213, 225);
+      --color-text-muted: rgb(100, 116, 139);
       
-      --color-primary-accent: rgb(56, 189, 248); /* sky-400 */
+      --color-primary-accent: rgb(56, 189, 248);
       --color-primary-accent-rgb: 56, 189, 248; 
-      --color-primary-accent-hover: rgb(125, 211, 252); /* sky-300 */
+      --color-primary-accent-hover: rgb(125, 211, 252);
       --color-primary-accent-text: #ffffff; 
 
-      --color-secondary-accent: #475569; /* slate-600 */
-      --color-secondary-accent-hover: #64748b; /* slate-500 */
-      --color-secondary-accent-text: #e2e8f0; /* slate-200 */
+      --color-secondary-accent: #475569;
+      --color-secondary-accent-hover: #64748b;
+      --color-secondary-accent-text: #e2e8f0;
 
-      --color-danger-accent: rgb(248, 113, 113); /* red-400 */
+      --color-danger-accent: rgb(248, 113, 113);
       --color-danger-accent-rgb: 248, 113, 113;
-      --color-success-accent: #22c55e; /* green-500 */
+      --color-success-accent: #22c55e;
       --color-success-accent-rgb: 34, 197, 94;
-      --color-warning-accent: #f59e0b; /* amber-500 */
+      --color-warning-accent: #f59e0b;
       
       --color-border-default: rgba(100, 116, 139, 0.3); 
       --color-border-interactive: rgba(100, 116, 139, 0.5); 
@@ -193,29 +158,29 @@
     }
 
     html.light {
-      --color-bg-body: rgb(248, 250, 252); 
-      --color-bg-primary: rgb(248, 250, 252); 
-      --color-bg-surface-1: rgb(255, 255, 255); 
-      --color-bg-surface-2: rgb(241, 245, 249); 
-      --color-bg-surface-3: rgb(226, 232, 240); 
+      --color-bg-body: rgb(248, 250, 252);
+      --color-bg-primary: rgb(248, 250, 252);
+      --color-bg-surface-1: rgb(255, 255, 255);
+      --color-bg-surface-2: rgb(241, 245, 249);
+      --color-bg-surface-3: rgb(226, 232, 240);
       
-      --color-text-primary: rgb(15, 23, 42); 
-      --color-text-secondary: rgb(71, 85, 105); 
-      --color-text-body: rgb(51, 65, 85); 
-      --color-text-muted: rgb(100, 116, 139); 
+      --color-text-primary: rgb(15, 23, 42);
+      --color-text-secondary: rgb(71, 85, 105);
+      --color-text-body: rgb(51, 65, 85);
+      --color-text-muted: rgb(100, 116, 139);
       
-      --color-primary-accent: rgb(14, 165, 233); 
-      --color-primary-accent-rgb: 14, 165, 233; 
-      --color-primary-accent-hover: rgb(2, 132, 199); 
+      --color-primary-accent: rgb(14, 165, 233);
+      --color-primary-accent-rgb: 14, 165, 233;
+      --color-primary-accent-hover: rgb(2, 132, 199);
       --color-primary-accent-text: #ffffff; 
 
-      --color-secondary-accent: #e2e8f0; 
-      --color-secondary-accent-hover: #cbd5e1; 
-      --color-secondary-accent-text: #1e293b; 
+      --color-secondary-accent: #e2e8f0;
+      --color-secondary-accent-hover: #cbd5e1;
+      --color-secondary-accent-text: #1e293b;
 
-      --color-danger-accent: rgb(239, 68, 68); 
+      --color-danger-accent: rgb(239, 68, 68);
       --color-danger-accent-rgb: 239, 68, 68;
-      --color-success-accent: #16a34a; 
+      --color-success-accent: #16a34a;
       --color-success-accent-rgb: 22, 163, 74;
       --color-warning-accent: #d97706; 
       
@@ -265,10 +230,10 @@
     body {
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
-      background-color: var(--color-bg-body); 
-      color: var(--color-text-body); 
-      cursor: default; 
-      word-break: normal; /* Improved word breaking for Vietnamese */
+      background-color: var(--color-bg-body);
+      color: var(--color-text-body);
+      cursor: default;
+      word-break: normal;
       overflow-wrap: break-word;
     }
     
@@ -576,17 +541,15 @@
       }
     }
 
-    /* Text size classes */
     html.text-size-sm { font-size: 14px; }
-    html.text-size-md { font-size: 16px; } /* Default */
+    html.text-size-md { font-size: 16px; }
     html.text-size-lg { font-size: 18px; }
     html.text-size-xl { font-size: 20px; }
 
-    /* Improved line height for Vietnamese */
     html[lang="vi"] {
       line-height: 1.7;
     }
-    html[lang="vi"] body { /* Apply to body as well to ensure inheritance */
+    html[lang="vi"] body {
       line-height: 1.7;
     }
     
@@ -596,7 +559,6 @@
 <body>
   <noscript>You need to enable JavaScript to run this app.</noscript>
   
-  <!-- Loading placeholder để cải thiện perceived performance -->
   <div id="initial-loader" style="
     position: fixed;
     top: 0;
@@ -639,10 +601,8 @@
   <script type="module" src="/src/main.tsx"></script>
   <script src="/env-config.js"></script>
   
-  <!-- Hide loading placeholder sau khi app đã load -->
   <script>
     document.addEventListener('DOMContentLoaded', function() {
-      // Đợi một chút để React render xong
       setTimeout(function() {
         const loader = document.getElementById('initial-loader');
         if (loader) {

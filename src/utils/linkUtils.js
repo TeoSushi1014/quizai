@@ -5,17 +5,11 @@
  */
 export function removeUnnecessaryLinks(element) {
   if (!element || typeof window === 'undefined') return;
-  
-  // Find all links that match our pattern
   const unnecessaryLinks = element.querySelectorAll('a[href^="#cu-hi"]');
-  
-  // Also find links that contain "Câu hỏi" text
   const allLinks = element.querySelectorAll('a');
   const questionLinks = Array.from(allLinks).filter(link => {
     return link.textContent && link.textContent.trim().match(/^Câu hỏi \d+$/);
   });
-  
-  // Remove all unnecessary links
   [...unnecessaryLinks, ...questionLinks].forEach(link => {
     link.parentNode?.removeChild(link);
   });
