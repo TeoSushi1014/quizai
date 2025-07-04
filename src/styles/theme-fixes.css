@@ -1,9 +1,3 @@
-/* src/styles/theme-fixes.css */
-
-/* Fix for text input fields, textareas, and selects using CSS variables */
-/* These rules with !important aim to override Tailwind defaults or inline styles if necessary */
-
-/* Light Theme Overrides */
 html.light input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
 html.light textarea,
 html.light select {
@@ -25,7 +19,6 @@ html.light select:focus {
   box-shadow: 0 0 0 2px var(--color-input-focus-ring) !important;
 }
 
-/* Dark Theme Overrides (Ensuring consistency if Tailwind specificity issues arise) */
 html.dark input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
 html.dark textarea,
 html.dark select {
@@ -48,7 +41,6 @@ html.dark select:focus {
 }
 
 
-/* Fix for code blocks and pre in light mode */
 html.light pre, 
 html.light code {
   background-color: var(--color-bg-surface-2) !important;
@@ -57,7 +49,6 @@ html.light code {
   border-radius: var(--radius-md) !important;
 }
 
-/* Fix for pasted text area in quiz creation */
 html.light .paste-text-area {
   background-color: var(--color-input-bg) !important;
   color: var(--color-input-text) !important;
@@ -72,9 +63,8 @@ html.light .paste-text-area:focus {
 }
 
 
-/* Fix for dropzone in light mode */
-html.light .dropzone-themed { /* Ensure Dropzone component uses this class or adapt styles */
-  background-color: var(--color-bg-surface-1) !important; /* Lighter surface for dropzone itself */
+html.light .dropzone-themed {
+  background-color: var(--color-bg-surface-1) !important;
   border-color: var(--color-input-border) !important;
 }
 
@@ -83,7 +73,7 @@ html.light .dropzone-themed:hover {
   border-color: var(--color-border-interactive) !important;
 }
 
-html.light .dropzone-themed.dragging { /* Add a class for dragging state if possible */
+html.light .dropzone-themed.dragging {
     background-color: var(--color-primary-accent)/15 !important;
     border-color: var(--color-primary-accent) !important;
 }

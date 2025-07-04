@@ -88,7 +88,7 @@ export interface AppContextType {
   setQuizResult: (result: QuizResult | null) => void;
   
   currentUser: UserProfile | null;
-  login: (user: UserProfile, tokenResponse?: GoogleTokenResponse) => void; 
+  login: (user: UserProfile, tokenResponse?: GoogleTokenResponse) => Promise<UserProfile | null>; 
   logout: () => void;
   updateUserProfile: (updatedProfile: Partial<UserProfile>) => Promise<boolean>;
 
@@ -102,7 +102,6 @@ export interface AppContextType {
   syncState: SyncState; 
   currentSyncActivityMessage: string | null; 
 
-  // Notification functions
   showSuccessNotification: (message: string, duration?: number, key?: string) => void;
   showErrorNotification: (message: string, duration?: number, key?: string) => void;
 }

@@ -2,41 +2,35 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { UserProfile } from '../types';
 import { useTranslation } from '../App';
-import { LoadingSpinner } from './ui'; // Changed Spinner to LoadingSpinner
+import { LoadingSpinner } from './ui';
 
 interface UserAvatarProps {
   user: UserProfile | null;
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
   className?: string;
-  [key: string]: any; // Allow other props
+  [key: string]: any;
 }
 
-const IMAGE_LOAD_TIMEOUT_MS = 10000; // 10 seconds
+const IMAGE_LOAD_TIMEOUT_MS = 10000;
 
 const UserAvatar = ({ user, size = 'md', className = '', ...props }: UserAvatarProps) => {
   const [imageError, setImageError] = useState(false);
-  const [isLoading, setIsLoading] = useState(true); // Start with true if photoURL might exist
+  const [isLoading, setIsLoading] = useState(true);
   const { t } = useTranslation();
-  const photoUrl = user?.imageUrl; // Use imageUrl from UserProfile
+  const photoUrl = user?.imageUrl;
   const userName = user?.name;
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
-  // Process Google profile URLs to ensure high resolution and proper loading
   const processedPhotoUrl = useMemo(() => {
     if (!photoUrl) return null;
     
-    // Handle Google profile pictures specifically
     if (photoUrl.includes('googleusercontent.com')) {
-      // Start with the base URL
       let processedUrl = photoUrl;
       
-      // Remove any existing size parameters
       processedUrl = processedUrl.replace(/=s\d+(-c)?/, '');
       
-      // Remove any existing parameters but keep the base URL
       processedUrl = processedUrl.split('?')[0];
       
-      // Add our size parameter
       processedUrl = `${processedUrl}=s256-c`;
       
       return processedUrl;
@@ -59,14 +53,11 @@ const UserAvatar = ({ user, size = 'md', className = '', ...props }: UserAvatarP
       
       const img = new Image();
       
-      // Set crossOrigin before setting src to handle CORS properly
       img.crossOrigin = "anonymous";
       
-      // For Google photos, we don't need cache busting as it can cause CORS issues
       if (processedPhotoUrl.includes('googleusercontent.com')) {
         img.src = processedPhotoUrl;
       } else {
-        // For other images, we can still use cache busting
         img.src = `${processedPhotoUrl}${processedPhotoUrl.includes('?') ? '&' : '?'}t=${new Date().getTime()}`;
       }
       
@@ -83,10 +74,10 @@ const UserAvatar = ({ user, size = 'md', className = '', ...props }: UserAvatarP
       };
 
       timeoutRef.current = setTimeout(() => {
-        if (img.complete && img.naturalHeight !== 0) { // Already loaded
+        if (img.complete && img.naturalHeight !== 0) {
             setIsLoading(false);
             setImageError(false);
-        } else if (!img.complete || img.naturalHeight === 0) { // Not loaded or broken
+        } else if (!img.complete || img.naturalHeight === 0) {
             console.warn('UserAvatar: Image loading timed out for URL:', processedPhotoUrl || 'unknown');
             setIsLoading(false);
             setImageError(true);
@@ -94,15 +85,15 @@ const UserAvatar = ({ user, size = 'md', className = '', ...props }: UserAvatarP
       }, IMAGE_LOAD_TIMEOUT_MS);
 
     } else {
-      setIsLoading(false); // No URL, so not loading
-      setImageError(false); // No URL, so no error
+      setIsLoading(false);
+      setImageError(false);
     }
      return () => {
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
       }
     };
-  }, [processedPhotoUrl]); // Use processedPhotoUrl as dependency since it's memoized
+  }, [processedPhotoUrl]);
   
   const sizeClasses = {
     xs: 'w-6 h-6 text-[8px]',

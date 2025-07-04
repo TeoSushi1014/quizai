@@ -44,7 +44,10 @@ export default defineConfig(({ mode }) => {
       define: {
         'process.env.API_KEY': JSON.stringify(effectiveGeminiApiKey),
         'process.env.GEMINI_API_KEY': JSON.stringify(effectiveGeminiApiKey),
-        'import.meta.env.VITE_GEMINI_API_KEY': JSON.stringify(effectiveGeminiApiKey)
+        'import.meta.env.VITE_GEMINI_API_KEY': JSON.stringify(effectiveGeminiApiKey),
+        // Add Supabase environment variables
+        'import.meta.env.VITE_SUPABASE_URL': JSON.stringify(env.VITE_SUPABASE_URL || 'https://jbuqonmeorldgiwvdror.supabase.co'),
+        'import.meta.env.VITE_SUPABASE_ANON_KEY': JSON.stringify(env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpidXFvbm1lb3JsZGdpd3Zkcm9yIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgzMTY2MDQsImV4cCI6MjA2Mzg5MjYwNH0.vcMUnOgSPAgpigUOkkcopk5XH5AMyNjM772oUqTJGfo')
       },
       resolve: {
         alias: {

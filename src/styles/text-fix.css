@@ -14,12 +14,10 @@ strong[href], strong a, a.font-bold {
   border: none !important;
 }
 
-/* Text within code blocks */
 .markdown-github code, .markdown-github pre {
   color: var(--color-text-body) !important;
 }
 
-/* Remove any link styling from text that shouldn't be links */
 a[href^="#van-de"],
 a[href^="#text-nam"],
 a[href^="#text"],
@@ -31,14 +29,12 @@ a[href^="#trong"] {
   font-weight: inherit !important;
 }
 
-/* Fix in Vietnamese text styling */
 html[lang="vi"] strong {
   font-weight: 700 !important;
   color: var(--color-text-primary) !important;
   text-decoration: none !important;
 }
 
-/* Specific fix for explanation text */
 .explanation-content strong {
   color: var(--color-text-primary) !important;
   text-decoration: none !important;
@@ -48,7 +44,6 @@ html[lang="vi"] strong {
   font-size: inherit !important;
 }
 
-/* Fix for explanation text alignment */
 .explanation-text p {
   margin: 0;
 }

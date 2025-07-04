@@ -1,18 +1,20 @@
-import React, { useState, useCallback, useEffect, createContext, useContext, ReactNode, useMemo, useRef, lazy, Suspense, useId } from 'react';
+import React, { useState, useCallback, useEffect, createContext, useContext, ReactNode, useMemo, useRef, lazy, Suspense, useId, RefObject } from 'react';
 import { HashRouter, Routes, Route, useNavigate, useLocation, NavLink as RouterNavLink, Navigate } from 'react-router-dom'; 
 import { GoogleOAuthProvider, googleLogout, TokenResponse } from '@react-oauth/google';
 import { useSwipeable } from 'react-swipeable';
 import { Quiz, AppContextType, Language, QuizResult, UserProfile, SyncState } from './types';
-import { APP_NAME, KeyIcon, LogoutIcon, HomeIcon, PlusCircleIcon, ChartBarIcon, SettingsIcon, SettingsIconMobileNav, InformationCircleIcon, XCircleIcon, RefreshIcon, CheckCircleIcon, ChevronDownIcon, UserCircleIcon, SunIcon, MoonIcon, PlusIcon } from './constants'; 
-import { Button, LoadingSpinner, Tooltip, Toggle } from './components/ui';
+import { APP_NAME, KeyIcon, LogoutIcon, HomeIcon, PlusCircleIcon, ChartBarIcon, SettingsIconMobileNav, InformationCircleIcon, XCircleIcon, RefreshIcon, CheckCircleIcon, ChevronDownIcon, UserCircleIcon, PlusIcon } from './constants'; 
+import { Button, LoadingSpinner, Tooltip } from './components/ui';
 import { UserAvatar } from './components/UserAvatar'; 
 import ErrorBoundary from './components/ErrorBoundary'; 
 import { getTranslator, translations } from './i18n';
 import useIntersectionObserver from './hooks/useIntersectionObserver';
-import { logger } from './services/logService'; 
-import { useTheme } from './contexts/ThemeContext'; 
+import { authService } from './services/authService'; 
 import { ThemeToggle, ThemeToggleSwitch } from './components/ThemeToggle'; 
 import { useNotification } from './hooks/useNotification';
+import { supabaseService } from './services/supabaseService';
+import { logger } from './services/logService';
+import { migrateLocalDataToSupabase, checkMigrationNeeded } from './utils/migrationUtils';
 import './styles/markdown.css'; // Existing markdown styles
 import 'github-markdown-css/github-markdown.css'; // GitHub Markdown library styles
 import './styles/markdown-custom.css'; // Existing general custom markdown styles
@@ -110,6 +112,7 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true); 
   const [isGeminiKeyAvailable, setIsGeminiKeyAvailable] = useState(false);
   const [appInitialized, setAppInitialized] = useState(false);
+  const [initializationStarted, setInitializationStarted] = useState(false);
 
   const [isDriveLoading, setIsDriveLoading] = useState(false);
   const [driveSyncError, setDriveSyncErrorState] = useState<string | null>(null);
@@ -184,6 +187,12 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
 
   useEffect(() => {
     const initializeApp = async () => {
+        if (initializationStarted) {
+            logger.info('App initialization already started, skipping duplicate call', 'AppInit');
+            return;
+        }
+        
+        setInitializationStarted(true);
         logger.info('App initializing: Loading initial data', 'AppInit');
         const geminiKeyStatus = !!process.env.GEMINI_API_KEY;
         setIsGeminiKeyAvailable(geminiKeyStatus);
@@ -212,16 +221,34 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
                       userInfo.picture.replace(/=s\d+-c$/, '=s256-c') : // Replace small size with larger one
                       userInfo.picture;
                     
-                    const userProfile: UserProfile = {
-                        id: userInfo.sub,
-                        name: userInfo.name,
+                    // Use the Supabase authentication flow to get the correct UUID
+                    const googleUserInfo = {
+                        sub: userInfo.sub,
                         email: userInfo.email,
-                        imageUrl: pictureUrl,
-                        accessToken: savedToken, 
+                        name: userInfo.name,
+                        picture: pictureUrl,
+                        access_token: savedToken
                     };
-                    const locallyStoredUser = savedUserJson ? JSON.parse(savedUserJson) as UserProfile : {};
-                    setCurrentUser({ ...locallyStoredUser, ...userProfile });
-                    logger.info('Session restored successfully using stored token.', 'AppInit', { userId: userProfile.id });
+                    
+                    const authenticatedUser = await authService.signInWithGoogle(googleUserInfo);
+                    
+                    if (authenticatedUser) {
+                        const locallyStoredUser = savedUserJson ? JSON.parse(savedUserJson) as Partial<UserProfile> : {};
+                        // Use the Supabase UUID, not the Google ID
+                        const userWithToken = {
+                            ...authenticatedUser, // This has the correct Supabase UUID
+                            accessToken: savedToken,
+                            bio: authenticatedUser.bio || locallyStoredUser.bio || null,
+                            quizCount: authenticatedUser.quizCount || locallyStoredUser.quizCount || 0,
+                            completionCount: authenticatedUser.completionCount || locallyStoredUser.completionCount || 0,
+                            averageScore: authenticatedUser.averageScore || locallyStoredUser.averageScore || null,
+                        };
+                        setCurrentUser(userWithToken);
+                        logger.info('Session restored successfully using stored token.', 'AppInit', { userId: userWithToken.id });
+                    } else {
+                        logger.warn('Supabase authentication failed during session restore.', 'AppInit');
+                        setCurrentUser(null);
+                    }
                 } else {
                     logger.warn('Stored token invalid or userinfo fetch failed. Clearing token.', 'AppInit', { status: userInfoResponse.status });
                     setCurrentUser(null); 
@@ -257,7 +284,7 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     if (!appInitialized) return;
 
     const loadInitialQuizzesAndSync = async () => {
-      logger.info('Loading initial quizzes and potentially syncing.', 'QuizLoading', { isLoggedIn: !!currentUser?.accessToken });
+      logger.info('Loading initial quizzes from Supabase and potentially syncing with Drive.', 'QuizLoading', { isLoggedIn: !!currentUser?.accessToken });
       setIsLoading(true);
       setDriveSyncError(null);
       
@@ -270,21 +297,41 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
         setCurrentSyncActivityMessage(tForProvider('initialSyncMessage'));
         
         try {
+          // Load from Supabase first
+          logger.info("Initial load: Loading quizzes from Supabase.", 'QuizLoading', { userId: currentUser.id });
+          const supabaseQuizzes = await supabaseService.getUserQuizzes(currentUser.id);
+          logger.info("Initial load: Supabase quizzes loaded.", 'QuizLoading', { count: supabaseQuizzes.length });
+
+          // Then try to sync with Drive
           const driveQuizzes = await loadQuizDataFromDrive(currentUser.accessToken);
           const localQuizzes = await quizStorage.getAllQuizzes();
 
           if (driveQuizzes !== null) { 
-            logger.info("Initial load: Data found on Drive. Merging with local.", 'QuizLoading', { driveCount: driveQuizzes.length, localCount: localQuizzes.length });
-            finalQuizzesToSet = mergeQuizzes(localQuizzes, driveQuizzes);
-            await quizStorage.saveQuizzes(finalQuizzesToSet);
-            await saveQuizDataToDrive(currentUser.accessToken, finalQuizzesToSet); 
+            logger.info("Initial load: Data found on Drive. Merging Supabase, local, and Drive data.", 'QuizLoading', { 
+              supabaseCount: supabaseQuizzes.length,
+              driveCount: driveQuizzes.length, 
+              localCount: localQuizzes.length 
+            });
+            
+            // Merge all three sources: Supabase (primary), Drive, and local
+            const tempMerged = mergeQuizzes(localQuizzes, driveQuizzes);
+            finalQuizzesToSet = mergeQuizzes(tempMerged, supabaseQuizzes); // Supabase takes priority
+            
+            await quizStorage.saveQuizzes(finalQuizzesToSet); // Update local backup
+            await saveQuizDataToDrive(currentUser.accessToken, finalQuizzesToSet); // Update Drive
             logger.info("Initial load: Merged data saved locally and to Drive.", 'QuizLoading', { count: finalQuizzesToSet.length });
           } else { 
-            logger.info("Initial load: No data file on Drive. Using local data.", 'QuizLoading', { localCount: localQuizzes.length });
-            finalQuizzesToSet = localQuizzes;
-            if (localQuizzes.length > 0) {
-              logger.info("Initial load: Uploading local data to new Drive file.", 'QuizLoading', { count: localQuizzes.length });
-              await saveQuizDataToDrive(currentUser.accessToken, localQuizzes);
+            logger.info("Initial load: No data file on Drive. Merging Supabase and local.", 'QuizLoading', { 
+              supabaseCount: supabaseQuizzes.length,
+              localCount: localQuizzes.length 
+            });
+            
+            finalQuizzesToSet = mergeQuizzes(localQuizzes, supabaseQuizzes); // Supabase takes priority
+            await quizStorage.saveQuizzes(finalQuizzesToSet); // Update local backup
+            
+            if (finalQuizzesToSet.length > 0) {
+              logger.info("Initial load: Uploading merged data to new Drive file.", 'QuizLoading', { count: finalQuizzesToSet.length });
+              await saveQuizDataToDrive(currentUser.accessToken, finalQuizzesToSet);
             }
           }
           setLastDriveSync(new Date());
@@ -293,12 +340,22 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
           setCurrentSyncActivityMessage(tForProvider('syncCompleteMessage'));
           operationSuccessful = true;
         } catch (error: any) {
-          logger.error("Initial load: Failed to load or sync quizzes with Google Drive.", 'QuizLoading', { errorMsg: error.message }, error);
+          logger.error("Initial load: Failed to load or sync quizzes.", 'QuizLoading', { errorMsg: error.message }, error);
+          
+          // Fallback strategy: try Supabase only, then local storage
+          try {
+            const supabaseQuizzes = await supabaseService.getUserQuizzes(currentUser.id);
+            finalQuizzesToSet = supabaseQuizzes;
+            logger.info("Initial load: Fell back to Supabase-only data.", 'QuizLoading', { count: finalQuizzesToSet.length });
+          } catch (supabaseError) {
+            logger.error("Initial load: Supabase fallback also failed, using local storage.", 'QuizLoading', {}, supabaseError as Error);
+            finalQuizzesToSet = await quizStorage.getAllQuizzes(); 
+            logger.info("Initial load: Final fallback to local storage.", 'QuizLoading', { count: finalQuizzesToSet.length });
+          }
+          
           const errorKey = error.message as keyof typeof translations.en;
           const knownError = translations.en[errorKey] ? errorKey : 'driveErrorLoading';
           setDriveSyncError(knownError); 
-          finalQuizzesToSet = await quizStorage.getAllQuizzes(); 
-          logger.info("Initial load: Fell back to local storage due to Drive error.", 'QuizLoading', { count: finalQuizzesToSet.length });
           operationSuccessful = false; 
         } finally {
           setAllQuizzes(finalQuizzesToSet); 
@@ -310,6 +367,7 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
           }, SYNC_CONFIG.MESSAGE_DISPLAY_DURATION_MS);
         }
       } else { 
+        // Not logged in - load from local storage only
         finalQuizzesToSet = await quizStorage.getAllQuizzes();
         setAllQuizzes(finalQuizzesToSet);
         setSyncState('idle');
@@ -468,65 +526,96 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
   }, [navigate]);
 
   const addQuiz = useCallback(async (quiz: Quiz): Promise<void> => {
+    if (!currentUser) {
+      throw new Error('User must be logged in to create quizzes')
+    }
+
     const now = new Date().toISOString();
     const quizWithOwnerAndTimestamp = { 
       ...quiz, 
-      userId: currentUser ? currentUser.id : undefined,
+      userId: currentUser.id,
       createdAt: quiz.createdAt || now, 
       lastModified: now,
     };
 
-    let finalQuizzesList: Quiz[] = [];
-    setAllQuizzes(prevQuizzes => {
-      finalQuizzesList = [quizWithOwnerAndTimestamp, ...prevQuizzes.filter(q => q.id !== quiz.id)]; 
-      return finalQuizzesList;
-    });
-    logger.info('Quiz added to context state', 'AppContext', { quizId: quiz.id, title: quiz.title });
-    try {
-      await quizStorage.saveQuizzes(finalQuizzesList);
-      logger.info('Quiz saved to local storage via addQuiz call', 'AppContext', { quizId: quiz.id });
-    } catch (e) {
-      logger.error('Error from quizStorage.saveQuizzes in addQuiz', 'AppContext', { quizId: quiz.id }, e as Error);
-      throw e; 
+    // Save to Supabase
+    const savedQuiz = await supabaseService.createQuiz(quizWithOwnerAndTimestamp, currentUser.id)
+    
+    if (savedQuiz) {
+      // Update local state
+      setAllQuizzes(prev => [savedQuiz, ...prev.filter(q => q.id !== quiz.id)])
+      logger.info('Quiz added to Supabase and context state', 'AppContext', { quizId: quiz.id, title: quiz.title })
+      
+      // Also save to localStorage as backup
+      try {
+        const allQuizzes = await supabaseService.getUserQuizzes(currentUser.id)
+        await quizStorage.saveQuizzes(allQuizzes)
+        logger.info('Quiz saved to local storage as backup', 'AppContext', { quizId: quiz.id })
+      } catch (e) {
+        logger.warn('Failed to save backup to localStorage', 'AppContext', { quizId: quiz.id }, e as Error)
+      }
+    } else {
+      throw new Error('Failed to save quiz to database')
     }
   }, [currentUser]);
 
   const deleteQuiz = useCallback(async (quizId: string): Promise<void> => {
-    let finalQuizzesList: Quiz[] = [];
-    setAllQuizzes(prevQuizzes => {
-      finalQuizzesList = prevQuizzes.filter(q => q.id !== quizId);
-      return finalQuizzesList;
-    });
-    logger.info('Quiz deleted from context state', 'AppContext', { quizId });
-    try {
-      await quizStorage.saveQuizzes(finalQuizzesList);
-      logger.info('Quizzes (after deletion) saved to local storage via deleteQuiz call', 'AppContext', { quizId });
-    } catch (e) {
-      logger.error('Error from quizStorage.saveQuizzes in deleteQuiz', 'AppContext', { quizId }, e as Error);
-      throw e;
+    if (!currentUser) {
+      throw new Error('User must be logged in to delete quizzes')
     }
-  }, []);
+
+    // Delete from Supabase
+    const success = await supabaseService.deleteQuiz(quizId)
+    
+    if (success) {
+      // Update local state
+      setAllQuizzes(prev => prev.filter(q => q.id !== quizId))
+      logger.info('Quiz deleted from Supabase and context state', 'AppContext', { quizId })
+      
+      // Also update localStorage as backup
+      try {
+        const remainingQuizzes = await supabaseService.getUserQuizzes(currentUser.id)
+        await quizStorage.saveQuizzes(remainingQuizzes)
+        logger.info('Local storage updated after quiz deletion', 'AppContext', { quizId })
+      } catch (e) {
+        logger.warn('Failed to update localStorage backup', 'AppContext', { quizId }, e as Error)
+      }
+    } else {
+      throw new Error('Failed to delete quiz from database')
+    }
+  }, [currentUser]);
 
   const updateQuiz = useCallback(async (updatedQuiz: Quiz): Promise<void> => {
+    if (!currentUser) {
+      throw new Error('User must be logged in to update quizzes')
+    }
+
     const now = new Date().toISOString();
     const quizWithTimestamp = {
       ...updatedQuiz,
       lastModified: now,
     };
-    let finalQuizzesList: Quiz[] = [];
-    setAllQuizzes(prevQuizzes => {
-      finalQuizzesList = prevQuizzes.map(q => q.id === quizWithTimestamp.id ? quizWithTimestamp : q);
-      return finalQuizzesList;
-    });
-    logger.info('Quiz updated in context state', 'AppContext', { quizId: updatedQuiz.id, title: updatedQuiz.title });
-    try {
-      await quizStorage.saveQuizzes(finalQuizzesList);
-      logger.info('Quiz saved to local storage via updateQuiz call', 'AppContext', { quizId: updatedQuiz.id });
-    } catch (e) {
-      logger.error('Error from quizStorage.saveQuizzes in updateQuiz', 'AppContext', { quizId: updatedQuiz.id }, e as Error);
-      throw e;
+
+    // Update in Supabase
+    const updatedSupabaseQuiz = await supabaseService.updateQuiz(quizWithTimestamp)
+    
+    if (updatedSupabaseQuiz) {
+      // Update local state
+      setAllQuizzes(prev => prev.map(q => q.id === quizWithTimestamp.id ? updatedSupabaseQuiz : q))
+      logger.info('Quiz updated in Supabase and context state', 'AppContext', { quizId: updatedQuiz.id, title: updatedQuiz.title })
+      
+      // Also update localStorage as backup
+      try {
+        const allQuizzes = await supabaseService.getUserQuizzes(currentUser.id)
+        await quizStorage.saveQuizzes(allQuizzes)
+        logger.info('Local storage updated after quiz update', 'AppContext', { quizId: updatedQuiz.id })
+      } catch (e) {
+        logger.warn('Failed to update localStorage backup', 'AppContext', { quizId: updatedQuiz.id }, e as Error)
+      }
+    } else {
+      throw new Error('Failed to update quiz in database')
     }
-  }, []);
+  }, [currentUser]);
 
   const getQuizByIdFromAll = useCallback((id: string): Quiz | null => {
     return allQuizzes.find(q => q.id === id) || null;
@@ -536,27 +625,66 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     setQuizResult(result);
   }, []);
 
-  const login = useCallback((user: UserProfile, tokenResponse?: TokenResponse ) => { 
-    let tokenInfo: { token: string; expires_in: number } | undefined = undefined;
-    if (tokenResponse) {
-        tokenInfo = {
-            token: tokenResponse.access_token,
-            expires_in: (typeof (tokenResponse as any).expires_in === 'number') ? (tokenResponse as any).expires_in : 3600,
-        };
-    }
+  const login = useCallback(async (user: UserProfile, tokenResponse?: TokenResponse): Promise<UserProfile | null> => { 
+    logger.info('Login initiated with Supabase integration', 'AuthContext', { userId: user.id })
     
-    const userWithTokenAndDefaults: UserProfile = {
-        ...user,
-        accessToken: tokenInfo?.token || user.accessToken, 
-        bio: user.bio || null,
-        quizCount: user.quizCount || 0,
-        completionCount: user.completionCount || 0,
-        averageScore: user.averageScore || null,
-    };
-    setCurrentUser(userWithTokenAndDefaults, tokenInfo); 
-    setDriveSyncError(null); 
-    setSyncState('idle'); 
-    setCurrentSyncActivityMessage(null);
+    try {
+      // Sign in with Supabase using Google user info
+      const googleUserInfo = {
+        sub: user.id, // This is Google ID
+        email: user.email,
+        name: user.name,
+        picture: user.imageUrl,
+        access_token: tokenResponse?.access_token || user.accessToken
+      }
+      
+      const authenticatedUser = await authService.signInWithGoogle(googleUserInfo)
+      
+      if (authenticatedUser) {
+        // IMPORTANT: Use the Supabase UUID, not the Google ID
+        let tokenInfo: { token: string; expires_in: number } | undefined = undefined;
+        if (tokenResponse) {
+            tokenInfo = {
+                token: tokenResponse.access_token,
+                expires_in: (typeof (tokenResponse as any).expires_in === 'number') ? (tokenResponse as any).expires_in : 3600,
+            };
+        }
+        
+        const userWithTokenAndDefaults: UserProfile = {
+            ...authenticatedUser, // This includes the correct Supabase UUID as .id
+            accessToken: tokenInfo?.token || authenticatedUser.accessToken || user.accessToken, 
+            bio: authenticatedUser.bio || null,
+            quizCount: authenticatedUser.quizCount || 0,
+            completionCount: authenticatedUser.completionCount || 0,
+            averageScore: authenticatedUser.averageScore || null,
+        };
+        
+        setCurrentUser(userWithTokenAndDefaults, tokenInfo); 
+        setDriveSyncError(null); 
+        setSyncState('idle'); 
+        setCurrentSyncActivityMessage(null);
+
+        // Check if migration is needed and perform it
+        try {
+          const migrationNeeded = await checkMigrationNeeded(userWithTokenAndDefaults)
+          if (migrationNeeded) {
+            logger.info('Starting data migration from localStorage to Supabase', 'Migration')
+            await migrateLocalDataToSupabase(userWithTokenAndDefaults)
+            logger.info('Data migration completed successfully', 'Migration')
+          }
+        } catch (migrationError) {
+          logger.error('Migration failed, but login continues', 'Migration', {}, migrationError as Error)
+        }
+
+        logger.info('User logged in successfully with Supabase', 'AuthContext', { userId: userWithTokenAndDefaults.id })
+        return userWithTokenAndDefaults
+      } else {
+        throw new Error('Failed to authenticate with Supabase')
+      }
+    } catch (error) {
+      logger.error('Login failed', 'AuthContext', {}, error as Error)
+      throw error
+    }
   }, [setCurrentUser, setDriveSyncError]); 
 
   const handleLogout = useCallback(async () => { 
@@ -584,27 +712,29 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
       return false;
     }
     
-    const updatedUser: UserProfile = {
-      ...currentUser,
-      name: updatedProfileData.name !== undefined ? updatedProfileData.name : currentUser.name,
-      bio: updatedProfileData.bio !== undefined ? updatedProfileData.bio : currentUser.bio,
-      imageUrl: updatedProfileData.imageUrl !== undefined ? updatedProfileData.imageUrl : currentUser.imageUrl, 
-      quizCount: currentUser.quizCount,
-      completionCount: currentUser.completionCount,
-      averageScore: currentUser.averageScore,
-      accessToken: currentUser.accessToken, 
-    };
-
     try {
-      setCurrentUserInternal(updatedUser); 
-      localStorage.setItem(LOCALSTORAGE_USER_KEY, JSON.stringify(updatedUser)); 
-      showSuccessNotification(tForProvider('profileSaveSuccess'), 3000);
-      logger.info("User profile updated successfully in AppContext.", 'UserProfile', { userId: updatedUser.id });
-      return true;
+      // Update in Supabase
+      const updatedUser = await supabaseService.updateUser(currentUser.id, updatedProfileData)
+      
+      if (updatedUser) {
+        // Keep the access token from current user
+        const userWithToken: UserProfile = {
+          ...updatedUser,
+          accessToken: currentUser.accessToken,
+        }
+        
+        // Update local state and localStorage
+        setCurrentUserInternal(userWithToken); 
+        localStorage.setItem(LOCALSTORAGE_USER_KEY, JSON.stringify(userWithToken)); 
+        showSuccessNotification(tForProvider('profileSaveSuccess'), 3000);
+        logger.info("User profile updated successfully in Supabase and AppContext.", 'UserProfile', { userId: userWithToken.id });
+        return true;
+      } else {
+        throw new Error('Failed to update user profile in Supabase')
+      }
     } catch (error) {
-      logger.error('Error updating profile in AppContext:', 'UserProfile', { userId: currentUser.id }, error as Error);
+      logger.error('Error updating profile in Supabase and AppContext:', 'UserProfile', { userId: currentUser.id }, error as Error);
       showErrorNotification(tForProvider('profileSaveError'), 5000);
-      setCurrentUserInternal(currentUser); 
       return false;
     }
   }, [currentUser, setCurrentUserInternal, showSuccessNotification, showErrorNotification, tForProvider]);
@@ -683,7 +813,7 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     return allQuizzes; 
   }, [allQuizzes]);
   
-  const combinedIsLoading = isLoading || (appInitialized && currentUser && !lastDriveSync && isDriveLoading);
+  const combinedIsLoading = Boolean(isLoading || (appInitialized && currentUser && !lastDriveSync && isDriveLoading));
 
   const contextValue: AppContextType = useMemo(() => ({
     currentView: (location.pathname.substring(1) || 'home') as any, 
@@ -895,7 +1025,7 @@ UserDropdownMenu.displayName = "UserDropdownMenu";
 
 const AnimatedApiKeyWarning: React.FC<{children: ReactNode}> = ({ children }) => {
   const ref = useRef<HTMLDivElement>(null);
-  const isVisible = useIntersectionObserver(ref, { threshold: 0.1, freezeOnceVisible: true });
+  const isVisible = useIntersectionObserver(ref as RefObject<Element>, { threshold: 0.1, freezeOnceVisible: true });
   
   return (
     <div 
@@ -923,11 +1053,9 @@ const AppLayout: React.FC = () => {
   const { 
     language, setLanguage, currentUser, isGeminiKeyAvailable, 
     isLoading: globalIsLoading, isDriveLoading, driveSyncError, 
-    lastDriveSync, setDriveSyncError, syncState, currentSyncActivityMessage,
-    logout, setCurrentView, syncWithGoogleDrive 
+    lastDriveSync, setDriveSyncError, syncState, currentSyncActivityMessage
   } = useAppContext(); 
   const { t } = useTranslation();
-  const { theme } = useTheme(); 
   const navigate = useNavigate();
   const location = useLocation();
   const [isMobileProfileOpen, setIsMobileProfileOpen] = useState(false);
@@ -1367,7 +1495,7 @@ AppLayout.displayName = "AppLayout";
 const AppContent: React.FC = () => {
   const { t } = useTranslation();
   return (
-    <ErrorBoundary t={t}>
+    <ErrorBoundary t={t as (key: string) => string}>
       <AppLayout />
     </ErrorBoundary>
   );

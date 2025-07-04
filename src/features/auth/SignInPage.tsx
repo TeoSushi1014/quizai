@@ -59,9 +59,25 @@ const SignInPage: React.FC = () => {
           // accessToken will be set by the login context function from tokenResponse
         };
         logger.info("User info fetched successfully. Calling login context function.", 'SignInPage', { userId: userProfile.id });
-        login(userProfile, tokenResponse); // Pass the full tokenResponse
+        
+        // Await the login function since it's now async
+        try {
+          const loginResult = await login(userProfile, tokenResponse);
+          
+          if (loginResult) {
+            logger.info("Login completed successfully, redirecting...", 'SignInPage', { userId: loginResult.id });
+            const from = (location.state as any)?.from?.pathname || '/dashboard';
+            navigate(from, { replace: true });
+          } else {
+            logger.error("Login returned null result", 'SignInPage');
+            handleLoginError(new Error("Login failed - no user returned"));
+          }
+        } catch (loginError) {
+          logger.error("Login process failed", 'SignInPage', undefined, loginError as Error);
+          handleLoginError(loginError);
+        }
       } catch (error) {
-        logger.error("Error during token validation or fetching user info.", 'SignInPage', undefined, error as Error);
+        logger.error("Error during token validation, fetching user info, or login process.", 'SignInPage', undefined, error as Error);
         handleLoginError(error);
       }
     } else {

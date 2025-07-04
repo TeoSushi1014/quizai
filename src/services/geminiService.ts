@@ -3,6 +3,7 @@ import { Question, QuizConfig, Quiz, Language } from "../types";
 import { GEMINI_TEXT_MODEL, GEMINI_MODEL_ID } from "../constants";
 import { logger } from './logService';
 import { getTranslator } from "../i18n";
+import { generateQuestionId } from '../utils/uuidUtils';
 
 // Helper function to detect if content appears to be a formatted quiz
 export const isFormattedQuiz = (content: string): boolean => {
@@ -485,8 +486,11 @@ export const generateQuizWithGemini = async (
     const currentLanguage = (config.language === 'Vietnamese' ? 'vi' : 'en') as Language;
     const questionsWithCorrectOptions = validateAndFixQuestions(parsedQuizData.questions, currentLanguage);
 
-    const validatedQuestionsFinal = questionsWithCorrectOptions.map((q, index) => {
-        const questionId = q.id || `gq${index + 1}-${Date.now()}`;
+    const validatedQuestionsFinal = questionsWithCorrectOptions.map((q) => {
+        let questionId = q.id;
+        if (!questionId) {
+          questionId = generateQuestionId();
+        }
         return { ...q, id: questionId, explanation: q.explanation || getTranslator(currentLanguage)('resultsNoExplanation') };
     });
 

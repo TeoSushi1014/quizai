@@ -29,28 +29,26 @@
   animation: fadeInDown 0.4s ease-out;
 }
 
-/* Enhance visibility of correct and incorrect states */
 .answer-option-correct {
-  border-color: #22c55e !important; /* green-500 */
-  background-color: rgba(240, 253, 244, 0.8) !important; /* green-50 with opacity */
+  border-color: #22c55e !important;
+  background-color: rgba(240, 253, 244, 0.8) !important;
 }
 
 .dark .answer-option-correct {
-  background-color: rgba(20, 83, 45, 0.4) !important; /* dark:green-900 with opacity */
+  background-color: rgba(20, 83, 45, 0.4) !important;
   border-color: #22c55e !important;
 }
 
 .answer-option-incorrect {
-  border-color: #ef4444 !important; /* red-500 */
-  background-color: rgba(254, 242, 242, 0.8) !important; /* red-50 with opacity */
+  border-color: #ef4444 !important;
+  background-color: rgba(254, 242, 242, 0.8) !important;
 }
 
 .dark .answer-option-incorrect {
-  background-color: rgba(127, 29, 29, 0.4) !important; /* dark:red-900 with opacity */
+  background-color: rgba(127, 29, 29, 0.4) !important;
   border-color: #ef4444 !important;
 }
 
-/* Animation for explanation section */
 @keyframes fadeInUp {
   from {
     opacity: 0;

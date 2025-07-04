@@ -4,7 +4,7 @@
 }
 
 .flex.items-center > span.font-medium {
-  padding-top: 0.1rem; /* Slight adjustment to align with text */
+  padding-top: 0.1rem;
 }
 
 .flex-grow.markdown-content {
@@ -32,7 +32,7 @@
 .option-content {
   display: flex;
   align-items: center;
-  min-height: 24px; /* Match the height of the option indicator */
+  min-height: 24px;
 }
 
 .option-content .markdown-github {

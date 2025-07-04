@@ -1,6 +1,7 @@
 
 import { Quiz, Question, QuizConfig } from '../../types';
 import { getTranslator, translations } from '../../i18n'; // For default new question text
+import { generateQuestionId } from '../../utils/uuidUtils';
 
 // Helper to get translations within the reducer if needed for default values
 // Assuming 'en' as a fallback or a way to get current language if reducer was part of a context
@@ -80,8 +81,9 @@ export function quizReducer(state: QuizReviewState, action: QuizReviewAction): Q
     case 'ADD_QUESTION':
       if (!state.editableQuiz) return state;
       const tInstance = getTranslator(action.payload.language);
+      
       const newQuestion: Question = {
-        id: `manual-q-${Date.now()}`,
+        id: generateQuestionId(),
         questionText: tInstance('reviewNewQuestionDefaultText'),
         options: [tInstance('reviewNewOptionDefault', { index: 1 }), tInstance('reviewNewOptionDefault', { index: 2 })],
         correctAnswer: tInstance('reviewNewOptionDefault', { index: 1 }),

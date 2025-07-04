@@ -1,25 +1,21 @@
 import { Quiz, Question, QuizConfig } from '../types';
 import { translations } from '../i18n';
 
-// Helper to map difficulty to common Vietnamese educational abbreviations
 const getDifficultyAbbreviation = (difficulty?: QuizConfig['difficulty']): string => {
-  if (!difficulty) return "NB"; // Default to Nhận biết
+  if (!difficulty) return "NB";
   switch (difficulty) {
     case 'Easy': return "NB";
-    case 'Medium': return "TH"; // Thông hiểu
-    case 'Hard': return "VD";   // Vận dụng
-    case 'AI-Determined': return "NB"; // Default for AI-Determined, can be refined if AI provides more granular levels
+    case 'Medium': return "TH";
+    case 'Hard': return "VD";
+    case 'AI-Determined': return "NB";
     default: return "NB";
   }
 };
 
-
 type TFunction = (key: keyof typeof translations.en, params?: Record<string, string | number>) => string;
 
-const getOptionLetter = (index: number) => String.fromCharCode(65 + index); // A, B, C, D...
+const getOptionLetter = (index: number) => String.fromCharCode(65 + index);
 
-// Common function to format a single question's text and options for Azota
-// All questions are now assumed to be multiple-choice
 const formatQuestionTextAndOptions = (question: Question, questionIndex: number, t: TFunction, overallDifficultyAbbr: string, markCorrect: boolean = false): string => {
   const qText = question.questionText;
   let difficultyMarker = overallDifficultyAbbr; 
@@ -31,7 +27,6 @@ const formatQuestionTextAndOptions = (question: Question, questionIndex: number,
   
   let questionLine = `${t('azotaFormatQuestionPrefix')} ${questionIndex}.(${difficultyMarker}) ${qText}\n`;
   
-  // All questions are multiple-choice
   question.options.forEach((option, optIndex) => {
     const isCorrect = option === question.correctAnswer;
     const prefix = markCorrect && isCorrect ? '*' : '';
@@ -46,7 +41,6 @@ const formatQuestionTextAndOptions = (question: Question, questionIndex: number,
   return questionLine;
 };
 
-// Common function to format an explanation block for Azota
 const formatExplanationBlock = (question: Question, questionIndex: number, t: TFunction, overallDifficultyAbbr: string, includeAnswerInExplanation: boolean = false): string => {
   const explanationSolutionMarker = t('azotaFormatExplanationSolutionMarker');
   const explanationMethodMarker = t('azotaFormatExplanationMethodMarker');
@@ -61,7 +55,7 @@ const formatExplanationBlock = (question: Question, questionIndex: number, t: TF
   }
   explanationText += `${t('azotaFormatExplanationSolution')} ${cachGiai || t('resultsNoExplanation')}\n`;
   
-  if (includeAnswerInExplanation) { // Implies multiple-choice
+  if (includeAnswerInExplanation) {
     const correctOptionIndex = question.options.findIndex(opt => opt === question.correctAnswer);
     if (correctOptionIndex !== -1) {
       explanationText += `${t('azotaFormatChooseAnswer')} ${getOptionLetter(correctOptionIndex)}\n`;
@@ -70,23 +64,19 @@ const formatExplanationBlock = (question: Question, questionIndex: number, t: TF
   return explanationText;
 };
 
-
 export const formatQuizToAzotaStyle1 = (quiz: Quiz, t: TFunction): string => {
   let output = "";
-  // All questions are multiple-choice
   const overallDifficultyAbbr = getDifficultyAbbreviation(quiz.config?.difficulty);
 
   let overallQuestionIndex = 1;
 
   if (quiz.questions.length > 0) {
-    output += `${t('azotaFormatMCQSection')}\n`; // All questions are MCQs
+    output += `${t('azotaFormatMCQSection')}\n`;
     quiz.questions.forEach(q => {
       output += formatQuestionTextAndOptions(q, overallQuestionIndex++, t, overallDifficultyAbbr);
       output += '\n';
     });
   }
-
-  // Removed OpenEndedQuestions section
 
   output += `${t('azotaFormatEndOfQuiz')}\n`;
   output += `${t('azotaFormatAnswerTableTitle')}\n`;

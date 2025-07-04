@@ -1,13 +1,13 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Quiz } from '../../../types';
-import { Button, Card, Tooltip, Modal, Toggle, Input, LoadingSpinner } from '../../../components/ui'; // Added LoadingSpinner
+import { Button, Card, Tooltip, Modal, Toggle, Input, LoadingSpinner } from '../../../components/ui';
 import MathText from '../../../components/MathText';
 import { EditIcon, DeleteIcon, ShareIcon, XCircleIcon, CheckCircleIcon } from '../../../constants';
 import { useTranslation, useAppContext } from '../../../App';
 import { translations } from '../../../i18n';
-import ShareModal from './ShareModal'; // Import the new ShareModal
+import ShareModal from './ShareModal';
 import { logger } from '../../../services/logService';
 
 
@@ -32,10 +32,10 @@ interface QuizCardProps {
   onDelete: (id: string) => void;
   onEdit: (quiz: Quiz) => void; // Changed from onEditQuiz to onEdit
   animationDelay?: number; 
-  onSelect: () => void; // Added onSelect prop
+  // Removed onSelect prop since it's not used
 }
 
-export const QuizCard: React.FC<QuizCardProps> = ({ quiz, onDelete, onEdit, animationDelay = 0, onSelect }) => { // Changed from onEditQuiz to onEdit, added onSelect
+export const QuizCard: React.FC<QuizCardProps> = ({ quiz, onDelete, onEdit, animationDelay = 0 }) => { // Removed unused onSelect
   const { t, language } = useTranslation();
   const [isConfirmDeleteModalOpen, setIsConfirmDeleteModalOpen] = useState(false);
   const [isAttemptSettingsModalOpen, setIsAttemptSettingsModalOpen] = useState(false);
@@ -45,7 +45,7 @@ export const QuizCard: React.FC<QuizCardProps> = ({ quiz, onDelete, onEdit, anim
   const [shareFeedback, setShareFeedback] = useState<{ type: 'idle' | 'sharing' | 'copied' | 'failed'; message: string }>({ type: 'idle', message: t('share') });
   const [isShareModalOpen, setIsShareModalOpen] = useState(false); // State for ShareModal
 
-  const { setActiveQuiz, setQuizResult, currentUser } = useAppContext(); // Added currentUser
+  const { setActiveQuiz, setQuizResult } = useAppContext(); // Removed unused currentUser
   const navigate = useNavigate();
 
   
@@ -192,9 +192,9 @@ export const QuizCard: React.FC<QuizCardProps> = ({ quiz, onDelete, onEdit, anim
                      </>}
                 </div>
                 {quiz.sourceContentSnippet && (
-                    <p className="text-sm sm:text-xs text-[var(--color-text-secondary)] opacity-90 italic line-clamp-1" title={quiz.sourceContentSnippet}>
-                       {t('dashboardQuizCardSource', { snippet: '' })}<MathText text={quiz.sourceContentSnippet} markdownFormatting={true} />
-                    </p>
+                    <div className="text-sm sm:text-xs text-[var(--color-text-secondary)] opacity-90 italic line-clamp-1" title={quiz.sourceContentSnippet}>
+                       {t('dashboardQuizCardSource', { snippet: '' })}<span>{quiz.sourceContentSnippet}</span>
+                    </div>
                 )}
                  <p className="text-sm sm:text-xs text-[var(--color-text-secondary)] opacity-90 pt-1">{dateLabel}</p>
             </div>
@@ -329,8 +329,7 @@ export const QuizCard: React.FC<QuizCardProps> = ({ quiz, onDelete, onEdit, anim
               min="0"
               containerClassName="mt-4"
               inputClassName="w-32"
-              // @ts-ignore
-              description={t('attemptTimeLimitInfo')}
+              placeholder={t('attemptTimeLimitInfo')}
             />
           </div>
         </Modal>

@@ -4,8 +4,8 @@ import React, { useState, useCallback, ReactNode, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion'; 
 import { useAppContext, useTranslation } from '../../App';
-import { QuizConfig, AIModelType, Quiz } from '../../types'; 
-import { Button, Card, Input, Textarea, Select, LoadingSpinner, ProgressBar, Toggle, Dropzone, Modal, Tooltip } from '../../components/ui';
+import { QuizConfig } from '../../types'; 
+import { Button, Card, Input, Textarea, Select, ProgressBar, Toggle, Dropzone, Modal, Tooltip } from '../../components/ui';
 import MathText from '../../components/MathText';
 import { generateQuizWithSelectedModel } from '../../services/aiQuizService';
 import { extractTextFromPdf, convertImageToBase64, extractTextFromDocx } from '../../services/fileService';
@@ -56,7 +56,7 @@ const findCommonPrefix = (strings: string[]): string => {
 
 
 const QuizCreatePage: React.FC = () => {
-  const { addQuiz, language, isGeminiKeyAvailable, currentUser } = useAppContext(); 
+  const { language, isGeminiKeyAvailable, currentUser } = useAppContext(); 
   const { t } = useTranslation(); // Ensure t is initialized for findCommonPrefix if it's outside component
   const navigate = useNavigate();
   const [step, setStep] = useState<CreationStep>(1);
@@ -526,8 +526,6 @@ const QuizCreatePage: React.FC = () => {
         const manualDifficultyOptions = [{ value: 'Easy', label: t('step2DifficultyEasy') }, { value: 'Medium', label: t('step2DifficultyMedium') }, { value: 'Hard', label: t('step2DifficultyHard') }];
         const allDifficultyOptions = [...manualDifficultyOptions, { value: 'AI-Determined', label: t('step2DifficultyAIDetermined') } ];
         const numQuestionsLabelText = useAIMode ? t('step2NumQuestionsLabelAIMode') : t('step2NumQuestionsLabel');
-        
-        // Note: isFormattedQuiz state is now managed at the component level
         
         let sourceDisplayContent: ReactNode;
         if (usePromptOnlyMode && processedContentText?.startsWith('AI Prompt:')) {

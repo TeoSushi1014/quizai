@@ -1,5 +1,5 @@
 
-import React, { ReactNode, useState, useRef, useEffect, Children, cloneElement, ReactElement, useId } from 'react'; // Added useId
+import React, { ReactNode, useState, useRef, useEffect, Children, useId } from 'react';
 import ReactDOM from 'react-dom'; 
 import { ChevronDownIcon, UploadIcon as DefaultUploadIcon, InformationCircleIcon, XCircleIcon as CloseIcon, CheckCircleIcon, XCircleIcon as ErrorIcon, DocumentTextIcon } from '../constants'; // Added DocumentTextIcon
 import { useTranslation } from '../App';

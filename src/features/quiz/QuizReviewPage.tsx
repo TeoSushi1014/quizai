@@ -1,20 +1,20 @@
 
 
 
-import React, { useState, useEffect, useCallback, useRef, ReactNode, useReducer } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useReducer } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAppContext, useTranslation } from '../../App';
 import { Quiz, Question, QuizConfig } from '../../types';
 import { Button, Card, Input, Textarea, Select, Modal, LoadingSpinner, Tooltip, NotificationDisplay } from '../../components/ui'; // Added NotificationDisplay
 import MathText from '../../components/MathText';
-import { PlusIcon, DeleteIcon, SaveIcon, ArrowUturnLeftIcon, HomeIcon, PlusCircleIcon, EditIcon, ExportIcon, CopyIcon, DownloadIcon, InformationCircleIcon, GEMINI_MODEL_ID, DocumentTextIcon } from '../../constants';
+import { PlusIcon, DeleteIcon, SaveIcon, ArrowUturnLeftIcon, HomeIcon, PlusCircleIcon, ExportIcon, CopyIcon, DownloadIcon, GEMINI_MODEL_ID, DocumentTextIcon } from '../../constants';
 import { formatQuizToAzotaStyle1, formatQuizToAzotaStyle2, formatQuizToAzotaStyle4 } from '../../services/azotaExportService';
 import useIntersectionObserver from '../../hooks/useIntersectionObserver';
 import { quizReducer, initialQuizReviewState, QuizReviewAction } from './quizReducer';
-import { translations } from '../../i18n';
 import { logger } from '../../services/logService'; // Import logger
 import { useNotification } from '../../hooks/useNotification'; // Import useNotification
+import { generateQuizId } from '../../utils/uuidUtils';
 
 
 type AzotaFormat = 'style1' | 'style2' | 'style4';
@@ -111,8 +111,8 @@ const QuestionItem: React.FC<QuestionItemProps> = ({
   animationDelayFactor
 }) => {
   const { t } = useTranslation();
-  const itemRef = useRef<HTMLDivElement>(null);
-  const isVisible = useIntersectionObserver(itemRef, { threshold: 0.1, freezeOnceVisible: true });
+  const itemRef = useRef<HTMLDivElement | null>(null);
+  const isVisible = useIntersectionObserver(itemRef as React.RefObject<Element>, { threshold: 0.1, freezeOnceVisible: true });
 
   const optionItems = question.options.map((opt, optIndex) => ({
     value: opt,
@@ -274,7 +274,7 @@ const QuizReviewPage: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { t, language } = useTranslation();
-  const { addQuiz, updateQuiz, quizzes } = useAppContext();
+  const { addQuiz, updateQuiz, quizzes, currentUser } = useAppContext();
   const { notification, showSuccess, showError, clearNotification } = useNotification();
 
   const [state, dispatch] = useReducer(quizReducer, initialQuizReviewState);
@@ -307,8 +307,9 @@ const QuizReviewPage: React.FC = () => {
     } else if (initialData?.generatedQuizData && initialData.finalConfig) {
       const { generatedQuizData, quizTitleSuggestion, finalConfig } = initialData;
       const now = new Date().toISOString();
+      
       quizToLoad = {
-        id: `new-quiz-${Date.now()}`,
+        id: generateQuizId(),
         title: quizTitleSuggestion || generatedQuizData.title || t('untitledQuiz'),
         questions: generatedQuizData.questions,
         config: finalConfig,
@@ -394,6 +395,15 @@ const QuizReviewPage: React.FC = () => {
       logger.warn("Attempted to save quiz with no questions.", "QuizReviewPage", { quizId: editableQuiz?.id });
       return;
     }
+
+    // Check if user is logged in before attempting to save
+    if (!currentUser) {
+      dispatch({ type: 'SET_ERROR', payload: t('reviewErrorRequiresLogin') });
+      logger.warn("Attempted to save quiz without authentication.", "QuizReviewPage", { quizId: editableQuiz?.id });
+      showError(t('reviewErrorRequiresLogin'), 5000);
+      return;
+    }
+
     for (const q of editableQuiz.questions) {
       if (!q.questionText.trim()) { dispatch({ type: 'SET_ERROR', payload: t('reviewErrorEmptyQuestionText', {id: q.id.substring(0,8)})}); return; }
       if (q.options.length < 2) { dispatch({ type: 'SET_ERROR', payload: t('reviewErrorNotEnoughOptions', {id: q.id.substring(0,8)})}); return; }
@@ -405,9 +415,16 @@ const QuizReviewPage: React.FC = () => {
     
     try {
       const now = new Date().toISOString();
+      
+      // Generate proper quiz ID if needed
+      let finalQuizId = existingQuizIdFromParams || editableQuiz.id;
+      if (!finalQuizId) {
+        finalQuizId = generateQuizId();
+      }
+      
       const quizToSave: Quiz = {
         ...editableQuiz,
-        id: existingQuizIdFromParams || editableQuiz.id || `quiz-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        id: finalQuizId,
         title: editableQuiz.title.trim() || t('untitledQuiz'),
         createdAt: editableQuiz.createdAt || now, 
         lastModified: now, 
