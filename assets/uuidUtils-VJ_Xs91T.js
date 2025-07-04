@@ -1,0 +1,1 @@
+function n(){return window.crypto&&window.crypto.randomUUID?window.crypto.randomUUID():"xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g,function(r){const x=Math.random()*16|0;return(r==="x"?x:x&3|8).toString(16)})}function e(){return n()}function o(){return n()}export{e as a,o as g};

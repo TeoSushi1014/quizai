@@ -8,58 +8,62 @@
     window.dataLayer = window.dataLayer || [];
     function gtag(){dataLayer.push(arguments);}
     gtag('js', new Date());
-
     gtag('config', 'G-PPLMXLJNZT');
   </script>
   
-  <script src="https://www.google.com/recaptcha/enterprise.js?render=6LfjXkorAAAAAOk4X5LwVd-8RgwMGS0IWxZLtFGQ"></script>
+  <script async src="https://www.google.com/recaptcha/enterprise.js?render=6LfjXkorAAAAAOk4X5LwVd-8RgwMGS0IWxZLtFGQ"></script>
   <meta charset="UTF-8" />
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <meta name="format-detection" content="telephone=no">
+  <meta name="theme-color" content="#0f172a">
+  
+  <link rel="preconnect" href="https://www.google.com">
+  <link rel="preconnect" href="https://www.gstatic.com">
+  <link rel="preconnect" href="https://esm.sh">
+  
   <title>QuizAI</title>
   <link rel="icon" type="image/x-icon" href="/quizai/assets/logo/avt.ico">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Noto+Sans+Vietnamese:wght@400;500;600;700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
-  <script src="https://cdn.tailwindcss.com"></script>
+  
   <style>
     :root {
-      /* Animation Variables */
       --duration-fast: 150ms; 
       --duration-normal: 250ms;
       --duration-slow: 350ms;
       --ease-ios: cubic-bezier(0.23, 1, 0.32, 1);
       --ease-in-out-quad: cubic-bezier(0.455, 0.03, 0.515, 0.955); 
 
-      /* Fonts - Updated for better Vietnamese support */
       --font-primary: 'Inter', 'Roboto', 'Noto Sans Vietnamese', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
 
-      /* Dark Theme (default) */
-      --color-bg-body: rgb(15, 23, 42); /* slate-900 */
-      --color-bg-primary: rgb(15, 23, 42); /* slate-900 */
-      --color-bg-surface-1: rgb(30, 41, 59); /* slate-800 */
-      --color-bg-surface-2: rgb(51, 65, 85); /* slate-700 */
-      --color-bg-surface-3: rgb(71, 85, 105); /* slate-600 */
+      --color-bg-body: rgb(15, 23, 42);
+      --color-bg-primary: rgb(15, 23, 42);
+      --color-bg-surface-1: rgb(30, 41, 59);
+      --color-bg-surface-2: rgb(51, 65, 85);
+      --color-bg-surface-3: rgb(71, 85, 105);
       
-      --color-text-primary: rgb(241, 245, 249); /* slate-100 */
-      --color-text-secondary: rgb(148, 163, 184); /* slate-400 */
-      --color-text-body: rgb(203, 213, 225); /* slate-300 */
-      --color-text-muted: rgb(100, 116, 139); /* slate-500 */
+      --color-text-primary: rgb(241, 245, 249);
+      --color-text-secondary: rgb(148, 163, 184);
+      --color-text-body: rgb(203, 213, 225);
+      --color-text-muted: rgb(100, 116, 139);
       
-      --color-primary-accent: rgb(56, 189, 248); /* sky-400 */
+      --color-primary-accent: rgb(56, 189, 248);
       --color-primary-accent-rgb: 56, 189, 248; 
-      --color-primary-accent-hover: rgb(125, 211, 252); /* sky-300 */
+      --color-primary-accent-hover: rgb(125, 211, 252);
       --color-primary-accent-text: #ffffff; 
 
-      --color-secondary-accent: #475569; /* slate-600 */
-      --color-secondary-accent-hover: #64748b; /* slate-500 */
-      --color-secondary-accent-text: #e2e8f0; /* slate-200 */
+      --color-secondary-accent: #475569;
+      --color-secondary-accent-hover: #64748b;
+      --color-secondary-accent-text: #e2e8f0;
 
-      --color-danger-accent: rgb(248, 113, 113); /* red-400 */
+      --color-danger-accent: rgb(248, 113, 113);
       --color-danger-accent-rgb: 248, 113, 113;
-      --color-success-accent: #22c55e; /* green-500 */
+      --color-success-accent: #22c55e;
       --color-success-accent-rgb: 34, 197, 94;
-      --color-warning-accent: #f59e0b; /* amber-500 */
+      --color-warning-accent: #f59e0b;
       
       --color-border-default: rgba(100, 116, 139, 0.3); 
       --color-border-interactive: rgba(100, 116, 139, 0.5); 
@@ -114,29 +118,29 @@
     }
 
     html.light {
-      --color-bg-body: rgb(248, 250, 252); 
-      --color-bg-primary: rgb(248, 250, 252); 
-      --color-bg-surface-1: rgb(255, 255, 255); 
-      --color-bg-surface-2: rgb(241, 245, 249); 
-      --color-bg-surface-3: rgb(226, 232, 240); 
+      --color-bg-body: rgb(248, 250, 252);
+      --color-bg-primary: rgb(248, 250, 252);
+      --color-bg-surface-1: rgb(255, 255, 255);
+      --color-bg-surface-2: rgb(241, 245, 249);
+      --color-bg-surface-3: rgb(226, 232, 240);
       
-      --color-text-primary: rgb(15, 23, 42); 
-      --color-text-secondary: rgb(71, 85, 105); 
-      --color-text-body: rgb(51, 65, 85); 
-      --color-text-muted: rgb(100, 116, 139); 
+      --color-text-primary: rgb(15, 23, 42);
+      --color-text-secondary: rgb(71, 85, 105);
+      --color-text-body: rgb(51, 65, 85);
+      --color-text-muted: rgb(100, 116, 139);
       
-      --color-primary-accent: rgb(14, 165, 233); 
-      --color-primary-accent-rgb: 14, 165, 233; 
-      --color-primary-accent-hover: rgb(2, 132, 199); 
+      --color-primary-accent: rgb(14, 165, 233);
+      --color-primary-accent-rgb: 14, 165, 233;
+      --color-primary-accent-hover: rgb(2, 132, 199);
       --color-primary-accent-text: #ffffff; 
 
-      --color-secondary-accent: #e2e8f0; 
-      --color-secondary-accent-hover: #cbd5e1; 
-      --color-secondary-accent-text: #1e293b; 
+      --color-secondary-accent: #e2e8f0;
+      --color-secondary-accent-hover: #cbd5e1;
+      --color-secondary-accent-text: #1e293b;
 
-      --color-danger-accent: rgb(239, 68, 68); 
+      --color-danger-accent: rgb(239, 68, 68);
       --color-danger-accent-rgb: 239, 68, 68;
-      --color-success-accent: #16a34a; 
+      --color-success-accent: #16a34a;
       --color-success-accent-rgb: 22, 163, 74;
       --color-warning-accent: #d97706; 
       
@@ -186,16 +190,16 @@
     body {
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
-      background-color: var(--color-bg-body); 
-      color: var(--color-text-body); 
-      cursor: default; 
-      word-break: normal; /* Improved word breaking for Vietnamese */
+      background-color: var(--color-bg-body);
+      color: var(--color-text-body);
+      cursor: default;
+      word-break: normal;
       overflow-wrap: break-word;
     }
     
     ::-webkit-scrollbar { width: 7px; height: 7px; cursor: default !important; }
     ::-webkit-scrollbar-track { background: transparent; cursor: default !important; }
-    ::-webkit-scrollbar-thumb { background-color: var(--color-scrollbar-thumb);  border-radius: var(--radius-full); border: 2px solid transparent; cursor: default !important; transition: background-color var(--duration-fast) var(--ease-ios); }
+    ::-webkit-scrollbar-thumb { background-color: var(--color-scrollbar-thumb);  border-radius: var(--radius-full); border: 2px solid transparent; cursor: default !important; -webkit-transition: background-color var(--duration-fast) var(--ease-ios); transition: background-color var(--duration-fast) var(--ease-ios); }
     ::-webkit-scrollbar-thumb:hover { background-color: var(--color-scrollbar-thumb-hover);  }
     ::-webkit-scrollbar-track-piece { cursor: default !important; }
     ::-webkit-scrollbar-button { cursor: default !important; }
@@ -270,7 +274,7 @@
     
     .thin-scrollbar-horizontal::-webkit-scrollbar { height: 4px; cursor: default !important; }
     .thin-scrollbar-horizontal::-webkit-scrollbar-track { background: transparent; border-radius: 4px; cursor: default !important; }
-    .thin-scrollbar-horizontal::-webkit-scrollbar-thumb { background-color: var(--color-scrollbar-thumb); border-radius: 4px; cursor: default !important; transition: background-color var(--duration-fast) var(--ease-ios); }
+    .thin-scrollbar-horizontal::-webkit-scrollbar-thumb { background-color: var(--color-scrollbar-thumb); border-radius: 4px; cursor: default !important; -webkit-transition: background-color var(--duration-fast) var(--ease-ios); transition: background-color var(--duration-fast) var(--ease-ios); }
     .thin-scrollbar-horizontal::-webkit-scrollbar-thumb:hover { background-color: var(--color-scrollbar-thumb-hover); }
         
     @keyframes fadeInUp {
@@ -497,17 +501,15 @@
       }
     }
 
-    /* Text size classes */
     html.text-size-sm { font-size: 14px; }
-    html.text-size-md { font-size: 16px; } /* Default */
+    html.text-size-md { font-size: 16px; }
     html.text-size-lg { font-size: 18px; }
     html.text-size-xl { font-size: 20px; }
 
-    /* Improved line height for Vietnamese */
     html[lang="vi"] {
       line-height: 1.7;
     }
-    html[lang="vi"] body { /* Apply to body as well to ensure inheritance */
+    html[lang="vi"] body {
       line-height: 1.7;
     }
     
@@ -554,12 +556,65 @@
   }
 }
 </script>
-  <script type="module" crossorigin src="/quizai/assets/index-CT6kMGxJ.js"></script>
-  <link rel="stylesheet" crossorigin href="/quizai/assets/index-BHeXoS6t.css">
+  <script type="module" crossorigin src="/quizai/assets/index-CEvnFZHP.js"></script>
+  <link rel="stylesheet" crossorigin href="/quizai/assets/index-DuDkjGb9.css">
 </head>
 <body>
   <noscript>You need to enable JavaScript to run this app.</noscript>
+  
+  <div id="initial-loader" style="
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: var(--color-bg-body, #0f172a);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    color: var(--color-text-primary, #f1f5f9);
+    font-family: var(--font-primary, system-ui);
+  ">
+    <div style="
+      width: 40px;
+      height: 40px;
+      border: 3px solid transparent;
+      border-top: 3px solid var(--color-primary-accent, #38bdf8);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 16px;
+    "></div>
+    <p style="margin: 0; font-size: 14px; opacity: 0.8;">Đang tải QuizAI...</p>
+  </div>
+  
+  <style>
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    #initial-loader {
+      transition: opacity 0.3s ease-out;
+    }
+  </style>
+
   <div id="root"></div>
+  
   <script src="/quizai/env-config.js"></script>
+  
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      setTimeout(function() {
+        const loader = document.getElementById('initial-loader');
+        if (loader) {
+          loader.style.opacity = '0';
+          setTimeout(function() {
+            loader.remove();
+          }, 300);
+        }
+      }, 500);
+    });
+  </script>
 </body>
 </html>
