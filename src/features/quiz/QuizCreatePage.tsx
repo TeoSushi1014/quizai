@@ -363,7 +363,6 @@ const QuizCreatePage: React.FC = () => {
   };
 
   const handleCopyToClipboard = () => {
-    // Use processedContentText which holds combined or pasted text
     if (processedContentText) { 
       navigator.clipboard.writeText(processedContentText)
         .then(() => { setCopySuccess(true); setTimeout(() => setCopySuccess(false), 2000); })
@@ -436,16 +435,13 @@ const QuizCreatePage: React.FC = () => {
           onClick={() => {
             if (promptOnlyText.trim()) {
               setUsePromptOnlyMode(true);
-              // Set this as the custom user prompt that will be sent to AI
               setCustomUserPrompt(promptOnlyText);
-              // Clear other content sources
               setPastedText('');
               setUploadedFiles([]);
               setProcessedContents([]);
               setCombinedContent(null);
               setImageBase64(null);
               setInitialImageExtractedText(null);
-              // Set placeholder content so the system knows we have content to process
               setProcessedContentText(`AI Prompt: ${promptOnlyText.trim()}`);
               setQuizTitleSuggestion("AI Generated Quiz");
               setStep(2);

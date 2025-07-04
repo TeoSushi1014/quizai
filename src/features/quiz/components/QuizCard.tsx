@@ -30,22 +30,20 @@ const durationNormal = 0.35;
 interface QuizCardProps {
   quiz: Quiz;
   onDelete: (id: string) => void;
-  onEdit: (quiz: Quiz) => void; // Changed from onEditQuiz to onEdit
+  onEdit: (quiz: Quiz) => void;
   animationDelay?: number; 
-  // Removed onSelect prop since it's not used
 }
 
-export const QuizCard: React.FC<QuizCardProps> = ({ quiz, onDelete, onEdit, animationDelay = 0 }) => { // Removed unused onSelect
+export const QuizCard: React.FC<QuizCardProps> = ({ quiz, onDelete, onEdit, animationDelay = 0 }) => {
   const { t, language } = useTranslation();
   const [isConfirmDeleteModalOpen, setIsConfirmDeleteModalOpen] = useState(false);
   const [isAttemptSettingsModalOpen, setIsAttemptSettingsModalOpen] = useState(false);
   const [currentAttemptSettings, setCurrentAttemptSettings] = useState<AttemptSettings>(DEFAULT_ATTEMPT_SETTINGS);
   
-  // Updated shareFeedback state to include 'sharing'
   const [shareFeedback, setShareFeedback] = useState<{ type: 'idle' | 'sharing' | 'copied' | 'failed'; message: string }>({ type: 'idle', message: t('share') });
-  const [isShareModalOpen, setIsShareModalOpen] = useState(false); // State for ShareModal
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
-  const { setActiveQuiz, setQuizResult } = useAppContext(); // Removed unused currentUser
+  const { setActiveQuiz, setQuizResult } = useAppContext();
   const navigate = useNavigate();
 
   
@@ -125,11 +123,8 @@ export const QuizCard: React.FC<QuizCardProps> = ({ quiz, onDelete, onEdit, anim
       navigate(`/practice/${quiz.id}`, { state: { attemptSettings: settingsToUse } });
     }
   };
-
-  // Updated handleShareQuiz to open the modal
   const handleShareQuiz = () => {
     setIsShareModalOpen(true);
-    // Reset feedback message if needed, or let modal handle its own feedback
     setShareFeedback({ type: 'idle', message: t('share') }); 
   };
 

@@ -9,5 +9,4 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
-// Export types for TypeScript
 export type { Database } from './database.types'

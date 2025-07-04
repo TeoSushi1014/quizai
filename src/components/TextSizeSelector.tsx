@@ -19,10 +19,8 @@ const TextSizeSelector: React.FC<TextSizeSelectorProps> = ({ className = '' }) =
     const size = e.target.value;
     const htmlEl = document.documentElement;
     
-    // Remove old size classes
     sizes.forEach(s => htmlEl.classList.remove(`text-size-${s.value}`));
     
-    // Add new size class
     htmlEl.classList.add(`text-size-${size}`);
     localStorage.setItem('quizai-preferredTextSize', size);
   };

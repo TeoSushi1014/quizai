@@ -163,7 +163,6 @@ const QuestionItem: React.FC<QuestionItemProps> = ({
   };
 
   const handleDeleteQuestionRequest = () => {
-    // This function will be passed to the QuizCard/QuestionItem and should trigger the new handleDeleteQuestion in QuizReviewPage
     dispatch({ type: 'REMOVE_QUESTION_REQUEST', payload: { index: questionIndex, questionId: question.id } });
   };
 
@@ -342,7 +341,6 @@ const QuizReviewPage: React.FC = () => {
     }
   }, [focusOptionInput, editableQuiz]);
 
-  // Effect to handle question deletion confirmation
   useEffect(() => {
     if (questionToDelete) {
       setConfirmDeleteQuestionModal({ isOpen: true, questionIndex: questionToDelete.index, questionId: questionToDelete.questionId });
@@ -370,7 +368,6 @@ const QuizReviewPage: React.FC = () => {
       lastModified: new Date().toISOString()
     };
     
-    // Dispatch local state update first for UI responsiveness
     dispatch({ type: 'REMOVE_QUESTION_CONFIRMED', payload: { index: questionIndexToDelete }});
 
     try {
@@ -396,7 +393,6 @@ const QuizReviewPage: React.FC = () => {
       return;
     }
 
-    // Check if user is logged in before attempting to save
     if (!currentUser) {
       dispatch({ type: 'SET_ERROR', payload: t('reviewErrorRequiresLogin') });
       logger.warn("Attempted to save quiz without authentication.", "QuizReviewPage", { quizId: editableQuiz?.id });
@@ -416,7 +412,6 @@ const QuizReviewPage: React.FC = () => {
     try {
       const now = new Date().toISOString();
       
-      // Generate proper quiz ID if needed
       let finalQuizId = existingQuizIdFromParams || editableQuiz.id;
       if (!finalQuizId) {
         finalQuizId = generateQuizId();

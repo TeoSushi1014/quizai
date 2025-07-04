@@ -536,11 +536,9 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     const savedQuiz = await supabaseService.createQuiz(quizWithOwnerAndTimestamp, currentUser.id)
     
     if (savedQuiz) {
-      // Update local state
       setAllQuizzes(prev => [savedQuiz, ...prev.filter(q => q.id !== quiz.id)])
       logger.info('Quiz added to Supabase and context state', 'AppContext', { quizId: quiz.id, title: quiz.title })
       
-      // Also save to localStorage as backup
       try {
         const allQuizzes = await supabaseService.getUserQuizzes(currentUser.id)
         await quizStorage.saveQuizzes(allQuizzes)
@@ -558,15 +556,12 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
       throw new Error('User must be logged in to delete quizzes')
     }
 
-    // Delete from Supabase
     const success = await supabaseService.deleteQuiz(quizId)
     
     if (success) {
-      // Update local state
       setAllQuizzes(prev => prev.filter(q => q.id !== quizId))
       logger.info('Quiz deleted from Supabase and context state', 'AppContext', { quizId })
       
-      // Also update localStorage as backup
       try {
         const remainingQuizzes = await supabaseService.getUserQuizzes(currentUser.id)
         await quizStorage.saveQuizzes(remainingQuizzes)
@@ -590,15 +585,12 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
       lastModified: now,
     };
 
-    // Update in Supabase
     const updatedSupabaseQuiz = await supabaseService.updateQuiz(quizWithTimestamp)
     
     if (updatedSupabaseQuiz) {
-      // Update local state
       setAllQuizzes(prev => prev.map(q => q.id === quizWithTimestamp.id ? updatedSupabaseQuiz : q))
       logger.info('Quiz updated in Supabase and context state', 'AppContext', { quizId: updatedQuiz.id, title: updatedQuiz.title })
       
-      // Also update localStorage as backup
       try {
         const allQuizzes = await supabaseService.getUserQuizzes(currentUser.id)
         await quizStorage.saveQuizzes(allQuizzes)
@@ -707,17 +699,14 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     }
     
     try {
-      // Update in Supabase
       const updatedUser = await supabaseService.updateUser(currentUser.id, updatedProfileData)
       
       if (updatedUser) {
-        // Keep the access token from current user
         const userWithToken: UserProfile = {
           ...updatedUser,
           accessToken: currentUser.accessToken,
         }
         
-        // Update local state and localStorage
         setCurrentUserInternal(userWithToken); 
         localStorage.setItem(LOCALSTORAGE_USER_KEY, JSON.stringify(userWithToken)); 
         showSuccessNotification(tForProvider('profileSaveSuccess'), 3000);

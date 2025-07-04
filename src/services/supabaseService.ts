@@ -3,7 +3,6 @@ import { Quiz, UserProfile, QuizResult } from '../types'
 import { logger } from './logService'
 
 export class SupabaseService {
-  // User management
   async createUser(profile: Partial<UserProfile>): Promise<UserProfile | null> {
     try {
       logger.info('SupabaseService: Attempting to create user', 'SupabaseService', { 
@@ -41,10 +40,8 @@ export class SupabaseService {
           hint: error.hint
         })
         
-        // Handle duplicate email constraint
         if (error.code === '23505' && error.message.includes('users_email_key')) {
           logger.info('SupabaseService: User with email already exists, attempting to find existing user', 'SupabaseService', { email: profile.email })
-          // Try to find existing user by email
           const existingUser = await this.getUserByEmail(profile.email!)
           if (existingUser) {
             logger.info('SupabaseService: Found existing user by email', 'SupabaseService', { userId: existingUser.id })
@@ -78,7 +75,6 @@ export class SupabaseService {
 
       if (error) {
         if (error.code === 'PGRST116') {
-          // User not found, return null
           return null
         }
         throw error
@@ -101,7 +97,6 @@ export class SupabaseService {
 
       if (error) {
         if (error.code === 'PGRST116') {
-          // User not found, return null
           return null
         }
         throw error
@@ -141,7 +136,6 @@ export class SupabaseService {
     }
   }
 
-  // Quiz management
   async getUserQuizzes(userId: string): Promise<Quiz[]> {
     try {
       const { data, error } = await supabase
@@ -167,7 +161,7 @@ export class SupabaseService {
         title: quiz.title,
         questions: quiz.questions,
         source_content: quiz.sourceContentSnippet || null,
-        source_file_name: null, // Not available in current Quiz type
+        source_file_name: null,
         config: quiz.config || {}
       }
 
@@ -193,7 +187,7 @@ export class SupabaseService {
         title: quiz.title,
         questions: quiz.questions,
         source_content: quiz.sourceContentSnippet || null,
-        source_file_name: null, // Not available in current Quiz type
+        source_file_name: null,
         config: quiz.config || {},
         updated_at: new Date().toISOString()
       }
@@ -232,7 +226,6 @@ export class SupabaseService {
     }
   }
 
-  // Quiz results
   async saveQuizResult(result: QuizResult, userId: string): Promise<boolean> {
     try {
       const resultForDb = {
@@ -275,7 +268,6 @@ export class SupabaseService {
     }
   }
 
-  // Helper methods
   private mapDatabaseUserToProfile(dbUser: any): UserProfile {
     return {
       id: dbUser.id,
@@ -286,7 +278,7 @@ export class SupabaseService {
       quizCount: dbUser.quiz_count || 0,
       completionCount: dbUser.completion_count || 0,
       averageScore: dbUser.average_score || null,
-      accessToken: '', // Will be handled separately in auth service
+      accessToken: '',
     }
   }
 
@@ -308,7 +300,7 @@ export class SupabaseService {
       quizId: dbResult.quiz_id,
       score: dbResult.score,
       totalQuestions: dbResult.total_questions,
-      totalCorrect: Math.round((dbResult.score / 100) * dbResult.total_questions), // Calculate from score
+      totalCorrect: Math.round((dbResult.score / 100) * dbResult.total_questions),
       answers: dbResult.answers,
       timeTaken: dbResult.time_taken,
       createdAt: dbResult.created_at

@@ -21,7 +21,6 @@ export class SecureConfigService {
 
   async getApiKey(keyName: string): Promise<string | null> {
     try {
-      // Check cache first
       if (this.isCacheValid(keyName)) {
         const cachedKey = this.apiKeysCache.get(keyName)
         if (cachedKey) {
@@ -30,7 +29,6 @@ export class SecureConfigService {
         }
       }
 
-      // First, try to get user's personal API key
       let data = null
       let error = null
 
@@ -45,11 +43,9 @@ export class SecureConfigService {
         data = userResult.data
         error = userResult.error
       } catch (userError) {
-        // User might not be authenticated, continue to default
         logger.info(`No personal API key found for ${keyName}, trying default`, 'SecureConfigService')
       }
 
-      // If no personal key found, try default system key
       if (!data || error) {
         logger.info(`Falling back to default system API key for ${keyName}`, 'SecureConfigService')
         const defaultResult = await supabase
@@ -69,7 +65,6 @@ export class SecureConfigService {
       }
 
       if (data?.key_value) {
-        // Cache the key
         this.apiKeysCache.set(keyName, data.key_value)
         this.cacheExpiry.set(keyName, Date.now() + this.CACHE_DURATION)
         
@@ -85,7 +80,6 @@ export class SecureConfigService {
     }
   }
 
-  // Get only user's personal API key (not default system key)
   async getUserPersonalApiKey(keyName: string): Promise<string | null> {
     try {
       const userResult = await supabase
@@ -121,7 +115,6 @@ export class SecureConfigService {
         return false
       }
 
-      // Update cache
       this.apiKeysCache.set(keyName, keyValue)
       this.cacheExpiry.set(keyName, Date.now() + this.CACHE_DURATION)
 
@@ -139,7 +132,6 @@ export class SecureConfigService {
     logger.info('API keys cache cleared', 'SecureConfigService')
   }
 
-  // Method to check if a key exists
   async hasApiKey(keyName: string): Promise<boolean> {
     const key = await this.getApiKey(keyName)
     return key !== null

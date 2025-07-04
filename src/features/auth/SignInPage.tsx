@@ -107,7 +107,6 @@ const SignInPage: React.FC = () => {
       try {
         const token = await grecaptcha.enterprise.execute(siteKey, { action: 'LOGIN' });
         logger.info('reCAPTCHA token obtained for LOGIN action.', 'SignInPage', { tokenPreview: token.slice(0,10) + '...' });
-        logger.info('Skipping reCAPTCHA assessment for now. Proceeding with login.', 'SignInPage'); // Placeholder for actual assessment
         initiateGoogleLogin();
 
       } catch (error) {

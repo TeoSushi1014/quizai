@@ -27,7 +27,6 @@ const API_KEY_CONFIGS: ApiKeyConfig[] = [
     pattern: /^AIza[0-9A-Za-z-_]{35}$/,
     required: false
   },
-  // Add more API keys as needed
 ];
 
 export const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({ onApiKeyUpdate }) => {

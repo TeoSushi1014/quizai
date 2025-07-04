@@ -32,14 +32,11 @@ export const isFormattedQuiz = (content: string): boolean => {
     /[C]\s*[.)].*?[D]\s*[.)]/is
   ];
   
-  // Check if we have at least one question pattern
   const hasQuestionFormat = questionPatterns.some(pattern => pattern.test(content));
   
-  // Check if we have sufficient option patterns (need at least 2 option pattern matches)
   const optionMatches = optionPatterns.filter(pattern => pattern.test(content)).length;
   const hasOptionFormat = optionMatches >= 2;
   
-  // Return true if we have both question and option patterns
   return hasQuestionFormat && hasOptionFormat;
   return hasQuestionFormat && hasOptionFormat;
 };
@@ -48,10 +45,8 @@ let geminiAI: GoogleGenAI | null = null;
 
 const initializeGeminiAI = async (): Promise<GoogleGenAI> => {
   if (!geminiAI) {
-    // Try to get API key from Supabase first
     let apiKey = await secureConfig.getApiKey('GEMINI_API_KEY');
     
-    // Fallback to environment variable if not found in Supabase
     if (!apiKey) {
       apiKey = process.env.GEMINI_API_KEY || null;
       logger.warn("Using fallback API key from environment", "GeminiServiceInit");

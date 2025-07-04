@@ -13,7 +13,6 @@ import './styles/link-fix.css';
 import './styles/question-layout-fix.css';
 import './styles/question-title-fix.css';
 import './styles/accordion-question-fix.css';
-import './test-supabase';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
