@@ -13,7 +13,11 @@ const SyncSettingsPage: React.FC = () => {
     isDriveLoading, 
     driveSyncError, 
     lastDriveSync,
-    setDriveSyncError
+    setDriveSyncError,
+    isDriveSyncEnabled,
+    setDriveSyncEnabled,
+    driveSyncMode,
+    setDriveSyncMode
   } = useAppContext();
   const { t, language } = useTranslation();
   const navigate = useNavigate();
@@ -47,70 +51,153 @@ const SyncSettingsPage: React.FC = () => {
         </div>
 
         <div className="space-y-8">
-          {/* Google Drive Sync Card */}
+          {/* Drive Sync Enable/Disable */}
           <Card className="!bg-[var(--color-bg-surface-2)]/80 !border-[var(--color-border-default)] p-5 sm:p-6 rounded-xl shadow-lg">
-            <div className="flex items-center mb-1.5">
-                 <GoogleDriveIcon className="w-5 h-5 mr-2.5 text-sky-400 flex-shrink-0" />
-                 <p className="text-base font-semibold text-[var(--color-text-primary)]">{t('syncSettingsTitle')}</p>
-            </div>
-            <p className="text-xs text-[var(--color-text-secondary)] mb-5 sm:ml-[28px]">
-                {t('syncSettingsDescription')}
-            </p>
-            
-            <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-              <div>
-                <p className="text-sm font-medium text-[var(--color-text-secondary)] mb-1">{t('syncStatus')}</p>
-                {isDriveLoading && !driveSyncError && (
-                  <div className="flex items-center text-[var(--color-primary-accent)] animate-pulse">
-                    <RefreshIcon className="w-4 h-4 mr-2 animate-spin" />
-                    <span className="text-xs font-semibold">{t('syncStatusInProgress')}</span>
-                  </div>
-                )}
-                {!isDriveLoading && driveSyncError && (
-                  <div className="flex items-center text-[var(--color-danger-accent)]">
-                    <XCircleIcon className="w-4 h-4 mr-2" />
-                    <span className="text-xs font-semibold">{t('syncStatusError', { error: driveSyncError })}</span>
-                  </div>
-                )}
-                {!isDriveLoading && !driveSyncError && lastDriveSync && (
-                  <div className="flex items-center text-[var(--color-success-accent)]">
-                    <CheckCircleIcon className="w-4 h-4 mr-2" />
-                    <span className="text-xs font-semibold">{t('syncStatusLast', { dateTime: formattedLastSync })}</span>
-                  </div>
-                )}
-                 {!isDriveLoading && !driveSyncError && !lastDriveSync && (
-                  <div className="flex items-center text-[var(--color-text-muted)]">
-                    <InformationCircleIcon className="w-4 h-4 mr-2" />
-                    <span className="text-xs font-semibold">{t('syncStatusNever')}</span>
-                  </div>
-                )}
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center">
+                <GoogleDriveIcon className="w-5 h-5 mr-2.5 text-sky-400 flex-shrink-0" />
+                <div>
+                  <h3 className="text-base font-semibold text-[var(--color-text-primary)]">Google Drive Sync</h3>
+                  <p className="text-xs text-[var(--color-text-secondary)] mt-1">
+                    Enable backup and synchronization with Google Drive
+                  </p>
+                </div>
               </div>
-              <Button 
-                onClick={handleSyncNow} 
-                isLoading={isDriveLoading} 
-                disabled={isDriveLoading}
-                variant="primary" 
-                size="md" 
-                leftIcon={<RefreshIcon className={`w-5 h-5 ${isDriveLoading ? 'animate-spin' : ''}`} />}
-                className="w-full sm:w-auto shadow-lg hover:shadow-[var(--color-primary-accent)]/40 py-2.5 px-6"
-              >
-                {isDriveLoading ? t('syncStatusInProgress') : t('syncNowButton')}
-              </Button>
+              <Toggle 
+                label=""
+                checked={isDriveSyncEnabled}
+                onChange={setDriveSyncEnabled}
+                size="md"
+              />
             </div>
-             {driveSyncError && (
-                <Button
-                    variant="link"
-                    size="xs"
-                    onClick={() => setDriveSyncError(null)}
-                    className="mt-3 !text-[var(--color-primary-accent)] hover:!text-[var(--color-primary-accent-hover)] text-xs"
-                >
-                    {t('close')}
-                </Button>
+            
+            {isDriveSyncEnabled && (
+              <div className="border-t border-[var(--color-border-default)]/50 pt-4 mt-4">
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
+                    Sync Mode
+                  </label>
+                  <div className="space-y-2">
+                    <label className="flex items-center cursor-pointer">
+                      <input
+                        type="radio"
+                        name="syncMode"
+                        value="backup-only"
+                        checked={driveSyncMode === 'backup-only'}
+                        onChange={(e) => setDriveSyncMode(e.target.value as 'backup-only')}
+                        className="mr-3 text-[var(--color-primary-accent)]"
+                      />
+                      <div>
+                        <span className="text-sm font-medium text-[var(--color-text-primary)]">Backup Only</span>
+                        <p className="text-xs text-[var(--color-text-secondary)]">
+                          Save data to Drive as backup, Supabase remains primary
+                        </p>
+                      </div>
+                    </label>
+                    <label className="flex items-center cursor-pointer">
+                      <input
+                        type="radio"
+                        name="syncMode"
+                        value="manual"
+                        checked={driveSyncMode === 'manual'}
+                        onChange={(e) => setDriveSyncMode(e.target.value as 'manual')}
+                        className="mr-3 text-[var(--color-primary-accent)]"
+                      />
+                      <div>
+                        <span className="text-sm font-medium text-[var(--color-text-primary)]">Manual Only</span>
+                        <p className="text-xs text-[var(--color-text-secondary)]">
+                          Only sync when manually triggered below
+                        </p>
+                      </div>
+                    </label>
+                    <label className="flex items-center cursor-pointer">
+                      <input
+                        type="radio"
+                        name="syncMode"
+                        value="auto"
+                        checked={driveSyncMode === 'auto'}
+                        onChange={(e) => setDriveSyncMode(e.target.value as 'auto')}
+                        className="mr-3 text-[var(--color-primary-accent)]"
+                      />
+                      <div>
+                        <span className="text-sm font-medium text-[var(--color-text-primary)]">Auto Sync</span>
+                        <p className="text-xs text-[var(--color-text-secondary)]">
+                          Automatically sync changes to Drive (legacy mode)
+                        </p>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+              </div>
             )}
-            <p className="text-xs text-[var(--color-text-muted)] text-center pt-6 mt-4 border-t border-[var(--color-border-default)]/50">
-                Your QuizAI data is securely stored in a file named <code>{`quizai_user_data.json`}</code> in your Google Drive's root folder, accessible only by this application.
-            </p>
           </Card>
+
+          {/* Google Drive Sync Status & Manual Sync */}
+          {isDriveSyncEnabled && (
+            <Card className="!bg-[var(--color-bg-surface-2)]/80 !border-[var(--color-border-default)] p-5 sm:p-6 rounded-xl shadow-lg">
+              <div className="flex items-center mb-1.5">
+                <RefreshIcon className="w-5 h-5 mr-2.5 text-sky-400 flex-shrink-0" />
+                <p className="text-base font-semibold text-[var(--color-text-primary)]">Sync Status & Manual Trigger</p>
+              </div>
+              <p className="text-xs text-[var(--color-text-secondary)] mb-5 sm:ml-[28px]">
+                Current sync status and manual sync controls
+              </p>
+              
+              <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+                <div>
+                  <p className="text-sm font-medium text-[var(--color-text-secondary)] mb-1">{t('syncStatus')}</p>
+                  {isDriveLoading && !driveSyncError && (
+                    <div className="flex items-center text-[var(--color-primary-accent)] animate-pulse">
+                      <RefreshIcon className="w-4 h-4 mr-2 animate-spin" />
+                      <span className="text-xs font-semibold">{t('syncStatusInProgress')}</span>
+                    </div>
+                  )}
+                  {!isDriveLoading && driveSyncError && (
+                    <div className="flex items-center text-[var(--color-danger-accent)]">
+                      <XCircleIcon className="w-4 h-4 mr-2" />
+                      <span className="text-xs font-semibold">{t('syncStatusError', { error: driveSyncError })}</span>
+                    </div>
+                  )}
+                  {!isDriveLoading && !driveSyncError && lastDriveSync && (
+                    <div className="flex items-center text-[var(--color-success-accent)]">
+                      <CheckCircleIcon className="w-4 h-4 mr-2" />
+                      <span className="text-xs font-semibold">{t('syncStatusLast', { dateTime: formattedLastSync })}</span>
+                    </div>
+                  )}
+                   {!isDriveLoading && !driveSyncError && !lastDriveSync && (
+                    <div className="flex items-center text-[var(--color-text-muted)]">
+                      <InformationCircleIcon className="w-4 h-4 mr-2" />
+                      <span className="text-xs font-semibold">{t('syncStatusNever')}</span>
+                    </div>
+                  )}
+                </div>
+                <Button 
+                  onClick={handleSyncNow} 
+                  isLoading={isDriveLoading} 
+                  disabled={isDriveLoading}
+                  variant="primary" 
+                  size="md" 
+                  leftIcon={<RefreshIcon className={`w-5 h-5 ${isDriveLoading ? 'animate-spin' : ''}`} />}
+                  className="w-full sm:w-auto shadow-lg hover:shadow-[var(--color-primary-accent)]/40 py-2.5 px-6"
+                >
+                  {isDriveLoading ? t('syncStatusInProgress') : t('syncNowButton')}
+                </Button>
+              </div>
+               {driveSyncError && (
+                  <Button
+                      variant="link"
+                      size="xs"
+                      onClick={() => setDriveSyncError(null)}
+                      className="mt-3 !text-[var(--color-primary-accent)] hover:!text-[var(--color-primary-accent-hover)] text-xs"
+                  >
+                      {t('close')}
+                  </Button>
+              )}
+              <p className="text-xs text-[var(--color-text-muted)] text-center pt-6 mt-4 border-t border-[var(--color-border-default)]/50">
+                  Your QuizAI data is securely stored in a file named <code>{`quizai_user_data.json`}</code> in your Google Drive's root folder, accessible only by this application.
+              </p>
+            </Card>
+          )}
         </div>
       </Card>
     </div>

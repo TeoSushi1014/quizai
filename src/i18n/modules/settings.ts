@@ -49,19 +49,27 @@ export const en = {
   disableDriveSync: "Disable Google Drive Sync (Uses Local Storage Only)",
   syncConfirmation: "This will attempt to load data from Google Drive, potentially overwriting local changes if Drive has newer data (based on last modified timestamps), and then save current data to Drive. Continue?",
 
-  // Profile Page Translations
+  driveSyncModeTitle: "Sync Mode",
+  driveSyncModeBackupOnly: "Backup Only",
+  driveSyncModeBackupOnlyDesc: "Save data to Drive as backup, Supabase remains primary",
+  driveSyncModeManual: "Manual Only",
+  driveSyncModeManualDesc: "Only sync when manually triggered below",
+  driveSyncModeAuto: "Auto Sync",
+  driveSyncModeAutoDesc: "Automatically sync changes to Drive (legacy mode)",
+  driveSyncDisabledMessage: "Drive sync is currently disabled in settings",
+
   profileInformation: "Profile Information",
   profileName: "Name",
   profileNamePlaceholder: "Enter your name",
-  profileEmail: "Email", // Added as per user's suggestion for Profile Page
+  profileEmail: "Email",
   profileBio: "Bio",
   profileBioPlaceholder: "Tell us a little about yourself...",
   profileStats: "Your Statistics",
   profileQuizzes: "Created Quizzes",
   profileCompletions: "Quiz Completions",
   profileAvgScore: "Average Score",
-  profilePreferences: "Preferences", // Kept, might be used later
-  profileLanguage: "Language", // Kept, might be used later
+  profilePreferences: "Preferences",
+  profileLanguage: "Language",
   profileSaveSuccess: "Profile updated successfully",
   profileSaveError: "Failed to update profile",
 };
@@ -116,6 +124,16 @@ export const vi = {
   enableDriveSync: "Bật Đồng bộ Google Drive",
   disableDriveSync: "Tắt Đồng bộ Google Drive (Chỉ dùng Bộ nhớ Cục bộ)",
   syncConfirmation: "Thao tác này sẽ cố gắng tải dữ liệu từ Google Drive, có thể ghi đè các thay đổi cục bộ nếu Drive có dữ liệu mới hơn (dựa trên dấu thời gian sửa đổi cuối cùng), sau đó lưu dữ liệu hiện tại vào Drive. Tiếp tục?",
+
+  // Drive Sync Mode Settings
+  driveSyncModeTitle: "Chế độ Đồng bộ",
+  driveSyncModeBackupOnly: "Chỉ Sao lưu",
+  driveSyncModeBackupOnlyDesc: "Lưu dữ liệu vào Drive làm bản sao lưu, Supabase vẫn là chính",
+  driveSyncModeManual: "Chỉ Thủ công",
+  driveSyncModeManualDesc: "Chỉ đồng bộ khi kích hoạt thủ công bên dưới",
+  driveSyncModeAuto: "Tự động Đồng bộ",
+  driveSyncModeAutoDesc: "Tự động đồng bộ các thay đổi lên Drive (chế độ cũ)",
+  driveSyncDisabledMessage: "Đồng bộ Drive hiện đang bị tắt trong cài đặt",
 
   // Profile Page Translations
   profileInformation: "Thông tin Hồ sơ",

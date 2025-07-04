@@ -120,6 +120,16 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
   const [syncState, setSyncState] = useState<SyncState>('idle');
   const [currentSyncActivityMessage, setCurrentSyncActivityMessage] = useState<string | null>(null);
   
+  // Drive sync settings - default to backup-only mode for new users
+  const [isDriveSyncEnabled, setIsDriveSyncEnabled] = useState(() => {
+    const saved = localStorage.getItem('driveSyncEnabled');
+    return saved !== null ? JSON.parse(saved) : false; // Default to disabled for new users
+  });
+  const [driveSyncMode, setDriveSyncModeState] = useState<'auto' | 'manual' | 'backup-only'>(() => {
+    const saved = localStorage.getItem('driveSyncMode');
+    return (saved as 'auto' | 'manual' | 'backup-only') || 'backup-only'; // Default to backup-only
+  });
+  
   const saveToDriveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const saveToDriveMinIntervalRef = useRef(0); 
   const autoSyncAttemptLimitRef = useRef({ count: 0, lastWindowStart: 0 }); 
@@ -176,6 +186,19 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
         logger.warn(`Drive Sync Error set: ${errorMessage}`, 'DriveContext', { errorKey });
     }
   }, [tForProvider]);
+
+  // Drive sync settings callbacks
+  const setDriveSyncEnabled = useCallback((enabled: boolean) => {
+    setIsDriveSyncEnabled(enabled);
+    localStorage.setItem('driveSyncEnabled', JSON.stringify(enabled));
+    logger.info(`Drive sync ${enabled ? 'enabled' : 'disabled'}`, 'DriveSettings');
+  }, []);
+
+  const setDriveSyncMode = useCallback((mode: 'auto' | 'manual' | 'backup-only') => {
+    setDriveSyncModeState(mode);
+    localStorage.setItem('driveSyncMode', mode);
+    logger.info(`Drive sync mode changed to: ${mode}`, 'DriveSettings');
+  }, []);
 
   const isTokenStillValid = useCallback(() => {
     const expiryTimeStr = localStorage.getItem(LOCALSTORAGE_AUTH_EXPIRY_KEY);
@@ -273,6 +296,23 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
 
         const lastSyncTimestamp = localStorage.getItem(LOCALSTORAGE_DRIVE_SYNC_KEY);
         if (lastSyncTimestamp) setLastDriveSync(new Date(lastSyncTimestamp));
+
+        // Migration: Check if user has existing Drive sync data and offer to enable
+        const migrateDriveSyncSettings = () => {
+          const hasExistingDriveSync = !!lastSyncTimestamp;
+          const hasSettingsConfigured = localStorage.getItem('driveSyncEnabled') !== null;
+          
+          if (hasExistingDriveSync && !hasSettingsConfigured) {
+            // User has used Drive sync before but hasn't configured new settings
+            logger.info('Migrating existing Drive sync user to new settings', 'DriveMigration');
+            setIsDriveSyncEnabled(true);
+            setDriveSyncModeState('auto'); // Keep existing behavior
+            localStorage.setItem('driveSyncEnabled', 'true');
+            localStorage.setItem('driveSyncMode', 'auto');
+          }
+        };
+        
+        migrateDriveSyncSettings();
 
         setAppInitialized(true);
         logger.info('App initialization complete.', 'AppInit');
@@ -383,6 +423,15 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
 
 
   const triggerSaveToDrive = useCallback((quizzesToSave: Quiz[]) => {
+    // Check if Drive sync is enabled and in appropriate mode
+    if (!isDriveSyncEnabled || driveSyncMode === 'manual') {
+      logger.debug("triggerSaveToDrive: Skipping - Drive sync disabled or manual mode", 'DriveSync', { 
+        enabled: isDriveSyncEnabled, 
+        mode: driveSyncMode 
+      });
+      return;
+    }
+
     if (Date.now() - saveToDriveMinIntervalRef.current < SYNC_CONFIG.MIN_SYNC_INTERVAL_MS) {
       logger.debug("triggerSaveToDrive: Skipping schedule, too soon since last save.", 'DriveSync');
       return;
@@ -482,7 +531,7 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
 
       }
     }, SYNC_CONFIG.BACKGROUND_SYNC ? SYNC_CONFIG.DEBOUNCE_BACKGROUND_SYNC_MS : SYNC_CONFIG.DEBOUNCE_FOREGROUND_SYNC_MS);
-  }, [currentUser?.accessToken, setDriveSyncError, tForProvider, syncState]);
+  }, [currentUser?.accessToken, setDriveSyncError, tForProvider, syncState, isDriveSyncEnabled, driveSyncMode]);
 
 
   useEffect(() => {
@@ -741,6 +790,12 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
 
 
   const syncWithGoogleDrive = useCallback(async () => {
+    if (!isDriveSyncEnabled) {
+      logger.info('Manual sync skipped: Drive sync is disabled', 'DriveSync');
+      showErrorNotification('Drive sync is currently disabled in settings');
+      return;
+    }
+
     const nowMs = Date.now();
     if (nowMs - manualSyncAttemptLimitRef.current.lastWindowStart < SYNC_CONFIG.MANUAL_SYNC_ATTEMPT_WINDOW_MS) { 
         manualSyncAttemptLimitRef.current.count++;
@@ -807,7 +862,7 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
          if (syncState === 'success' || syncState === 'error') setCurrentSyncActivityMessage(null);
       }, SYNC_CONFIG.MESSAGE_DISPLAY_DURATION_MS);
     }
-  }, [currentUser?.accessToken, setDriveSyncError, tForProvider, syncState]);
+  }, [currentUser?.accessToken, setDriveSyncError, tForProvider, syncState, isDriveSyncEnabled, showErrorNotification]);
 
   const quizzesForContext = useMemo(() => {
     return allQuizzes; 
@@ -842,6 +897,10 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     setDriveSyncError,
     syncState,
     currentSyncActivityMessage,
+    isDriveSyncEnabled,
+    setDriveSyncEnabled,
+    driveSyncMode,
+    setDriveSyncMode,
     showSuccessNotification,
     showErrorNotification,
   }), [
@@ -849,7 +908,8 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     addQuiz, deleteQuiz, updateQuiz, getQuizByIdFromAll, activeQuiz, setActiveQuiz, quizResult, 
     setQuizResultWithPersistence, currentUser, login, handleLogout, updateUserProfile, isGeminiKeyAvailable, combinedIsLoading,
     isDriveLoading, driveSyncError, lastDriveSync, syncWithGoogleDrive, setDriveSyncError, 
-    syncState, currentSyncActivityMessage, showSuccessNotification, showErrorNotification,
+    syncState, currentSyncActivityMessage, isDriveSyncEnabled, setDriveSyncEnabled, driveSyncMode, setDriveSyncMode,
+    showSuccessNotification, showErrorNotification,
   ]);
 
   if (!appInitialized) {
