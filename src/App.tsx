@@ -13,6 +13,7 @@ import { authService } from './services/authService';
 import { ThemeToggle, ThemeToggleSwitch } from './components/ThemeToggle'; 
 import { useNotification } from './hooks/useNotification';
 import { supabaseService } from './services/supabaseService';
+import { supabase } from './services/supabaseClient';
 import { logger } from './services/logService';
 import { migrateLocalDataToSupabase, checkMigrationNeeded } from './utils/migrationUtils';
 import './styles/markdown.css';
@@ -182,23 +183,54 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
                         access_token: savedToken
                     };
                     
-                    const authenticatedUser = await authService.signInWithGoogle(googleUserInfo);
-                    
-                    if (authenticatedUser) {
-                        const locallyStoredUser = savedUserJson ? JSON.parse(savedUserJson) as Partial<UserProfile> : {};
-                        const userWithToken = {
-                            ...authenticatedUser,
+                    try {
+                        const authenticatedUser = await authService.signInWithGoogle(googleUserInfo);
+                        
+                        if (authenticatedUser) {
+                            const locallyStoredUser = savedUserJson ? JSON.parse(savedUserJson) as Partial<UserProfile> : {};
+                            const userWithToken = {
+                                ...authenticatedUser,
+                                accessToken: savedToken,
+                                bio: authenticatedUser.bio || locallyStoredUser.bio || null,
+                                quizCount: authenticatedUser.quizCount || locallyStoredUser.quizCount || 0,
+                                completionCount: authenticatedUser.completionCount || locallyStoredUser.completionCount || 0,
+                                averageScore: authenticatedUser.averageScore || locallyStoredUser.averageScore || null,
+                            };
+                            setCurrentUser(userWithToken);
+                        } else {
+                            // If Supabase auth fails but we have valid Google token, use fallback
+                            logger.warn('Supabase authentication failed, using fallback profile', 'AppInit');
+                            const fallbackUser: UserProfile = {
+                                id: userInfo.sub,
+                                email: userInfo.email,
+                                name: userInfo.name,
+                                imageUrl: pictureUrl,
+                                accessToken: savedToken,
+                                bio: null,
+                                quizCount: 0,
+                                completionCount: 0,
+                                averageScore: null
+                            };
+                            setCurrentUser(fallbackUser);
+                        }
+                    } catch (authError) {
+                        logger.error("Supabase authentication failed during token restoration", 'AppInit', undefined, authError as Error);
+                        // Fallback to Google profile if Supabase fails
+                        const fallbackUser: UserProfile = {
+                            id: userInfo.sub,
+                            email: userInfo.email,
+                            name: userInfo.name,
+                            imageUrl: pictureUrl,
                             accessToken: savedToken,
-                            bio: authenticatedUser.bio || locallyStoredUser.bio || null,
-                            quizCount: authenticatedUser.quizCount || locallyStoredUser.quizCount || 0,
-                            completionCount: authenticatedUser.completionCount || locallyStoredUser.completionCount || 0,
-                            averageScore: authenticatedUser.averageScore || locallyStoredUser.averageScore || null,
+                            bio: null,
+                            quizCount: 0,
+                            completionCount: 0,
+                            averageScore: null
                         };
-                        setCurrentUser(userWithToken);
-                    } else {
-                        setCurrentUser(null);
+                        setCurrentUser(fallbackUser);
                     }
                 } else {
+                    logger.warn('Google token validation failed during restoration', 'AppInit');
                     setCurrentUser(null);
                 }
             } catch (e) {
@@ -234,15 +266,36 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
       try {
         const localQuizzes = await quizStorage.getAllQuizzes();
         setAllQuizzes(localQuizzes);
+        logger.info('Local quizzes loaded', 'QuizLoading', { count: localQuizzes.length });
         
         if (currentUser?.id) {
-          try {
-            const supabaseQuizzes = await supabaseService.getUserQuizzes(currentUser.id);
-            const mergedQuizzes = mergeQuizzes(localQuizzes, supabaseQuizzes);
-            setAllQuizzes(mergedQuizzes);
-            await quizStorage.saveQuizzes(mergedQuizzes);
-          } catch (error) {
-            logger.error('Error syncing with Supabase', 'QuizLoading', undefined, error as Error);
+          // Check if user has a Supabase UUID (vs Google ID)
+          const isSupabaseUser = currentUser.id.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+          
+          if (isSupabaseUser) {
+            try {
+              logger.info('Attempting to sync with Supabase', 'QuizLoading', { userId: currentUser.id });
+              const supabaseQuizzes = await supabaseService.getUserQuizzes(currentUser.id);
+              const mergedQuizzes = mergeQuizzes(localQuizzes, supabaseQuizzes);
+              
+              if (mergedQuizzes.length !== localQuizzes.length || 
+                  JSON.stringify(mergedQuizzes) !== JSON.stringify(localQuizzes)) {
+                setAllQuizzes(mergedQuizzes);
+                await quizStorage.saveQuizzes(mergedQuizzes);
+                logger.info('Quizzes synced with Supabase', 'QuizLoading', { 
+                  localCount: localQuizzes.length, 
+                  supabaseCount: supabaseQuizzes.length,
+                  mergedCount: mergedQuizzes.length 
+                });
+              } else {
+                logger.info('Local and Supabase quizzes are already in sync', 'QuizLoading');
+              }
+            } catch (error) {
+              logger.warn('Failed to sync with Supabase, using local quizzes only', 'QuizLoading', {}, error as Error);
+              // Keep using local quizzes if Supabase fails
+            }
+          } else {
+            logger.info('User has Google ID, using local storage only', 'QuizLoading', { userId: currentUser.id });
           }
         }
         
@@ -303,27 +356,45 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
       lastModified: now,
     };
 
-    // Save to Supabase first
-    const savedQuiz = await supabaseService.createQuiz(quizWithOwnerAndTimestamp, currentUser.id)
+    // Always save to localStorage first as backup
+    try {
+      const currentQuizzes = await quizStorage.getAllQuizzes()
+      const updatedQuizzes = [quizWithOwnerAndTimestamp, ...currentQuizzes.filter(q => q.id !== quiz.id)]
+      await quizStorage.saveQuizzes(updatedQuizzes)
+      setAllQuizzes(updatedQuizzes)
+      logger.info('Quiz saved to localStorage successfully', 'AppContext', { quizId: quiz.id })
+    } catch (localError) {
+      logger.error('Failed to save quiz to localStorage', 'AppContext', { quizId: quiz.id }, localError as Error)
+    }
+
+    // Try to save to Supabase if user has a Supabase UUID (not Google ID)
+    const isSupabaseUser = currentUser.id.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
     
-    if (savedQuiz) {
-      // Update state which will trigger automatic Drive sync via useEffect
-      setAllQuizzes(prev => [savedQuiz, ...prev.filter(q => q.id !== quiz.id)])
-      logger.info('Quiz added to Supabase and context state', 'AppContext', { quizId: quiz.id, title: quiz.title })
-      
+    if (isSupabaseUser) {
       try {
-        // Update localStorage with all user quizzes from Supabase
-        const allQuizzes = await supabaseService.getUserQuizzes(currentUser.id)
-        await quizStorage.saveQuizzes(allQuizzes)
-        logger.info('Quiz saved to local storage as backup', 'AppContext', { quizId: quiz.id })
-      } catch (e) {
-        logger.warn('Failed to save backup to localStorage', 'AppContext', { quizId: quiz.id }, e as Error)
+        const savedQuiz = await supabaseService.createQuiz(quizWithOwnerAndTimestamp, currentUser.id)
+        
+        if (savedQuiz) {
+          // Update state with the Supabase version
+          setAllQuizzes(prev => [savedQuiz, ...prev.filter(q => q.id !== quiz.id)])
+          logger.info('Quiz added to Supabase successfully', 'AppContext', { quizId: quiz.id, title: quiz.title })
+          
+          // Update localStorage with Supabase version
+          try {
+            const allQuizzes = await supabaseService.getUserQuizzes(currentUser.id)
+            await quizStorage.saveQuizzes(allQuizzes)
+            logger.info('Quiz saved to local storage as backup', 'AppContext', { quizId: quiz.id })
+          } catch (e) {
+            logger.warn('Failed to update localStorage backup after Supabase save', 'AppContext', { quizId: quiz.id }, e as Error)
+          }
+        } else {
+          logger.warn('Supabase save failed, quiz is only saved locally', 'AppContext', { quizId: quiz.id })
+        }
+      } catch (supabaseError) {
+        logger.warn('Failed to save quiz to Supabase, quiz is saved locally', 'AppContext', { quizId: quiz.id }, supabaseError as Error)
       }
-      
-      // Note: Drive sync will be triggered automatically by the useEffect when allQuizzes changes
-      logger.info('Quiz creation completed, Drive sync will be triggered automatically', 'AppContext', { quizId: quiz.id })
     } else {
-      throw new Error('Failed to save quiz to database')
+      logger.info('User has Google ID, quiz saved locally only', 'AppContext', { quizId: quiz.id, userId: currentUser.id })
     }
   }, [currentUser]);
 
@@ -332,51 +403,50 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
       throw new Error('User must be logged in to delete quizzes')
     }
 
-    // Validate UUID format before attempting deletion
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-    if (!uuidRegex.test(quizId)) {
-      logger.warn('Attempting to delete quiz with invalid UUID format (legacy quiz)', 'AppContext', { quizId });
-      
-      // For old/invalid quiz IDs, just remove from local state and storage
-      // These quizzes likely don't exist in the database anyway
-      setAllQuizzes(prev => prev.filter(q => q.id !== quizId));
-      
-      try {
-        // Also clean up local storage
-        const currentQuizzes = await quizStorage.getAllQuizzes();
-        const cleanedQuizzes = currentQuizzes.filter(q => q.id !== quizId);
-        await quizStorage.saveQuizzes(cleanedQuizzes);
-        logger.info('Legacy quiz removed from local storage', 'AppContext', { quizId });
-      } catch (e) {
-        logger.warn('Failed to clean up legacy quiz from local storage', 'AppContext', { quizId }, e as Error);
-      }
-      
-      // Note: State change will automatically trigger Drive sync via useEffect
-      logger.info('Legacy quiz successfully removed from application, Drive sync will be triggered automatically', 'AppContext', { quizId });
-      return;
+    // Always update local state first
+    setAllQuizzes(prev => prev.filter(q => q.id !== quizId))
+    
+    try {
+      // Update localStorage
+      const currentQuizzes = await quizStorage.getAllQuizzes()
+      const updatedQuizzes = currentQuizzes.filter(q => q.id !== quizId)
+      await quizStorage.saveQuizzes(updatedQuizzes)
+      logger.info('Quiz removed from localStorage', 'AppContext', { quizId })
+    } catch (localError) {
+      logger.error('Failed to remove quiz from localStorage', 'AppContext', { quizId }, localError as Error)
     }
 
-    // Delete from Supabase first
-    const success = await supabaseService.deleteQuiz(quizId)
+    // Try to delete from Supabase if user has a Supabase UUID
+    const isSupabaseUser = currentUser.id.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+    const isValidUUID = quizId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
     
-    if (success) {
-      // Update state which will trigger automatic Drive sync via useEffect
-      setAllQuizzes(prev => prev.filter(q => q.id !== quizId))
-      logger.info('Quiz deleted from Supabase and context state', 'AppContext', { quizId })
-      
+    if (isSupabaseUser && isValidUUID) {
       try {
-        // Update localStorage with remaining user quizzes from Supabase
-        const remainingQuizzes = await supabaseService.getUserQuizzes(currentUser.id)
-        await quizStorage.saveQuizzes(remainingQuizzes)
-        logger.info('Local storage updated after quiz deletion', 'AppContext', { quizId })
-      } catch (e) {
-        logger.warn('Failed to update localStorage backup', 'AppContext', { quizId }, e as Error)
+        const success = await supabaseService.deleteQuiz(quizId)
+        
+        if (success) {
+          logger.info('Quiz deleted from Supabase successfully', 'AppContext', { quizId })
+          
+          // Update localStorage with remaining Supabase quizzes
+          try {
+            const remainingQuizzes = await supabaseService.getUserQuizzes(currentUser.id)
+            await quizStorage.saveQuizzes(remainingQuizzes)
+            logger.info('Local storage updated after Supabase quiz deletion', 'AppContext', { quizId })
+          } catch (e) {
+            logger.warn('Failed to update localStorage after Supabase deletion', 'AppContext', { quizId }, e as Error)
+          }
+        } else {
+          logger.warn('Failed to delete quiz from Supabase, but removed locally', 'AppContext', { quizId })
+        }
+      } catch (supabaseError) {
+        logger.warn('Error deleting quiz from Supabase, but removed locally', 'AppContext', { quizId }, supabaseError as Error)
       }
-      
-      // Note: Drive sync will be triggered automatically by the useEffect when allQuizzes changes
-      logger.info('Quiz deletion completed, Drive sync will be triggered automatically', 'AppContext', { quizId })
     } else {
-      throw new Error('Failed to delete quiz from database')
+      if (!isValidUUID) {
+        logger.info('Legacy quiz removed (invalid UUID format)', 'AppContext', { quizId })
+      } else {
+        logger.info('Quiz removed locally (user has Google ID)', 'AppContext', { quizId, userId: currentUser.id })
+      }
     }
   }, [currentUser]);
 
@@ -391,27 +461,47 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
       lastModified: now,
     };
 
-    // Update in Supabase first
-    const updatedSupabaseQuiz = await supabaseService.updateQuiz(quizWithTimestamp)
+    // Always update local state first
+    setAllQuizzes(prev => prev.map(q => q.id === quizWithTimestamp.id ? quizWithTimestamp : q))
     
-    if (updatedSupabaseQuiz) {
-      // Update state which will trigger automatic Drive sync via useEffect
-      setAllQuizzes(prev => prev.map(q => q.id === quizWithTimestamp.id ? updatedSupabaseQuiz : q))
-      logger.info('Quiz updated in Supabase and context state', 'AppContext', { quizId: updatedQuiz.id, title: updatedQuiz.title })
-      
+    try {
+      // Update localStorage
+      const currentQuizzes = await quizStorage.getAllQuizzes()
+      const updatedQuizzes = currentQuizzes.map(q => q.id === quizWithTimestamp.id ? quizWithTimestamp : q)
+      await quizStorage.saveQuizzes(updatedQuizzes)
+      logger.info('Quiz updated in localStorage', 'AppContext', { quizId: updatedQuiz.id })
+    } catch (localError) {
+      logger.error('Failed to update quiz in localStorage', 'AppContext', { quizId: updatedQuiz.id }, localError as Error)
+    }
+
+    // Try to update in Supabase if user has a Supabase UUID
+    const isSupabaseUser = currentUser.id.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+    
+    if (isSupabaseUser) {
       try {
-        // Update localStorage with all user quizzes from Supabase
-        const allQuizzes = await supabaseService.getUserQuizzes(currentUser.id)
-        await quizStorage.saveQuizzes(allQuizzes)
-        logger.info('Local storage updated after quiz update', 'AppContext', { quizId: updatedQuiz.id })
-      } catch (e) {
-        logger.warn('Failed to update localStorage backup', 'AppContext', { quizId: updatedQuiz.id }, e as Error)
+        const updatedSupabaseQuiz = await supabaseService.updateQuiz(quizWithTimestamp)
+        
+        if (updatedSupabaseQuiz) {
+          // Update state with the Supabase version
+          setAllQuizzes(prev => prev.map(q => q.id === quizWithTimestamp.id ? updatedSupabaseQuiz : q))
+          logger.info('Quiz updated in Supabase successfully', 'AppContext', { quizId: updatedQuiz.id, title: updatedQuiz.title })
+          
+          // Update localStorage with Supabase version
+          try {
+            const allQuizzes = await supabaseService.getUserQuizzes(currentUser.id)
+            await quizStorage.saveQuizzes(allQuizzes)
+            logger.info('Local storage updated after Supabase quiz update', 'AppContext', { quizId: updatedQuiz.id })
+          } catch (e) {
+            logger.warn('Failed to update localStorage backup after Supabase update', 'AppContext', { quizId: updatedQuiz.id }, e as Error)
+          }
+        } else {
+          logger.warn('Supabase update failed, quiz is updated locally only', 'AppContext', { quizId: updatedQuiz.id })
+        }
+      } catch (supabaseError) {
+        logger.warn('Failed to update quiz in Supabase, quiz is updated locally', 'AppContext', { quizId: updatedQuiz.id }, supabaseError as Error)
       }
-      
-      // Note: Drive sync will be triggered automatically by the useEffect when allQuizzes changes
-      logger.info('Quiz update completed, Drive sync will be triggered automatically', 'AppContext', { quizId: updatedQuiz.id })
     } else {
-      throw new Error('Failed to update quiz in database')
+      logger.info('User has Google ID, quiz updated locally only', 'AppContext', { quizId: updatedQuiz.id, userId: currentUser.id })
     }
   }, [currentUser]);
 
@@ -462,10 +552,51 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
         access_token: tokenResponse?.access_token || user.accessToken
       }
       
-      const authenticatedUser = await authService.signInWithGoogle(googleUserInfo)
-      
-      if (authenticatedUser) {
-        // IMPORTANT: Use the Supabase UUID, not the Google ID
+      try {
+        const authenticatedUser = await authService.signInWithGoogle(googleUserInfo)
+        
+        if (authenticatedUser) {
+          // IMPORTANT: Use the Supabase UUID, not the Google ID
+          let tokenInfo: { token: string; expires_in: number } | undefined = undefined;
+          if (tokenResponse) {
+              tokenInfo = {
+                  token: tokenResponse.access_token,
+                  expires_in: (typeof (tokenResponse as any).expires_in === 'number') ? (tokenResponse as any).expires_in : 3600,
+              };
+          }
+          
+          const userWithTokenAndDefaults: UserProfile = {
+              ...authenticatedUser, // This includes the correct Supabase UUID as .id
+              accessToken: tokenInfo?.token || authenticatedUser.accessToken || user.accessToken, 
+              bio: authenticatedUser.bio || null,
+              quizCount: authenticatedUser.quizCount || 0,
+              completionCount: authenticatedUser.completionCount || 0,
+              averageScore: authenticatedUser.averageScore || null,
+          };
+          
+          setCurrentUser(userWithTokenAndDefaults, tokenInfo); 
+
+          // Check if migration is needed and perform it
+          try {
+            const migrationNeeded = await checkMigrationNeeded(userWithTokenAndDefaults)
+            if (migrationNeeded) {
+              logger.info('Starting data migration from localStorage to Supabase', 'Migration')
+              await migrateLocalDataToSupabase(userWithTokenAndDefaults)
+              logger.info('Data migration completed successfully', 'Migration')
+            }
+          } catch (migrationError) {
+            logger.error('Migration failed, but login continues', 'Migration', {}, migrationError as Error)
+          }
+
+          logger.info('User logged in successfully with Supabase', 'AuthContext', { userId: userWithTokenAndDefaults.id })
+          return userWithTokenAndDefaults
+        } else {
+          throw new Error('Failed to authenticate with Supabase - will use fallback')
+        }
+      } catch (supabaseError) {
+        logger.warn('Supabase authentication failed, falling back to Google profile', 'AuthContext', {}, supabaseError as Error)
+        
+        // Fallback to Google profile if Supabase fails
         let tokenInfo: { token: string; expires_in: number } | undefined = undefined;
         if (tokenResponse) {
             tokenInfo = {
@@ -474,36 +605,24 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
             };
         }
         
-        const userWithTokenAndDefaults: UserProfile = {
-            ...authenticatedUser, // This includes the correct Supabase UUID as .id
-            accessToken: tokenInfo?.token || authenticatedUser.accessToken || user.accessToken, 
-            bio: authenticatedUser.bio || null,
-            quizCount: authenticatedUser.quizCount || 0,
-            completionCount: authenticatedUser.completionCount || 0,
-            averageScore: authenticatedUser.averageScore || null,
+        const fallbackUser: UserProfile = {
+            id: user.id, // Use Google ID as fallback
+            email: user.email,
+            name: user.name,
+            imageUrl: user.imageUrl,
+            accessToken: tokenInfo?.token || user.accessToken, 
+            bio: null,
+            quizCount: 0,
+            completionCount: 0,
+            averageScore: null,
         };
         
-        setCurrentUser(userWithTokenAndDefaults, tokenInfo); 
-
-        // Check if migration is needed and perform it
-        try {
-          const migrationNeeded = await checkMigrationNeeded(userWithTokenAndDefaults)
-          if (migrationNeeded) {
-            logger.info('Starting data migration from localStorage to Supabase', 'Migration')
-            await migrateLocalDataToSupabase(userWithTokenAndDefaults)
-            logger.info('Data migration completed successfully', 'Migration')
-          }
-        } catch (migrationError) {
-          logger.error('Migration failed, but login continues', 'Migration', {}, migrationError as Error)
-        }
-
-        logger.info('User logged in successfully with Supabase', 'AuthContext', { userId: userWithTokenAndDefaults.id })
-        return userWithTokenAndDefaults
-      } else {
-        throw new Error('Failed to authenticate with Supabase')
+        setCurrentUser(fallbackUser, tokenInfo);
+        logger.info('User logged in with fallback Google profile', 'AuthContext', { userId: fallbackUser.id })
+        return fallbackUser
       }
     } catch (error) {
-      logger.error('Login failed', 'AuthContext', {}, error as Error)
+      logger.error('Login failed completely', 'AuthContext', {}, error as Error)
       throw error
     }
   }, [setCurrentUser]); 
@@ -593,6 +712,46 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     setQuizResultWithPersistence, currentUser, login, handleLogout, updateUserProfile, combinedIsLoading,
     showSuccessNotification, showErrorNotification,
   ]);
+
+  // Add debug utilities to window for troubleshooting
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      (window as any).QuizAIDebug = {
+        currentUser,
+        isSupabaseUser: currentUser?.id?.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i),
+        supabaseService,
+        authService,
+        clearUserData: () => {
+          setCurrentUser(null);
+          localStorage.clear();
+          logger.info('Debug: All user data cleared', 'Debug');
+        },
+        checkAuth: async () => {
+          const { data: { session } } = await supabase.auth.getSession();
+          console.log('Current Supabase session:', session);
+          return session;
+        },
+        debugSupabase: () => supabaseService.debugUserPermissions(),
+        testUserOperations: async () => {
+          if (!currentUser) {
+            console.log('No current user');
+            return;
+          }
+          
+          console.log('Testing user operations...');
+          console.log('Current user:', currentUser);
+          console.log('Is Supabase user:', currentUser.id.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i));
+          
+          try {
+            const quizzes = await supabaseService.getUserQuizzes(currentUser.id);
+            console.log('User quizzes:', quizzes);
+          } catch (error) {
+            console.error('Error getting user quizzes:', error);
+          }
+        }
+      };
+    }
+  }, [currentUser]);
 
   if (!appInitialized) {
     return (

@@ -3,6 +3,40 @@ import { Quiz, UserProfile, QuizResult } from '../types'
 import { logger } from './logService'
 
 export class SupabaseService {
+  // Helper method to ensure we have a valid session before database operations
+  private async ensureAuthenticated(): Promise<{ session: any; userId: string }> {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.user) {
+      throw new Error('Authentication required: No active Supabase session');
+    }
+    
+    return { session, userId: session.user.id };
+  }
+
+  // Helper method to handle common RLS and authentication errors
+  private handleDatabaseError(error: any, operation: string, context: any = {}): void {
+    if (error.code === '42501') {
+      logger.error(`RLS policy violation during ${operation}`, 'SupabaseService', { 
+        ...context,
+        error: error.message,
+        hint: 'Check if user is authenticated and RLS policies allow this operation'
+      });
+    } else if (error.code === 'PGRST301') {
+      logger.error(`Request not acceptable (406) during ${operation}`, 'SupabaseService', { 
+        ...context,
+        error: error.message,
+        hint: 'This may indicate RLS policy issues or malformed query'
+      });
+    } else {
+      logger.error(`Database error during ${operation}`, 'SupabaseService', { 
+        ...context,
+        error: error.message,
+        code: error.code
+      });
+    }
+  }
+
   async createUser(profile: Partial<UserProfile>): Promise<UserProfile | null> {
     try {
       logger.info('SupabaseService: Attempting to create user', 'SupabaseService', { 
@@ -12,8 +46,22 @@ export class SupabaseService {
         hasImageUrl: !!profile.imageUrl
       })
 
+      // Verify we have an authenticated session before proceeding
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.user) {
+        logger.error('SupabaseService: No authenticated session found for user creation', 'SupabaseService', { 
+          requestedUserId: profile.id,
+          email: profile.email 
+        });
+        throw new Error('Authentication required: No active Supabase session for user creation');
+      }
+
+      // Use the authenticated user's ID from the session
+      const authenticatedUserId = session.user.id;
+      
       const userInsertData = {
-        id: profile.id,
+        id: authenticatedUserId, // Use session user ID to satisfy RLS policies
         email: profile.email!,
         name: profile.name,
         bio: profile.bio,
@@ -39,6 +87,27 @@ export class SupabaseService {
           details: error.details,
           hint: error.hint
         })
+        
+        // Handle RLS policy violations - try to find existing user instead
+        if (error.code === '42501') {
+          logger.warn('SupabaseService: RLS policy violation, attempting to find existing user by email', 'SupabaseService', { email: profile.email });
+          
+          try {
+            // Temporarily try without session check for user lookup
+            const { data: existingData, error: lookupError } = await supabase
+              .from('users')
+              .select('*')
+              .eq('email', profile.email!)
+              .single()
+            
+            if (!lookupError && existingData) {
+              logger.info('SupabaseService: Found existing user after RLS violation', 'SupabaseService', { userId: existingData.id });
+              return this.mapDatabaseUserToProfile(existingData);
+            }
+          } catch (lookupError) {
+            logger.warn('SupabaseService: Could not lookup existing user after RLS violation', 'SupabaseService', {}, lookupError as Error);
+          }
+        }
         
         if (error.code === '23505' && error.message.includes('users_email_key')) {
           logger.info('SupabaseService: User with email already exists, attempting to find existing user', 'SupabaseService', { email: profile.email })
@@ -67,6 +136,13 @@ export class SupabaseService {
 
   async getUserById(id: string): Promise<UserProfile | null> {
     try {
+      // Check if we have a session for RLS compliance
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.user) {
+        logger.warn('SupabaseService: No authenticated session for getUserById, this may fail due to RLS', 'SupabaseService', { id });
+      }
+
       const { data, error } = await supabase
         .from('users')
         .select('*')
@@ -77,6 +153,8 @@ export class SupabaseService {
         if (error.code === 'PGRST116') {
           return null
         }
+        
+        this.handleDatabaseError(error, 'getUserById', { id });
         throw error
       }
       
@@ -89,6 +167,13 @@ export class SupabaseService {
 
   async getUserByEmail(email: string): Promise<UserProfile | null> {
     try {
+      // Check if we have a session for RLS compliance
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.user) {
+        logger.warn('SupabaseService: No authenticated session for getUserByEmail, this may fail due to RLS', 'SupabaseService', { email });
+      }
+
       const { data, error } = await supabase
         .from('users')
         .select('*')
@@ -97,8 +182,18 @@ export class SupabaseService {
 
       if (error) {
         if (error.code === 'PGRST116') {
+          logger.info('SupabaseService: No user found with email', 'SupabaseService', { email });
           return null
         }
+        
+        // Log more details about the error for debugging
+        logger.error('SupabaseService: Error fetching user by email', 'SupabaseService', { 
+          email,
+          error: error.message,
+          code: error.code,
+          hint: error.hint
+        });
+        
         throw error
       }
       
@@ -202,13 +297,24 @@ export class SupabaseService {
 
   async getUserQuizzes(userId: string): Promise<Quiz[]> {
     try {
+      // Use the ensureAuthenticated helper to verify session
+      const { session } = await this.ensureAuthenticated();
+      
+      logger.info('SupabaseService: Getting user quizzes with authenticated session', 'SupabaseService', { 
+        sessionUserId: session.user.id,
+        requestedUserId: userId 
+      });
+
       const { data, error } = await supabase
         .from('quizzes')
         .select('*')
-        .eq('user_id', userId)
+        .eq('user_id', session.user.id) // Use authenticated user's ID to comply with RLS
         .order('created_at', { ascending: false })
 
-      if (error) throw error
+      if (error) {
+        this.handleDatabaseError(error, 'getUserQuizzes', { userId, sessionUserId: session?.user?.id || 'no-session' });
+        throw error;
+      }
       
       return data.map(this.mapDatabaseQuizToQuiz)
     } catch (error) {
@@ -284,16 +390,8 @@ export class SupabaseService {
         questionCount: quiz.questions?.length 
       });
 
-      // First, verify we have an authenticated session
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session?.user) {
-        logger.error('No authenticated session found for quiz creation', 'SupabaseService', { 
-          quizId: quiz.id,
-          userId 
-        });
-        throw new Error('Authentication required: No active Supabase session');
-      }
+      // Use the ensureAuthenticated helper to verify session
+      const { session } = await this.ensureAuthenticated();
       
       logger.info('Authenticated session confirmed for quiz creation', 'SupabaseService', { 
         sessionUserId: session.user.id,
@@ -366,7 +464,7 @@ export class SupabaseService {
         if (error.code === '42501') {
           logger.error('RLS policy violation during quiz creation', 'SupabaseService', { 
             quizId: quiz.id,
-            sessionUserId: session.user.id,
+            sessionUserId: session?.user?.id || 'no-session',
             requestedUserId: userId,
             error: error.message,
             hint: 'Check if user owns this quiz and RLS policies allow creation'
@@ -1008,6 +1106,148 @@ export class SupabaseService {
       
     } catch (error) {
       console.error('❌ Debug user issues failed:', error);
+    }
+  }
+
+  // Debug and fix RLS policy recursion issue
+  async debugRLSPolicyIssue(): Promise<void> {
+    try {
+      console.log('🔍 Debugging RLS Policy Recursion Issue...');
+      
+      // Check authentication first
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
+        console.error('❌ Authentication failed:', authError?.message || 'No user found');
+        return;
+      }
+      
+      console.log('✅ User authenticated:', { id: user.id, email: user.email });
+      
+      // Test individual table access
+      console.log('🧪 Testing individual table access...');
+      
+      // Test users table (should work if authenticated)
+      try {
+        const { error: usersError } = await supabase
+          .from('users')
+          .select('count')
+          .limit(1);
+        
+        if (usersError) {
+          console.error('❌ Users table error:', usersError);
+        } else {
+          console.log('✅ Users table accessible');
+        }
+      } catch (usersTestError) {
+        console.error('❌ Users table test failed:', usersTestError);
+      }
+      
+      // Test quizzes table (this is where the recursion error occurs)
+      try {
+        const { error: quizzesError } = await supabase
+          .from('quizzes')
+          .select('count')
+          .limit(1);
+        
+        if (quizzesError) {
+          console.error('❌ Quizzes table error (THIS IS THE RECURSION ERROR):', quizzesError);
+          console.log('💡 Error code 42P17 indicates infinite recursion in RLS policies');
+          console.log('💡 Go to Supabase Dashboard → Authentication → Policies');
+          console.log('💡 Look for policies on "quizzes" table that reference each other');
+          console.log('💡 Temporarily disable ALL RLS policies on "quizzes" table to test');
+        } else {
+          console.log('✅ Quizzes table accessible');
+        }
+      } catch (quizzesTestError) {
+        console.error('❌ Quizzes table test failed:', quizzesTestError);
+      }
+      
+      // Test shared_quizzes table
+      try {
+        const { error: sharedError } = await supabase
+          .from('shared_quizzes')
+          .select('count')
+          .limit(1);
+        
+        if (sharedError) {
+          console.error('❌ Shared quizzes table error:', sharedError);
+        } else {
+          console.log('✅ Shared quizzes table accessible');
+        }
+      } catch (sharedTestError) {
+        console.error('❌ Shared quizzes table test failed:', sharedTestError);
+      }
+      
+    } catch (error) {
+      console.error('❌ RLS debug failed:', error);
+    }
+  }
+
+  // Debug API keys configuration
+  async debugApiKeys(): Promise<void> {
+    try {
+      console.log('🔑 Debugging API Keys Configuration...');
+      
+      // Check if api_keys table exists
+      try {
+        const { error: tableError } = await supabase
+          .from('api_keys')
+          .select('count')
+          .limit(1);
+        
+        if (tableError) {
+          console.error('❌ API Keys table error:', tableError);
+          console.log('💡 Run the SQL commands to create the api_keys table first');
+          return;
+        } else {
+          console.log('✅ API Keys table accessible');
+        }
+      } catch (tableTestError) {
+        console.error('❌ API Keys table test failed:', tableTestError);
+        return;
+      }
+
+      // List all available API keys
+      try {
+        const { data: apiKeys, error: listError } = await supabase
+          .from('api_keys')
+          .select('key_name, owner_email, description, created_at')
+          .order('created_at', { ascending: false });
+
+        if (listError) {
+          console.error('❌ Cannot list API keys:', listError);
+          return;
+        }
+
+        console.log('📋 Available API Keys:');
+        if (apiKeys && apiKeys.length > 0) {
+          apiKeys.forEach(key => {
+            console.log(`  • ${key.key_name} (${key.owner_email}) - ${key.description || 'No description'}`);
+          });
+        } else {
+          console.warn('⚠️ No API keys found in database');
+          console.log('💡 Run the INSERT commands to add API keys');
+        }
+
+        // Test required API keys
+        const requiredKeys = ['GEMINI_API_KEY', 'VITE_RECAPTCHA_SITE_KEY', 'VITE_RECAPTCHA_ASSESSMENT_API_KEY'];
+        console.log('🧪 Testing required API keys...');
+        
+        for (const keyName of requiredKeys) {
+          const hasKey = apiKeys?.some(k => k.key_name === keyName);
+          if (hasKey) {
+            console.log(`✅ ${keyName} - Found`);
+          } else {
+            console.log(`❌ ${keyName} - Missing`);
+          }
+        }
+
+      } catch (listTestError) {
+        console.error('❌ API Keys list test failed:', listTestError);
+      }
+      
+    } catch (error) {
+      console.error('❌ API Keys debug failed:', error);
     }
   }
 

@@ -18,6 +18,10 @@ import './styles/accordion-question-fix.css';
 import('./services/supabaseService').then(({ supabaseService }) => {
   (window as any).QuizAIDebug = {
     makeQuizShareable: supabaseService.makeQuizShareable.bind(supabaseService),
+    debugRLSPolicyIssue: supabaseService.debugRLSPolicyIssue.bind(supabaseService),
+    debugUserPermissions: supabaseService.debugUserPermissions.bind(supabaseService),
+    debugUserIssues: supabaseService.debugUserIssues.bind(supabaseService),
+    debugApiKeys: supabaseService.debugApiKeys.bind(supabaseService),
     supabaseService
   };
   console.log('QuizAI Debug utilities available at window.QuizAIDebug');

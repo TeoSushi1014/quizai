@@ -36,21 +36,21 @@ export class AuthService {
             logger.info('AuthService: Signed out existing session for different user', 'AuthService');
           }
           
-          // Try to create/sign in with email-based authentication
-          // This approach uses a deterministic password based on email for existing users
-          const userPassword = `QuizAI_${email}_${process.env.NODE_ENV || 'production'}`;
+          // Now that email confirmation is disabled, use proper Supabase authentication
+          logger.info('AuthService: Attempting Supabase authentication with email confirmation disabled', 'AuthService', { email });
           
-          logger.info('AuthService: Attempting email-based sign in', 'AuthService', { email });
+          // Use email and a consistent password for this user
+          const userPassword = `QuizAI_${email.replace('@', '_at_').replace('.', '_dot_')}_${process.env.NODE_ENV || 'prod'}`;
           
-          // First try to sign in (for existing users)
+          // Try to sign in first
           const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
             email: email,
             password: userPassword
           });
           
-          if (signInError) {
-            // If sign in fails, try to sign up (for new users)
-            logger.info('AuthService: Sign in failed, attempting sign up for new user', 'AuthService', { email });
+          if (signInError && signInError.message.includes('Invalid login credentials')) {
+            // User doesn't exist, create them
+            logger.info('AuthService: User does not exist, creating new user with disabled email confirmation', 'AuthService', { email });
             
             const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
               email: email,
@@ -65,20 +65,42 @@ export class AuthService {
             });
             
             if (signUpError) {
-              logger.error('AuthService: Both sign in and sign up failed', 'AuthService', { 
-                signInError: signInError.message,
-                signUpError: signUpError.message 
-              });
-              throw new Error(`Authentication failed: ${signUpError.message}`);
+              logger.error('AuthService: Sign up failed', 'AuthService', { error: signUpError.message });
+              throw new Error(`Sign up failed: ${signUpError.message}`);
             }
             
             supabaseUser = signUpData.user;
-            logger.info('AuthService: Successfully created new Supabase user', 'AuthService', { userId: supabaseUser?.id });
+            logger.info('AuthService: Successfully created new Supabase user with session', 'AuthService', { 
+              userId: supabaseUser?.id,
+              hasSession: !!signUpData.session 
+            });
+          } else if (signInError) {
+            logger.error('AuthService: Unexpected sign in error', 'AuthService', { error: signInError.message });
+            throw new Error(`Authentication failed: ${signInError.message}`);
           } else {
             supabaseUser = signInData.user;
-            logger.info('AuthService: Successfully signed in existing Supabase user', 'AuthService', { userId: supabaseUser?.id });
+            logger.info('AuthService: Successfully signed in existing Supabase user', 'AuthService', { 
+              userId: supabaseUser?.id,
+              hasSession: !!signInData.session 
+            });
           }
         }
+        
+        // Verify we have a valid session after authentication
+        const { data: { session: finalSession } } = await supabase.auth.getSession();
+        
+        if (!finalSession?.user) {
+          logger.error('AuthService: No session available after authentication', 'AuthService', { 
+            supabaseUserId: supabaseUser?.id,
+            email: email
+          });
+          throw new Error('Failed to establish authenticated session after sign in/up');
+        }
+        
+        logger.info('AuthService: Confirmed authenticated session is active', 'AuthService', { 
+          userId: finalSession.user.id,
+          email: finalSession.user.email
+        });
         
       } catch (authError) {
         logger.error('AuthService: Failed to establish Supabase session', 'AuthService', { error: (authError as Error).message });
@@ -91,8 +113,26 @@ export class AuthService {
         throw new Error('Authentication failed: Unable to establish Supabase session required for database operations');
       }
 
+      // If we still don't have a Supabase user, we cannot proceed with database operations due to RLS
+      if (!supabaseUser) {
+        logger.error('AuthService: Cannot proceed without Supabase authentication - RLS policies will block operations', 'AuthService');
+        throw new Error('Authentication failed: Unable to establish Supabase session required for database operations');
+      }
+
       // Now handle user profile creation/update with authenticated session
-      const userId = supabaseUser.id;
+      // Get the current session to ensure we have the correct user ID
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      const authenticatedUserId = currentSession?.user?.id;
+      
+      if (!authenticatedUserId) {
+        throw new Error('No authenticated user ID available for database operations');
+      }
+      
+      logger.info('AuthService: Using Supabase user ID for database operations', 'AuthService', { 
+        supabaseUserId: authenticatedUserId,
+        googleId: googleUser.sub || googleUser.id,
+        email: email 
+      });
       
       let existingUser = await supabaseService.getUserByEmail(email)
       
@@ -117,7 +157,7 @@ export class AuthService {
       }
 
       const newUserProfile: UserProfile = {
-        id: userId,
+        id: authenticatedUserId,
         email: email,
         name: googleUser.name || googleUser.given_name || googleUser.family_name,
         imageUrl: googleUser.picture,
