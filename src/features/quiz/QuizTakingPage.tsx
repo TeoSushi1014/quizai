@@ -7,6 +7,7 @@ import MathText from '../../components/MathText';
 import { ChevronLeftIcon, ChevronRightIcon } from '../../constants';
 import { useQuizFlow } from './hooks/useQuizFlow';
 import { supabaseService } from '../../services/supabaseService';
+import { logger } from '../../services/logService';
 
 const QuizTakingPage: React.FC = () => {
   const { setQuizResult, currentUser } = useAppContext();
@@ -106,16 +107,16 @@ const QuizTakingPage: React.FC = () => {
       try {
         const saved = await supabaseService.saveQuizResult(result, currentUser.id, currentUser);
         if (saved) {
-          console.log('Quiz result saved to database successfully');
+          logger.info('Quiz result saved to database successfully', 'QuizTakingPage');
         } else {
-          console.log('Quiz result not saved to database (user not authenticated with Supabase, using local storage only)');
+          logger.info('Quiz result not saved to database (user not authenticated with Supabase, using local storage only)', 'QuizTakingPage');
         }
       } catch (error) {
         console.error('Failed to save quiz result to database:', error);
         // Continue anyway - result is still saved locally
       }
     } else {
-      console.log('No user logged in, quiz result saved locally only');
+      logger.info('No user logged in, quiz result saved locally only', 'QuizTakingPage');
     }
     
     setShowConfirmationModal(false);

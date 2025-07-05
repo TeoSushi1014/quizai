@@ -8,6 +8,7 @@ import MathText from '../../components/MathText';
 import AccordionQuestionTitle from './components/AccordionQuestionTitle';
 import { XCircleIcon, ArrowUturnLeftIcon, PlusCircleIcon, HomeIcon } from '../../constants';
 import useShouldReduceMotion from '../../hooks/useShouldReduceMotion';
+import { logger } from '../../services/logService';
 
 
 interface QuestionResultItemProps {
@@ -15,7 +16,6 @@ interface QuestionResultItemProps {
   userAnswerText: string;
   isCorrect: boolean;
   index: number;
-  sourceContentSnippet?: string;
   initiallyOpen: boolean;
   getAnswerDisplayText: (question: Question, answerValue: string) => string;
 }
@@ -38,7 +38,6 @@ const QuestionResultItem: React.FC<QuestionResultItemProps> = ({
   userAnswerText,
   isCorrect,
   index,
-  sourceContentSnippet,
   initiallyOpen = false,
   getAnswerDisplayText,
 }) => {
@@ -167,7 +166,7 @@ const ResultsPage: React.FC = () => {
         try {
           const parsedResult = JSON.parse(savedResult);
           if (parsedResult && parsedResult.quizId === paramQuizId) {
-            console.log('Found quiz result in localStorage, manually setting...');
+            logger.info('Found quiz result in localStorage, manually setting...', 'ResultsPage');
             // Manually trigger a context update by calling setQuizResult
             setQuizResult(parsedResult);
             return;
@@ -197,14 +196,14 @@ const ResultsPage: React.FC = () => {
 
       // If not found, try to fetch from shared quiz service
       if (!quizToDisplay) {
-        console.log('Quiz not found in local data, attempting to fetch shared quiz...');
+        logger.info('Quiz not found in local data, attempting to fetch shared quiz...', 'ResultsPage');
         try {
           // Import the service dynamically to avoid circular dependencies
           const { getSharedQuiz } = await import('../../services/quizSharingService');
           const sharedQuizData = await getSharedQuiz(quizResult.quizId);
           if (sharedQuizData) {
             quizToDisplay = sharedQuizData;
-            console.log('Successfully fetched shared quiz data');
+            logger.info('Successfully fetched shared quiz data', 'ResultsPage');
           }
         } catch (error) {
           console.error('Failed to fetch shared quiz:', error);
@@ -367,7 +366,6 @@ const ResultsPage: React.FC = () => {
                 userAnswerText={userAnswerText}
                 isCorrect={correct}
                 index={index}
-                sourceContentSnippet={currentDisplayQuiz.sourceContentSnippet}
                 initiallyOpen={!correct}
                 getAnswerDisplayText={getAnswerDisplayText}
               />

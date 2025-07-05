@@ -21,17 +21,6 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables: VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are required')
 }
 
-// Log configuration status for debugging (without sensitive data)
-if (isProduction) {
-  console.log(`🔧 Supabase Configuration Status:
-    Environment: PRODUCTION
-    URL: ${supabaseUrl.substring(0, 20)}...
-    Key Length: ${supabaseAnonKey.length} characters
-    Hostname: ${window.location.hostname}`)
-} else {
-  console.log('🔧 Supabase Configuration: Development mode')
-}
-
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,

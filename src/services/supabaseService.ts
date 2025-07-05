@@ -648,7 +648,7 @@ export class SupabaseService {
   // Diagnostic function to check database state and permissions
   async diagnoseDatabaseState(shareId: string): Promise<any> {
     try {
-      logger.info('=== DATABASE DIAGNOSTIC === Starting comprehensive database state check', 'SupabaseService', { shareId });
+      logger.info('Starting comprehensive database state check', 'SupabaseService', { shareId });
       
       // Check 1: Basic connection
       const { error: connectionError } = await supabase
@@ -729,7 +729,7 @@ export class SupabaseService {
 
   async getPublicQuizById(shareId: string): Promise<Quiz | null> {
     try {
-      logger.info('=== QUIZ SHARING DEBUG === Attempting to fetch public quiz by share identifier from Supabase', 'SupabaseService', { 
+      logger.info('Attempting to fetch public quiz by share identifier from Supabase', 'SupabaseService', { 
         shareId,
         shareIdLength: shareId.length,
         isQuizUrlFromBrowser: window?.location?.href || 'unknown'
@@ -894,7 +894,7 @@ export class SupabaseService {
   // Diagnostic function to check database state for a specific quiz ID
   async diagnoseQuizSharingIssue(quizId: string): Promise<any> {
     try {
-      logger.info('=== DIAGNOSTIC === Starting quiz sharing diagnosis', 'SupabaseService', { quizId });
+      logger.info('Starting quiz sharing diagnosis', 'SupabaseService', { quizId });
       
       // Check if quiz exists in quizzes table
       const { data: quizData, error: quizError } = await supabase

@@ -12,23 +12,8 @@ import './styles/numeric-answer-fix.css';
 import './styles/link-fix.css';
 import './styles/question-layout-fix.css';
 import './styles/question-title-fix.css';
+import './styles/github-fonts.css';
 import './styles/accordion-question-fix.css';
-
-import('./services/supabaseService').then(({ supabaseService }) => {
-  import('./services/authService').then(({ authService }) => {
-    const existingDebug = (window as any).QuizAIDebug || {};
-    (window as any).QuizAIDebug = {
-      ...existingDebug,
-      makeQuizShareable: supabaseService.makeQuizShareable.bind(supabaseService),
-      testSupabaseConnectivity: authService.testSupabaseConnectivity.bind(authService),
-      supabaseService,
-      authService
-    };
-    console.log('QuizAI Debug utilities available at window.QuizAIDebug');
-  });
-});
-
-
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {

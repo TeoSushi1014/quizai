@@ -1,13 +1,14 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAppContext, useTranslation } from '../../App';
-import { Question, QuizResult, UserAnswer } from '../../types';
-import { Button, Card, ProgressBar, LoadingSpinner, Modal } from '../../components/ui';
-import { CheckCircleIcon, CircleIcon, ChevronLeftIcon, ChevronRightIcon, XCircleIcon } from '../../constants';
+import { QuizResult, UserAnswer } from '../../types';
+import { Button, Card, LoadingSpinner, Modal } from '../../components/ui';
+import { ChevronLeftIcon, ChevronRightIcon } from '../../constants';
 import { useQuizFlow } from './hooks/useQuizFlow';
 import PracticeQuizQuestion from './components/PracticeQuizQuestion'; 
 import PracticeQuizExplanation from './components/PracticeQuizExplanation'; // Import the new explanation component
 import { supabaseService } from '../../services/supabaseService';
+import { logger } from '../../services/logService';
 
 interface PracticeAttempt {
   questionId: string;
@@ -142,16 +143,16 @@ const QuizPracticePage: React.FC = () => {
       try {
         const saved = await supabaseService.saveQuizResult(resultData, currentUser.id, currentUser);
         if (saved) {
-          console.log('Practice result saved to database successfully');
+          logger.info('Practice result saved to database successfully', 'QuizPracticePage');
         } else {
-          console.log('Practice result not saved to database (user not authenticated with Supabase, using local storage only)');
+          logger.info('Practice result not saved to database (user not authenticated with Supabase, using local storage only)', 'QuizPracticePage');
         }
       } catch (error) {
         console.error('Failed to save practice result to database:', error);
         // Continue anyway - result is still saved locally
       }
     } else {
-      console.log('No user logged in, practice result saved locally only');
+      logger.info('No user logged in, practice result saved locally only', 'QuizPracticePage');
     }
     
     navigate(`/results/${localActiveQuiz.id}`);
