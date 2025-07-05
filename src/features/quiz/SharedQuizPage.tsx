@@ -37,13 +37,19 @@ const SharedQuizPage: React.FC = () => {
         return;
       }
       
-      // Validate quiz ID format
-      if (!validateQuizId(quizId)) {
-        logger.warn('SharedQuizPage: Invalid quiz ID format.', 'SharedQuizPage', { quizId });
+      // Validate quiz ID format - allow potentially corrupted IDs to proceed to sharing service
+      if (!validateQuizId(quizId) && quizId.length < 30) {
+        logger.warn('SharedQuizPage: Invalid quiz ID format and too short to be a corrupted ID.', 'SharedQuizPage', { quizId });
         setError(t('sharedQuizNotFound'));
         setDebugInfo(`Invalid quiz ID format: ${quizId}`);
         setLoading(false);
         return;
+      }
+      
+      // Log potential corruption for debugging
+      if (!validateQuizId(quizId)) {
+        logger.info('SharedQuizPage: Detected potentially corrupted quiz ID, proceeding to sharing service for recovery', 'SharedQuizPage', { quizId });
+        setDebugInfo(`Potentially corrupted quiz ID detected: ${quizId}. Attempting recovery...`);
       }
       
       try {

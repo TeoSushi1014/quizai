@@ -122,10 +122,12 @@ export const shareQuizViaAPI = async (quiz: Quiz, currentUser?: UserProfile | nu
 export const getSharedQuiz = async (quizId: string, currentUser?: UserProfile | null): Promise<QuizForSharing | null> => {
   if (!quizId || !validateQuizId(quizId)) {
     logger.warn('Invalid quiz ID provided to getSharedQuiz', 'quizSharingService', { quizId });
-    return null;
+    console.log('🔍 DEBUG: getSharedQuiz called with potentially corrupted ID:', quizId);
+    // Don't return null immediately - let supabaseService handle potential recovery
   }
 
   logger.info('Fetching shared quiz from Supabase', 'quizSharingService', { quizId });
+  console.log('📡 DEBUG: Calling supabaseService.getPublicQuizById with:', quizId);
   
   const supabaseService = await import('./supabaseService').then(m => m.supabaseService);
   

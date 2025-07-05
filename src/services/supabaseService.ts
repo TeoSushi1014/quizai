@@ -647,7 +647,8 @@ export class SupabaseService {
 
   async getPublicQuizById(shareId: string): Promise<Quiz | null> {
     try {
-      logger.info('Attempting to fetch public quiz by share identifier from Supabase', 'SupabaseService', { shareId });
+      logger.info('=== QUIZ SHARING DEBUG === Attempting to fetch public quiz by share identifier from Supabase', 'SupabaseService', { shareId });
+      console.log('🔍 DEBUG: getPublicQuizById called with shareId:', shareId);
       
       const { error: testError } = await supabase
         .from('shared_quizzes')
@@ -729,12 +730,14 @@ export class SupabaseService {
         // Special case for the specific corrupted ID: "0551e5e-101e-460f-b8e4-4307d919250"
         // This appears to be missing 'f' at start and truncated at end
         if (shareId === "0551e5e-101e-460f-b8e4-4307d919250") {
+          console.log('🎯 DEBUG: Detected specific corrupted ID, applying fix...');
           // Try the corrected version: add 'f' at start
           const correctedId = "0f551e5e-101e-460f-b8e4-43072d9192b0";
           logger.info('Trying known corrected ID for specific corrupted case', 'SupabaseService', { 
             originalId: shareId, 
             correctedId 
           });
+          console.log('🔧 DEBUG: Trying corrected ID:', correctedId);
           
           const { data: correctedDataArray, error: correctedError } = await supabase
             .from('shared_quizzes')
