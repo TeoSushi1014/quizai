@@ -140,12 +140,18 @@ const QuizPracticePage: React.FC = () => {
     // Save to database if user is logged in
     if (currentUser) {
       try {
-        await supabaseService.saveQuizResult(resultData, currentUser.id);
-        console.log('Practice result saved to database successfully');
+        const saved = await supabaseService.saveQuizResult(resultData, currentUser.id, currentUser);
+        if (saved) {
+          console.log('Practice result saved to database successfully');
+        } else {
+          console.log('Practice result not saved to database (user not authenticated with Supabase, using local storage only)');
+        }
       } catch (error) {
         console.error('Failed to save practice result to database:', error);
         // Continue anyway - result is still saved locally
       }
+    } else {
+      console.log('No user logged in, practice result saved locally only');
     }
     
     navigate(`/results/${localActiveQuiz.id}`);

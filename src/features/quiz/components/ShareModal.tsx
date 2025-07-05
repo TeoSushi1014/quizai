@@ -1,6 +1,6 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { Modal, Button, Input, LoadingSpinner, Tooltip, Alert } from '../../../components/ui'; // Added Alert
+import React, { useState, useEffect, useRef } from 'react';
+import { Modal, Button, Input, LoadingSpinner, Alert } from '../../../components/ui';
 import { useAppContext, useTranslation } from '../../../App';
 import { CopyIcon, CheckCircleIcon, FacebookIcon, XIcon, LinkedInIcon, ShareIcon, InformationCircleIcon } from '../../../constants'; 
 import { shareQuizViaAPI } from '../../../services/quizSharingService';
@@ -21,11 +21,16 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, quiz }) => {
   const [isLinkCopied, setIsLinkCopied] = useState(false);
   const [isDemoMode, setIsDemoMode] = useState(false);
   const [urlError, setUrlError] = useState<string | null>(null);
+  const isShareRequestInProgress = useRef(false); // Prevent duplicate requests
   
   useEffect(() => {
     let mounted = true;
     const loadShareUrl = async () => {
+      // Prevent duplicate requests
+      if (isShareRequestInProgress.current) return;
+      
       if (isOpen && quiz && !shareUrl && !isLoadingUrl && !urlError) { 
+        isShareRequestInProgress.current = true;
         setIsLoadingUrl(true);
         setIsLinkCopied(false); 
         setIsDemoMode(false);
@@ -46,6 +51,7 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, quiz }) => {
           if (mounted) {
             setIsLoadingUrl(false);
           }
+          isShareRequestInProgress.current = false;
         }
       } else if (!isOpen) {
         // Reset state when modal is closed
@@ -54,12 +60,16 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, quiz }) => {
         setIsLinkCopied(false);
         setIsDemoMode(false);
         setUrlError(null);
+        isShareRequestInProgress.current = false;
       }
     };
     
     loadShareUrl();
-    return () => { mounted = false; };
-  }, [isOpen, quiz, currentUser, t, shareUrl, isLoadingUrl, urlError]);
+    return () => { 
+      mounted = false; 
+      isShareRequestInProgress.current = false;
+    };
+  }, [isOpen, quiz?.id, currentUser?.id, t]); // Fixed: removed shareUrl, isLoadingUrl, urlError from dependencies
   
   const handleCopyLink = async () => {
     if (!shareUrl || isLoadingUrl || urlError) return;

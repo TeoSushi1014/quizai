@@ -3,23 +3,26 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAppContext, useTranslation } from '../../App';
 import { Quiz } from '../../types';
 import { Button, Card, LoadingSpinner } from '../../components/ui';
-import { UserCircleIcon, CopyIcon, CheckCircleIcon, PlayIcon, PlusCircleIcon, XCircleIcon } from '../../constants';
+import { UserCircleIcon, CopyIcon, CheckCircleIcon, PlayIcon, PlusCircleIcon, XCircleIcon, SaveIcon } from '../../constants';
 import MathText from '../../components/MathText';
 import { getSharedQuiz } from '../../services/quizSharingService';
 import { logger } from '../../services/logService';
 import { validateQuizId } from '../../utils/quizValidationUtils';
+import { generateUUID } from '../../utils/uuidUtils';
 
 const SharedQuizPage: React.FC = () => {
   const { quizId } = useParams<{ quizId?: string }>();
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { quizzes: localUserQuizzes, setActiveQuiz, setQuizResult, currentUser } = useAppContext();
+  const { quizzes: localUserQuizzes, addQuiz, setActiveQuiz, setQuizResult, currentUser, showSuccessNotification, showErrorNotification } = useAppContext();
   
   const [sharedQuiz, setSharedQuiz] = useState<Quiz | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [copySuccess, setCopySuccess] = useState(false);
   const [debugInfo, setDebugInfo] = useState<string>('');
+  const [isQuizSaved, setIsQuizSaved] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   
   useEffect(() => {
     const loadSharedQuiz = async () => {
@@ -133,6 +136,58 @@ const SharedQuizPage: React.FC = () => {
     setQuizResult(null);
     navigate(`/quiz/${sharedQuiz.id}`);
   };
+
+  // Check if quiz is already saved by user
+  const isQuizAlreadySaved = () => {
+    if (!sharedQuiz || !currentUser) return false;
+    return localUserQuizzes.some(quiz => 
+      quiz.title === sharedQuiz.title && 
+      quiz.questions.length === sharedQuiz.questions.length
+    );
+  };
+
+  const handleSaveQuiz = async () => {
+    if (!sharedQuiz || !currentUser) {
+      showErrorNotification('Please log in to save quizzes');
+      return;
+    }
+
+    if (isQuizAlreadySaved()) {
+      showErrorNotification('This quiz is already saved to your collection');
+      return;
+    }
+
+    setIsSaving(true);
+    
+    try {
+      // Create a copy of the quiz with new ID and user ownership
+      const savedQuiz: Quiz = {
+        ...sharedQuiz,
+        id: generateUUID(), // Generate new ID for the user's copy
+        userId: currentUser.id,
+        createdAt: new Date().toISOString(),
+        lastModified: new Date().toISOString(),
+        isShared: false, // User's copy is not automatically shared
+        sharedTimestamp: undefined
+      };
+
+      // Add to user's quiz collection
+      addQuiz(savedQuiz);
+      setIsQuizSaved(true);
+      
+      showSuccessNotification('Quiz saved to your collection!');
+      logger.info('Shared quiz saved to user collection', 'SharedQuizPage', { 
+        originalQuizId: sharedQuiz.id,
+        newQuizId: savedQuiz.id,
+        userId: currentUser.id
+      });
+    } catch (error) {
+      logger.error('Failed to save shared quiz', 'SharedQuizPage', { quizId: sharedQuiz.id }, error as Error);
+      showErrorNotification('Failed to save quiz. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
   
   if (loading) {
     return (
@@ -187,6 +242,10 @@ const SharedQuizPage: React.FC = () => {
     ? (sharedQuiz.config.language.toLowerCase() === 'english' ? t('step2LanguageEnglish') : t('step2LanguageVietnamese')) 
     : t('notSpecified');
 
+  // Format creation date for display
+  const createdDate = sharedQuiz.createdAt ? new Date(sharedQuiz.createdAt).toLocaleDateString() : t('notSpecified');
+  const lastModified = sharedQuiz.lastModified ? new Date(sharedQuiz.lastModified).toLocaleDateString() : t('notSpecified');
+
   return (
     <div className="container mx-auto px-4 py-8 sm:py-12">
     <Card className="max-w-3xl mx-auto shadow-2xl !rounded-2xl animate-fadeInUp" useGlassEffect>
@@ -218,7 +277,7 @@ const SharedQuizPage: React.FC = () => {
         <div className="flex justify-between items-center mb-5">
           <h2 className="text-xl font-semibold text-[var(--color-text-primary)]">{t('quizDetails')}</h2>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center sm:text-left">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center sm:text-left mb-4">
           <div className="bg-[var(--color-bg-surface-2)]/60 p-4 rounded-xl border border-[var(--color-border-default)] shadow-md">
             <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider mb-1">{t('numberOfQuestions')}</p>
             <p className="text-2xl font-bold text-[var(--color-text-primary)]">{sharedQuiz.questions.length}</p>
@@ -232,6 +291,24 @@ const SharedQuizPage: React.FC = () => {
             <p className="text-lg font-semibold text-[var(--color-text-primary)]">{languageText}</p>
           </div>
         </div>
+        {/* Additional information row */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-center sm:text-left">
+          <div className="bg-[var(--color-bg-surface-2)]/30 p-3 rounded-lg border border-[var(--color-border-default)]/50">
+            <p className="text-xs font-medium text-[var(--color-text-muted)] mb-1">Created</p>
+            <p className="text-sm text-[var(--color-text-primary)]">{createdDate}</p>
+          </div>
+          <div className="bg-[var(--color-bg-surface-2)]/30 p-3 rounded-lg border border-[var(--color-border-default)]/50">
+            <p className="text-xs font-medium text-[var(--color-text-muted)] mb-1">Last Modified</p>
+            <p className="text-sm text-[var(--color-text-primary)]">{lastModified}</p>
+          </div>
+        </div>
+        {/* Source content information if available */}
+        {sharedQuiz.sourceContentSnippet && (
+          <div className="mt-4 bg-[var(--color-bg-surface-2)]/30 p-4 rounded-lg border border-[var(--color-border-default)]/50">
+            <p className="text-xs font-medium text-[var(--color-text-muted)] mb-2">Source Content</p>
+            <p className="text-sm text-[var(--color-text-secondary)] line-clamp-3">{sharedQuiz.sourceContentSnippet}</p>
+          </div>
+        )}
       </div>
       
       {sharedQuiz.questions && sharedQuiz.questions.length > 0 && (
@@ -266,6 +343,34 @@ const SharedQuizPage: React.FC = () => {
         >
           {t('takeQuizNow')}
         </Button>
+        
+        {/* Save Quiz Button - only show if user is logged in and quiz is not already saved */}
+        {currentUser && !isQuizAlreadySaved() && (
+          <Button 
+            variant="outline" 
+            size="lg" 
+            onClick={handleSaveQuiz}
+            disabled={isSaving}
+            leftIcon={<SaveIcon className="w-5 h-5" />} 
+            className="w-full sm:w-auto py-3.5 px-8 rounded-xl border-green-500/50 text-green-600 hover:bg-green-50 hover:border-green-500 dark:border-green-400/50 dark:text-green-400 dark:hover:bg-green-900/20"
+          >
+            {isSaving ? 'Saving...' : 'Save Quiz'}
+          </Button>
+        )}
+        
+        {/* Show already saved indicator */}
+        {currentUser && isQuizAlreadySaved() && (
+          <Button 
+            variant="outline" 
+            size="lg" 
+            disabled={true}
+            leftIcon={<CheckCircleIcon className="w-5 h-5" />} 
+            className="w-full sm:w-auto py-3.5 px-8 rounded-xl border-green-500/50 text-green-600 bg-green-50 dark:border-green-400/50 dark:text-green-400 dark:bg-green-900/20"
+          >
+            Already Saved
+          </Button>
+        )}
+        
          <Button 
             variant="outline" 
             size="lg" 

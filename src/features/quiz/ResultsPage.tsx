@@ -17,6 +17,7 @@ interface QuestionResultItemProps {
   index: number;
   sourceContentSnippet?: string;
   initiallyOpen: boolean;
+  getAnswerDisplayText: (question: Question, answerValue: string) => string;
 }
 
 const questionItemVariantsFactory = (shouldReduceMotion: boolean) => ({ // Renamed
@@ -38,7 +39,8 @@ const QuestionResultItem: React.FC<QuestionResultItemProps> = ({
   isCorrect,
   index,
   sourceContentSnippet,
-  initiallyOpen = false, 
+  initiallyOpen = false,
+  getAnswerDisplayText,
 }) => {
   const { t } = useTranslation(); // Ensure t is available
   const shouldReduceMotion = useShouldReduceMotion();
@@ -63,24 +65,23 @@ const QuestionResultItem: React.FC<QuestionResultItemProps> = ({
       >
         <div className="space-y-5 text-sm sm:text-base p-4 sm:p-5">
           <div>
-            <p className="font-semibold text-[var(--color-text-secondary)] mb-1.5">{t('resultsYourAnswerLabel', 'Your Answer:')}</p>
+            <p className="font-semibold text-[var(--color-text-secondary)] mb-1.5">{t('resultsYourAnswerLabel') || 'Your Answer:'}</p>
             <p className={`p-3 rounded-md ${isCorrect ? 'bg-green-500/10 text-green-700 dark:text-green-300' : 'bg-red-500/10 text-red-700 dark:text-red-300'}`}>
-              <MathText text={userAnswerText || t('resultsNoAnswerProvided', 'No answer provided')} />
+              <MathText text={getAnswerDisplayText(question, userAnswerText)} />
             </p>
           </div>
 
-          {!isCorrect && (
-            <div>
-              <p className="font-semibold text-[var(--color-text-secondary)] mb-1.5">{t('resultsCorrectAnswerLabel', 'Correct Answer:')}</p>
-              <p className="p-3 rounded-md bg-blue-500/10 text-blue-700 dark:text-blue-300">
-                <MathText text={question.correctAnswer} />
-              </p>
-            </div>
-          )}
+          {/* Always show correct answer for educational purposes */}
+          <div>
+            <p className="font-semibold text-[var(--color-text-secondary)] mb-1.5">{t('resultsCorrectAnswerLabel') || 'Correct Answer:'}</p>
+            <p className={`p-3 rounded-md ${isCorrect ? 'bg-green-500/10 text-green-700 dark:text-green-300' : 'bg-blue-500/10 text-blue-700 dark:text-blue-300'}`}>
+              <MathText text={getAnswerDisplayText(question, question.correctAnswer)} />
+            </p>
+          </div>
 
           {question.explanation && (
             <div>
-              <p className="font-semibold text-[var(--color-text-secondary)] mb-1.5">{t('resultsExplanationLabel', 'Explanation:')}</p>
+              <p className="font-semibold text-[var(--color-text-secondary)] mb-1.5">{t('resultsExplanationLabel') || 'Explanation:'}</p>
               <div className="p-3 rounded-md bg-gray-500/10 text-[var(--color-text-primary)]">
                 <MathText text={question.explanation} markdownFormatting={true} />
               </div>
@@ -290,6 +291,22 @@ const ResultsPage: React.FC = () => {
     return userAnswerText.trim() === question.correctAnswer.trim();
   };
 
+  // Helper function to get the display text for an answer
+  const getAnswerDisplayText = (question: Question, answerValue: string): string => {
+    if (!answerValue || answerValue.trim() === '') {
+      return 'No answer provided';
+    }
+    
+    // Check if answerValue is a number (index)
+    const answerIndex = parseInt(answerValue);
+    if (!isNaN(answerIndex) && question.options && question.options[answerIndex]) {
+      return question.options[answerIndex];
+    }
+    
+    // If not a valid index, return the original value (for cases where answer is already text)
+    return answerValue;
+  };
+
   const scoreColor = score >= 70 ? 'text-green-400' : score >= 40 ? 'text-amber-400' : 'text-red-400';
   const scoreProgressGradient = score >= 70 ? 'bg-gradient-to-r from-green-400 to-emerald-400'
                                 : score >= 40 ? 'bg-gradient-to-r from-amber-400 to-yellow-400'
@@ -352,6 +369,7 @@ const ResultsPage: React.FC = () => {
                 index={index}
                 sourceContentSnippet={currentDisplayQuiz.sourceContentSnippet}
                 initiallyOpen={!correct}
+                getAnswerDisplayText={getAnswerDisplayText}
               />
             );
           })}

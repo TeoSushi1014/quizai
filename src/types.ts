@@ -55,7 +55,8 @@ export type AppView = 'home' | 'dashboard' | 'create-quiz' | 'take-quiz' | 'resu
 export type Language = 'en' | 'vi';
 
 export interface UserProfile {
-  id: string;
+  id: string; // Google ID or primary identifier
+  supabaseId?: string; // Supabase UUID when available
   name?: string | null;
   email?: string | null;
   imageUrl?: string | null;

@@ -75,8 +75,27 @@ export class AuthService {
               hasSession: !!signUpData.session 
             });
           } else if (signInError) {
-            logger.error('AuthService: Unexpected sign in error', 'AuthService', { error: signInError.message });
-            throw new Error(`Authentication failed: ${signInError.message}`);
+            // Handle specific error cases
+            if (signInError.message.includes('Email not confirmed')) {
+              logger.info('AuthService: Email not confirmed, will use fallback Google profile', 'AuthService', { email });
+              // For unconfirmed emails, don't proceed with Supabase operations
+              // Jump directly to fallback Google profile logic
+              const fallbackProfile: UserProfile = {
+                id: googleUser.sub || googleUser.id || `google_${Date.now()}`,
+                email: googleUser.email,
+                name: googleUser.name || googleUser.given_name || googleUser.family_name,
+                imageUrl: googleUser.picture,
+                accessToken: googleUser.access_token
+              }
+              logger.info('AuthService: Using fallback Google profile due to unconfirmed email', 'AuthService', { userId: fallbackProfile.id })
+              return fallbackProfile
+            } else if (signInError.message.includes('Invalid login credentials')) {
+              // This case should have been handled above, but just in case
+              logger.warn('AuthService: Invalid credentials detected in unexpected branch', 'AuthService', { email });
+            } else {
+              logger.error('AuthService: Unexpected sign in error', 'AuthService', { error: signInError.message });
+              throw new Error(`Authentication failed: ${signInError.message}`);
+            }
           } else {
             supabaseUser = signInData.user;
             logger.info('AuthService: Successfully signed in existing Supabase user', 'AuthService', { 

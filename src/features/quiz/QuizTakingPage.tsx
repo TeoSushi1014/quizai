@@ -104,12 +104,18 @@ const QuizTakingPage: React.FC = () => {
     // Save to database if user is logged in
     if (currentUser) {
       try {
-        await supabaseService.saveQuizResult(result, currentUser.id);
-        console.log('Quiz result saved to database successfully');
+        const saved = await supabaseService.saveQuizResult(result, currentUser.id, currentUser);
+        if (saved) {
+          console.log('Quiz result saved to database successfully');
+        } else {
+          console.log('Quiz result not saved to database (user not authenticated with Supabase, using local storage only)');
+        }
       } catch (error) {
         console.error('Failed to save quiz result to database:', error);
         // Continue anyway - result is still saved locally
       }
+    } else {
+      console.log('No user logged in, quiz result saved locally only');
     }
     
     setShowConfirmationModal(false);
