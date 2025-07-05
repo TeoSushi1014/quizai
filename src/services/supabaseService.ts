@@ -645,16 +645,14 @@ export class SupabaseService {
       
       logger.info('Generated share token', 'SupabaseService', { quizId, shareToken });
       
-      // Create a shared quiz entry using upsert to handle duplicates
+      // Create a shared quiz entry using insert (we already checked it doesn't exist above)
       const { error: shareError } = await supabase
         .from('shared_quizzes')
-        .upsert({
+        .insert({
           quiz_id: quizId,
           share_token: shareToken,
           is_public: isPublic,
           expires_at: expiresAt || null
-        }, {
-          onConflict: 'quiz_id'
         });
 
       if (shareError) {
