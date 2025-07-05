@@ -189,7 +189,10 @@ export const getSharedQuiz = async (quizId: string, currentUser?: UserProfile | 
     }
   }
 
-  logger.warn('Quiz not found in Supabase', 'quizSharingService', { quizId });
+  logger.warn('Quiz not found in Supabase - may be an orphaned share link or expired quiz', 'quizSharingService', { 
+    quizId,
+    suggestion: 'Check if the quiz was deleted or if there are data consistency issues'
+  });
   return null;
 };
 

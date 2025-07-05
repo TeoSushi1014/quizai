@@ -715,11 +715,26 @@ export class SupabaseService {
       }
 
       if (!quizData) {
-        logger.warn('Quiz data not found in quizzes table despite being in shared_quizzes', 'SupabaseService', { 
+        logger.warn('Quiz data not found in quizzes table despite being in shared_quizzes - cleaning up orphaned entry', 'SupabaseService', { 
           quizId,
           sharedQuizFound: !!sharedData,
           sharedDataDetails: sharedData ? { isPublic: sharedData.is_public, expiresAt: sharedData.expires_at } : null
         });
+        
+        // Clean up the orphaned shared_quizzes entry
+        try {
+          await supabase
+            .from('shared_quizzes')
+            .delete()
+            .eq('quiz_id', quizId);
+          logger.info('Cleaned up orphaned shared_quizzes entry', 'SupabaseService', { quizId });
+        } catch (cleanupError) {
+          logger.warn('Failed to clean up orphaned shared_quizzes entry', 'SupabaseService', { 
+            quizId, 
+            cleanupError 
+          });
+        }
+        
         return null;
       }
 
