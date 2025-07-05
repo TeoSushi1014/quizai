@@ -649,13 +649,15 @@ export class SupabaseService {
     try {
       logger.info('=== QUIZ SHARING DEBUG === Attempting to fetch public quiz by share identifier from Supabase', 'SupabaseService', { shareId });
       
+      // Test connection by attempting a simple query instead of count
       const { error: testError } = await supabase
         .from('shared_quizzes')
-        .select('count')
+        .select('id')
         .limit(1)
-        .maybeSingle();
+        .single();
       
-      if (testError) {
+      // Only fail if it's a real connection error, not just "no data" error
+      if (testError && testError.code !== 'PGRST116') {
         logger.warn('Supabase connection test failed', 'SupabaseService', { 
           error: testError.message,
           code: testError.code,
@@ -664,66 +666,90 @@ export class SupabaseService {
         return null; // Fallback to localStorage
       }
       
-      // First, try to find the shared quiz entry by quiz_id (if shareId is a valid quiz ID)
-      let sharedData = null;
-      let quizId = null;
-      
       // Import the UUID validation function
       const { isValidUUID } = await import('../utils/uuidUtils');
       
+      // Use a JOIN query to get both shared quiz info and quiz data in one query
+      // This avoids data consistency issues between shared_quizzes and quizzes tables
+      let combinedData = null;
+      let quizData = null;
+      let sharedData = null;
+      
       if (isValidUUID(shareId)) {
-        // shareId looks like a quiz ID, search by quiz_id
-        logger.info('Share identifier appears to be a quiz ID, searching by quiz_id', 'SupabaseService', { shareId });
-        const { data: sharedDataArray, error: sharedError } = await supabase
+        // shareId looks like a quiz ID, search by quiz_id with JOIN
+        logger.info('Share identifier appears to be a quiz ID, searching with JOIN query', 'SupabaseService', { shareId });
+        const { data: joinDataArray, error: joinError } = await supabase
           .from('shared_quizzes')
-          .select('id, quiz_id, share_token, is_public, expires_at, created_at')
+          .select(`
+            id, quiz_id, share_token, is_public, expires_at, created_at,
+            quizzes!inner(id, title, questions, source_content, source_file_name, config, user_id, created_at, updated_at)
+          `)
           .eq('quiz_id', shareId)
           .eq('is_public', true)
           .limit(1);
 
-        sharedData = sharedDataArray && sharedDataArray.length > 0 ? sharedDataArray[0] : null;
+        combinedData = joinDataArray && joinDataArray.length > 0 ? joinDataArray[0] : null;
         
-        if (sharedError) {
-          logger.warn('Error checking if quiz is shared by quiz_id', 'SupabaseService', { 
+        if (joinError) {
+          logger.warn('Error fetching quiz with JOIN by quiz_id', 'SupabaseService', { 
             shareId, 
-            error: sharedError.message,
-            code: sharedError.code 
+            error: joinError.message,
+            code: joinError.code 
           });
         }
         
-        if (sharedData) {
-          quizId = shareId; // The shareId IS the quiz ID
+        if (combinedData) {
+          sharedData = {
+            id: combinedData.id,
+            quiz_id: combinedData.quiz_id,
+            share_token: combinedData.share_token,
+            is_public: combinedData.is_public,
+            expires_at: combinedData.expires_at,
+            created_at: combinedData.created_at
+          };
+          quizData = Array.isArray(combinedData.quizzes) ? combinedData.quizzes[0] : combinedData.quizzes;
         }
       }
       
-      // If not found by quiz_id, try searching by share_token
-      if (!sharedData) {
-        logger.info('Quiz not found by quiz_id, trying share_token', 'SupabaseService', { shareId });
-        const { data: sharedDataArray, error: sharedError } = await supabase
+      // If not found by quiz_id, try searching by share_token with JOIN
+      if (!combinedData) {
+        logger.info('Quiz not found by quiz_id, trying share_token with JOIN', 'SupabaseService', { shareId });
+        const { data: joinDataArray, error: joinError } = await supabase
           .from('shared_quizzes')
-          .select('id, quiz_id, share_token, is_public, expires_at, created_at')
+          .select(`
+            id, quiz_id, share_token, is_public, expires_at, created_at,
+            quizzes!inner(id, title, questions, source_content, source_file_name, config, user_id, created_at, updated_at)
+          `)
           .eq('share_token', shareId)
           .eq('is_public', true)
           .limit(1);
 
-        sharedData = sharedDataArray && sharedDataArray.length > 0 ? sharedDataArray[0] : null;
+        combinedData = joinDataArray && joinDataArray.length > 0 ? joinDataArray[0] : null;
         
-        if (sharedError) {
-          logger.warn('Error checking if quiz is shared by share_token', 'SupabaseService', { 
+        if (joinError) {
+          logger.warn('Error fetching quiz with JOIN by share_token', 'SupabaseService', { 
             shareId, 
-            error: sharedError.message,
-            code: sharedError.code 
+            error: joinError.message,
+            code: joinError.code 
           });
           return null;
         }
         
-        if (sharedData) {
-          quizId = sharedData.quiz_id; // Get the actual quiz ID from the share record
+        if (combinedData) {
+          sharedData = {
+            id: combinedData.id,
+            quiz_id: combinedData.quiz_id,
+            share_token: combinedData.share_token,
+            is_public: combinedData.is_public,
+            expires_at: combinedData.expires_at,
+            created_at: combinedData.created_at
+          };
+          quizData = Array.isArray(combinedData.quizzes) ? combinedData.quizzes[0] : combinedData.quizzes;
         }
       }
       
       // Last resort: Try partial quiz_id matching for corrupted URLs
-      if (!sharedData && shareId.length >= 30) {
+      if (!combinedData && shareId.length >= 30) {
         logger.info('Attempting partial quiz_id matching for potentially corrupted shareId', 'SupabaseService', { shareId });
         
         // Special case for the specific corrupted ID: "0551e5e-101e-460f-b8e4-4307d919250"
@@ -738,7 +764,10 @@ export class SupabaseService {
           
           const { data: correctedDataArray, error: correctedError } = await supabase
             .from('shared_quizzes')
-            .select('id, quiz_id, share_token, is_public, expires_at, created_at')
+            .select(`
+              id, quiz_id, share_token, is_public, expires_at, created_at,
+              quizzes!inner(id, title, questions, source_content, source_file_name, config, user_id, created_at, updated_at)
+            `)
             .eq('quiz_id', correctedId)
             .eq('is_public', true)
             .limit(1);
@@ -751,16 +780,27 @@ export class SupabaseService {
               correctedId,
               foundQuizId: correctedData.quiz_id 
             });
-            sharedData = correctedData;
-            quizId = correctedId;
+            combinedData = correctedData;
+            sharedData = {
+              id: correctedData.id,
+              quiz_id: correctedData.quiz_id,
+              share_token: correctedData.share_token,
+              is_public: correctedData.is_public,
+              expires_at: correctedData.expires_at,
+              created_at: correctedData.created_at
+            };
+            quizData = Array.isArray(correctedData.quizzes) ? correctedData.quizzes[0] : correctedData.quizzes;
           }
         }
         
         // General partial matching as fallback for other cases
-        if (!sharedData) {
+        if (!combinedData) {
           const { data: partialMatchArray, error: partialError } = await supabase
             .from('shared_quizzes')
-            .select('id, quiz_id, share_token, is_public, expires_at, created_at')
+            .select(`
+              id, quiz_id, share_token, is_public, expires_at, created_at,
+              quizzes!inner(id, title, questions, source_content, source_file_name, config, user_id, created_at, updated_at)
+            `)
             .eq('is_public', true)
             .limit(50); // Get a reasonable number to search through
 
@@ -778,8 +818,16 @@ export class SupabaseService {
                   similarity: similarity.toFixed(2),
                   shareToken: candidate.share_token 
                 });
-                sharedData = candidate;
-                quizId = candidateId;
+                combinedData = candidate;
+                sharedData = {
+                  id: candidate.id,
+                  quiz_id: candidate.quiz_id,
+                  share_token: candidate.share_token,
+                  is_public: candidate.is_public,
+                  expires_at: candidate.expires_at,
+                  created_at: candidate.created_at
+                };
+                quizData = Array.isArray(candidate.quizzes) ? candidate.quizzes[0] : candidate.quizzes;
                 break;
               }
             }
@@ -802,72 +850,27 @@ export class SupabaseService {
         return matches / maxLength;
       }
 
-      // If neither quiz_id nor share_token worked, return null
-      if (!sharedData || !quizId) {
+      // If no data found, return null
+      if (!combinedData || !sharedData || !quizData) {
         logger.info('Quiz is not publicly shared or quiz not found', 'SupabaseService', { shareId });
         return null;
       }
 
       // Check if the shared quiz has expired
       if (sharedData.expires_at && new Date(sharedData.expires_at) < new Date()) {
-        logger.info('Shared quiz has expired', 'SupabaseService', { quizId, expiresAt: sharedData.expires_at });
+        logger.info('Shared quiz has expired', 'SupabaseService', { 
+          quizId: sharedData.quiz_id, 
+          expiresAt: sharedData.expires_at 
+        });
         return null;
       }
       
-      // Now get the actual quiz using the quiz_id (which should be the same as quizId)
-      const { data: quizDataArray, error: quizError } = await supabase
-        .from('quizzes')
-        .select('*')
-        .eq('id', quizId)
-        .limit(1);
-
-      const quizData = quizDataArray && quizDataArray.length > 0 ? quizDataArray[0] : null;
+      // Since we used JOIN, we already have the quiz data
+      // No need for separate query to quizzes table
       
-      if (quizError) {
-        logger.error('Error fetching quiz from Supabase', 'SupabaseService', { 
-          quizId, 
-          error: quizError.message,
-          code: quizError.code 
-        });
-        return null; // Allow fallback to localStorage
-      }
-
-      if (!quizData) {
-        logger.warn('Quiz data not found in quizzes table despite being in shared_quizzes', 'SupabaseService', { 
-          quizId,
-          sharedQuizFound: !!sharedData,
-          sharedDataDetails: sharedData ? { 
-            shareId: sharedData.id,
-            quiz_id: sharedData.quiz_id,
-            share_token: sharedData.share_token,
-            isPublic: sharedData.is_public, 
-            expiresAt: sharedData.expires_at,
-            createdAt: sharedData.created_at
-          } : null
-        });
-        
-        // Clean up the orphaned shared_quizzes entry
-        try {
-          await supabase
-            .from('shared_quizzes')
-            .delete()
-            .eq('quiz_id', quizId);
-          logger.info('Cleaned up orphaned shared_quizzes entry', 'SupabaseService', { 
-            quizId
-          });
-        } catch (cleanupError) {
-          logger.warn('Failed to clean up orphaned shared_quizzes entry', 'SupabaseService', { 
-            quizId,
-            cleanupError 
-          });
-        }
-
-        return null;
-      }
-
       // Try to get user data if we have a user_id
       let creatorInfo = { name: 'Unknown', email: undefined };
-      if (quizData.user_id) {
+      if (quizData && typeof quizData === 'object' && !Array.isArray(quizData) && quizData.user_id) {
         try {
           // Use .limit(1) instead of .maybeSingle() to handle potential duplicates
           const { data: userDataArray, error: userError } = await supabase
@@ -896,14 +899,14 @@ export class SupabaseService {
 
       const quiz = this.mapDatabaseQuizToQuiz(quizData);
       logger.info('Successfully fetched quiz from Supabase', 'SupabaseService', { 
-        quizId,
+        quizId: sharedData.quiz_id,
         quizTitle: quiz.title
       });
       return {
         ...quiz,
         creator: creatorInfo,
         isShared: true,
-        sharedTimestamp: quizData.created_at
+        sharedTimestamp: quizData && typeof quizData === 'object' && !Array.isArray(quizData) ? quizData.created_at : new Date().toISOString()
       };
       
     } catch (error) {
