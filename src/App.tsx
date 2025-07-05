@@ -30,7 +30,7 @@ const SignInPage = lazy(() => import('./features/auth/SignInPage'));
 const QuizPracticePage = lazy(() => import('./features/quiz/QuizPracticePage'));
 const SyncSettingsPage = lazy(() => import('./features/settings/SyncSettingsPage'));
 const ProfilePage = lazy(() => import('./features/user/ProfilePage'));
-const SharedQuizPage = lazy(() => import('./features/quiz/SharedQuizPage')); 
+const SharedQuizPage = lazy(() => import('./features/quiz/SharedQuizPageDebug')); 
 
 import { loadQuizDataFromDrive, saveQuizDataToDrive } from './services/driveService';
 import { quizStorage } from './services/storageService'; 
