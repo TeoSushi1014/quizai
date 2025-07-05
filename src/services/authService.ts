@@ -6,17 +6,40 @@ import { logger } from './logService'
 export class AuthService {
   async signInWithGoogle(googleUser: any): Promise<UserProfile | null> {
     try {
+      // Enhanced logging for deployment debugging
       logger.info('AuthService: Starting Google sign in process', 'AuthService', { 
         hasEmail: !!googleUser.email,
         hasName: !!googleUser.name,
         hasId: !!googleUser.sub || !!googleUser.id,
-        hasAccessToken: !!googleUser.access_token
+        hasAccessToken: !!googleUser.access_token,
+        isProduction: window.location.hostname !== 'localhost'
       })
 
       const email = googleUser.email
       
       if (!email) {
+        logger.error('AuthService: No email provided by Google OAuth', 'AuthService', { 
+          googleUser: { 
+            hasEmail: !!googleUser.email,
+            hasName: !!googleUser.name,
+            keys: Object.keys(googleUser || {})
+          }
+        })
         throw new Error('No email provided by Google OAuth')
+      }
+
+      // Check Supabase configuration in deployment
+      try {
+        const { error: testError } = await supabase.from('users').select('count').limit(1);
+        if (testError) {
+          logger.error('AuthService: Supabase connection test failed', 'AuthService', { 
+            error: testError.message,
+            code: testError.code,
+            hint: testError.hint
+          });
+        }
+      } catch (connectionError) {
+        logger.error('AuthService: Supabase connection error', 'AuthService', {}, connectionError as Error);
       }
 
       // Strategy: Use Google OAuth with Supabase for proper authentication
@@ -200,29 +223,48 @@ export class AuthService {
             throw new Error('No access token available for authentication');
           }
         }
-        
-      } catch (authError) {
-        logger.error('AuthService: Supabase authentication failed, falling back to Google-only mode', 'AuthService', { 
-          email: email,
-          error: (authError as Error).message
-        });
-        
-        // Return a Google-only profile without Supabase integration
-        const fallbackProfile: UserProfile = {
-          id: googleUser.sub || googleUser.id || `google_${Date.now()}`,
-          email: googleUser.email,
-          name: googleUser.name || googleUser.given_name || googleUser.family_name,
-          imageUrl: googleUser.picture,
-          accessToken: googleUser.access_token
-        };
-        
-        logger.info('AuthService: Created fallback Google profile due to auth failure', 'AuthService', { 
-          userId: fallbackProfile.id,
-          email: fallbackProfile.email
-        });
-        
-        return fallbackProfile;
-      }
+        } catch (authError) {
+          logger.error('AuthService: Supabase authentication failed, analyzing error for deployment issues', 'AuthService', { 
+            email: email,
+            error: (authError as Error).message,
+            isProduction: window.location.hostname !== 'localhost',
+            supabaseUrl: import.meta.env.VITE_SUPABASE_URL ? 'configured' : 'missing',
+            supabaseKey: import.meta.env.VITE_SUPABASE_ANON_KEY ? 'configured' : 'missing'
+          });
+          
+          // Common deployment error patterns
+          const errorMsg = (authError as Error).message.toLowerCase();
+          if (errorMsg.includes('network') || errorMsg.includes('fetch') || errorMsg.includes('cors')) {
+            logger.error('AuthService: Network/CORS issue detected - common in deployment', 'AuthService', { 
+              suggestion: 'Check CORS settings, network connectivity, and ensure Supabase URL is accessible from deployment domain'
+            });
+          } else if (errorMsg.includes('unauthorized') || errorMsg.includes('403') || errorMsg.includes('401')) {
+            logger.error('AuthService: Authentication/Authorization issue - check API keys', 'AuthService', { 
+              suggestion: 'Verify VITE_SUPABASE_ANON_KEY is correctly set in deployment environment'
+            });
+          } else if (errorMsg.includes('rls') || errorMsg.includes('policy') || errorMsg.includes('42501')) {
+            logger.error('AuthService: RLS Policy issue detected', 'AuthService', { 
+              suggestion: 'Check Row Level Security policies in Supabase dashboard'
+            });
+          }
+          
+          // Return a Google-only profile without Supabase integration
+          const fallbackProfile: UserProfile = {
+            id: googleUser.sub || googleUser.id || `google_${Date.now()}`,
+            email: googleUser.email,
+            name: googleUser.name || googleUser.given_name || googleUser.family_name,
+            imageUrl: googleUser.picture,
+            accessToken: googleUser.access_token
+          };
+          
+          logger.info('AuthService: Created fallback Google profile due to auth failure', 'AuthService', { 
+            userId: fallbackProfile.id,
+            email: fallbackProfile.email,
+            reason: 'Supabase authentication failed in deployment environment'
+          });
+          
+          return fallbackProfile;
+        }
 
       // If we have a Supabase session, try to work with user profiles
       if (supabaseUser) {
