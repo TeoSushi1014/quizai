@@ -1,193 +1,271 @@
+// Production Debug Utilities - Available in browser console via window.QuizAIDebug
 import { authService } from '../services/authService';
-import { runDiagnostics, quickCheck } from '../utils/deploymentDiagnostics';
-import { validateAll } from '../utils/deploymentValidation';
+import { supabase } from '../services/supabaseClient';
+import { logger } from '../services/logService';
 
-// Debug utilities specifically for production troubleshooting
-export const productionDebugUtils = {
-  // Test authentication flow
-  async testAuth(email: string = 'test@example.com') {
-    console.log('🔐 Testing authentication flow...');
+class ProductionDebugger {
+  private logs: any[] = [];
+
+  async testAuth(email: string = 'test@example.com'): Promise<void> {
+    console.group('🔐 Authentication Test');
+    
     try {
       const result = await authService.testSupabaseConnectivity(email);
-      console.log('Auth test result:', result);
-      return result;
+      
+      console.log('📊 Connectivity Results:', result);
+      
+      if (result.canConnect) {
+        console.log('✅ Database connection: OK');
+      } else {
+        console.log('❌ Database connection: FAILED');
+      }
+      
+      if (result.hasSession) {
+        console.log('✅ Authentication session: ACTIVE');
+        console.log('👤 Session details:', result.sessionDetails);
+      } else {
+        console.log('❌ Authentication session: NONE');
+      }
+      
+      if (result.userExists) {
+        console.log('✅ User exists in database');
+        console.log('👤 User details:', result.userDetails);
+      } else {
+        console.log('ℹ️ User does not exist in database');
+      }
+      
     } catch (error) {
-      console.error('Auth test failed:', error);
-      return null;
+      console.error('❌ Authentication test failed:', error);
     }
-  },
+    
+    console.groupEnd();
+  }
 
-  // Run all diagnostics
-  async runFullDiagnostics() {
-    console.log('🔍 Running comprehensive diagnostics...');
-    await runDiagnostics();
-    
-    const quickResult = await quickCheck();
-    console.log('Quick health check:', quickResult);
-    
-    const validation = await validateAll();
-    console.log('Full validation:', validation);
-    
-    return { quickResult, validation };
-  },
-
-  // Check OAuth configuration
-  checkOAuthConfig() {
-    console.log('🔗 Checking OAuth configuration...');
+  checkConfig(): void {
+    console.group('⚙️ Configuration Check');
     
     const config = {
-      hostname: window.location.hostname,
-      protocol: window.location.protocol,
-      fullUrl: window.location.href,
+      supabaseUrl: import.meta.env.VITE_SUPABASE_URL || 'NOT SET',
+      supabaseKey: import.meta.env.VITE_SUPABASE_ANON_KEY ? 'SET (Hidden)' : 'NOT SET',
+      environment: window.location.hostname,
       isProduction: window.location.hostname !== 'localhost',
-      googleApiLoaded: !!(window as any).google,
-      supabaseUrl: import.meta.env.VITE_SUPABASE_URL,
-      supabaseKeyLength: import.meta.env.VITE_SUPABASE_ANON_KEY?.length || 0
+      userAgent: navigator.userAgent,
+      timestamp: new Date().toISOString()
     };
     
     console.table(config);
     
     // Check for common issues
-    const issues = [];
-    if (!config.supabaseUrl) issues.push('Missing VITE_SUPABASE_URL');
-    if (config.supabaseKeyLength === 0) issues.push('Missing VITE_SUPABASE_ANON_KEY');
-    if (!config.googleApiLoaded) issues.push('Google API not loaded');
-    if (config.isProduction && config.protocol !== 'https:') issues.push('Not using HTTPS in production');
-    
-    if (issues.length > 0) {
-      console.warn('⚠️ Issues found:', issues);
-    } else {
-      console.log('✅ Basic configuration looks good');
+    if (!import.meta.env.VITE_SUPABASE_URL) {
+      console.warn('⚠️ VITE_SUPABASE_URL is not set');
     }
     
-    return { config, issues };
-  },
+    if (!import.meta.env.VITE_SUPABASE_ANON_KEY) {
+      console.warn('⚠️ VITE_SUPABASE_ANON_KEY is not set');
+    }
+    
+    if (config.isProduction) {
+      console.log('🌐 Running in PRODUCTION mode');
+    } else {
+      console.log('🛠️ Running in DEVELOPMENT mode');
+    }
+    
+    console.groupEnd();
+  }
 
-  // Test specific URL patterns for OAuth
-  checkOAuthUrls() {
-    console.log('🌐 Checking OAuth URL patterns...');
+  async runDiagnostics(): Promise<void> {
+    console.group('🔍 Full System Diagnostics');
     
-    const baseUrl = `${window.location.protocol}//${window.location.hostname}`;
-    const fullBaseUrl = `${baseUrl}${window.location.pathname}`;
+    console.log('Starting comprehensive diagnostics...');
     
-    const requiredUrls = {
-      'Site URL': fullBaseUrl,
-      'JavaScript Origins': [
-        baseUrl,
-        fullBaseUrl
-      ],
-      'Redirect URIs': [
-        `${fullBaseUrl}`,
-        `${fullBaseUrl}/`,
-        `${fullBaseUrl}#/`,
-        'https://jbuqonmeorldgiwvdror.supabase.co/auth/v1/callback'
-      ]
-    };
+    // 1. Configuration check
+    this.checkConfig();
     
-    console.log('Required OAuth URLs for Google Cloud Console:');
-    console.log('=====================================');
-    Object.entries(requiredUrls).forEach(([key, value]) => {
-      console.log(`${key}:`);
-      if (Array.isArray(value)) {
-        value.forEach(url => console.log(`  - ${url}`));
+    // 2. Network connectivity
+    console.group('🌐 Network Tests');
+    try {
+      const response = await fetch(import.meta.env.VITE_SUPABASE_URL + '/rest/v1/', {
+        method: 'GET',
+        headers: {
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
+        }
+      });
+      
+      if (response.ok) {
+        console.log('✅ Supabase API is reachable');
       } else {
-        console.log(`  - ${value}`);
+        console.log('❌ Supabase API returned error:', response.status, response.statusText);
       }
-      console.log('');
-    });
+    } catch (error) {
+      console.error('❌ Network test failed:', error);
+    }
+    console.groupEnd();
     
-    return requiredUrls;
-  },
+    // 3. Database tests
+    console.group('💾 Database Tests');
+    try {
+      const { error } = await supabase.from('users').select('count').limit(1);
+      if (error) {
+        console.error('❌ Database query failed:', error);
+      } else {
+        console.log('✅ Database query successful');
+      }
+    } catch (error) {
+      console.error('❌ Database test failed:', error);
+    }
+    console.groupEnd();
+    
+    // 4. Authentication status
+    console.group('🔐 Authentication Status');
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        console.log('✅ Active session found');
+        console.log('👤 User:', session.user.email);
+      } else {
+        console.log('ℹ️ No active session');
+      }
+    } catch (error) {
+      console.error('❌ Session check failed:', error);
+    }
+    console.groupEnd();
+    
+    console.log('✅ Diagnostics completed');
+    console.groupEnd();
+  }
 
-  // Simulate OAuth token
-  async simulateGoogleAuth() {
-    console.log('🧪 Simulating Google auth for testing...');
-    
-    const mockGoogleUser = {
-      sub: 'test-user-id',
-      email: 'test@example.com',
-      name: 'Test User',
-      picture: 'https://via.placeholder.com/150',
-      access_token: 'mock-access-token',
-      credential: 'mock-credential'
-    };
+  async checkStrategy(googleUser: any): Promise<void> {
+    console.group('🎯 Authentication Strategy Test');
     
     try {
-      const result = await authService.signInWithGoogle(mockGoogleUser);
-      console.log('Simulated auth result:', result);
-      return result;
+      // Import the AuthenticationManager to test strategies
+      const { AuthenticationManager } = await import('../services/authStrategies');
+      const { supabaseService } = await import('../services/supabaseService');
+      
+      console.log('📝 Testing Google user object:', {
+        hasEmail: !!googleUser?.email,
+        hasName: !!googleUser?.name,
+        hasId: !!googleUser?.sub || !!googleUser?.id,
+        hasAccessToken: !!googleUser?.access_token,
+        keys: Object.keys(googleUser || {})
+      });
+      
+      // Test environment detection
+      const isProduction = window.location.hostname !== 'localhost';
+      console.log(`🌍 Environment: ${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'}`);
+      
+      // Check which strategy would be selected
+      console.log('🎯 Strategy selection logic:');
+      console.log('- Full Integration: Available in all environments');
+      console.log('- Google Only: Fallback when Full Integration fails');
+      
+      // Initialize manager for future use
+      new AuthenticationManager(supabase, supabaseService);
+      console.log('✅ AuthenticationManager initialized successfully');
+      
     } catch (error) {
-      console.error('Simulated auth failed:', error);
-      return null;
-    }
-  },
-
-  // Clear all auth data
-  clearAuthData() {
-    console.log('🧹 Clearing all authentication data...');
-    
-    // Clear localStorage
-    const keysToRemove = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key && (key.includes('supabase') || key.includes('auth') || key.includes('google'))) {
-        keysToRemove.push(key);
-      }
+      console.error('❌ Strategy test failed:', error);
     }
     
-    keysToRemove.forEach(key => {
-      localStorage.removeItem(key);
-      console.log(`Removed: ${key}`);
-    });
-    
-    // Clear sessionStorage
-    const sessionKeysToRemove = [];
-    for (let i = 0; i < sessionStorage.length; i++) {
-      const key = sessionStorage.key(i);
-      if (key && (key.includes('supabase') || key.includes('auth') || key.includes('google'))) {
-        sessionKeysToRemove.push(key);
-      }
-    }
-    
-    sessionKeysToRemove.forEach(key => {
-      sessionStorage.removeItem(key);
-      console.log(`Removed from session: ${key}`);
-    });
-    
-    console.log('✅ Auth data cleared. Refresh the page to restart.');
-  },
-
-  // Show help
-  help() {
-    console.log(`
-🛠️ QuizAI Production Debug Utilities
-=====================================
-
-Available commands:
-- window.QuizAIDebug.testAuth('email@example.com')    // Test auth with specific email
-- window.QuizAIDebug.runFullDiagnostics()             // Run all diagnostic tests
-- window.QuizAIDebug.checkOAuthConfig()               // Check OAuth configuration
-- window.QuizAIDebug.checkOAuthUrls()                 // Get required OAuth URLs
-- window.QuizAIDebug.simulateGoogleAuth()             // Test with mock Google user
-- window.QuizAIDebug.clearAuthData()                  // Clear all auth data
-- window.QuizAIDebug.help()                           // Show this help
-
-Example usage:
-  window.QuizAIDebug.runFullDiagnostics()
-  window.QuizAIDebug.checkOAuthUrls()
-
-For OAuth setup issues:
-1. Run checkOAuthUrls() to get required URLs
-2. Add these URLs to Google Cloud Console
-3. Add site URL to Supabase Auth settings
-4. Clear auth data and test again
-    `);
+    console.groupEnd();
   }
+
+  async forceGoogleOnly(googleUser: any): Promise<void> {
+    console.group('📱 Force Google-Only Authentication Test');
+    
+    try {
+      const { GoogleOnlyStrategy } = await import('../services/authStrategies');
+      const strategy = new GoogleOnlyStrategy();
+      
+      const result = await strategy.authenticate(googleUser);
+      
+      if (result) {
+        console.log('✅ Google-only authentication successful');
+        console.log('👤 User profile:', result);
+      } else {
+        console.log('❌ Google-only authentication failed');
+      }
+      
+    } catch (error) {
+      console.error('❌ Google-only test failed:', error);
+    }
+    
+    console.groupEnd();
+  }
+
+  async testFullIntegration(googleUser: any): Promise<void> {
+    console.group('🔗 Force Full Integration Test');
+    
+    try {
+      const { FullIntegrationStrategy } = await import('../services/authStrategies');
+      const { supabaseService } = await import('../services/supabaseService');
+      
+      const strategy = new FullIntegrationStrategy(supabase, supabaseService);
+      
+      const result = await strategy.authenticate(googleUser);
+      
+      if (result) {
+        console.log('✅ Full integration authentication successful');
+        console.log('👤 User profile:', result);
+      } else {
+        console.log('❌ Full integration authentication failed');
+      }
+      
+    } catch (error) {
+      console.error('❌ Full integration test failed:', error);
+    }
+    
+    console.groupEnd();
+  }
+
+  clearLogs(): void {
+    console.clear();
+    this.logs = [];
+    console.log('🧹 Logs cleared');
+  }
+
+  exportLogs(): void {
+    const logData = {
+      timestamp: new Date().toISOString(),
+      userAgent: navigator.userAgent,
+      url: window.location.href,
+      config: {
+        hasSupabaseUrl: !!import.meta.env.VITE_SUPABASE_URL,
+        hasSupabaseKey: !!import.meta.env.VITE_SUPABASE_ANON_KEY,
+        supabaseUrl: import.meta.env.VITE_SUPABASE_URL
+      },
+      logs: this.logs
+    };
+    
+    const blob = new Blob([JSON.stringify(logData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `quizai-debug-${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    
+    console.log('📥 Debug logs exported');
+  }
+}
+
+// Create global debug instance
+const productionDebugger = new ProductionDebugger();
+
+// Attach to window for console access
+(window as any).QuizAIDebug = {
+  testAuth: productionDebugger.testAuth.bind(productionDebugger),
+  checkConfig: productionDebugger.checkConfig.bind(productionDebugger),
+  runDiagnostics: productionDebugger.runDiagnostics.bind(productionDebugger),
+  checkStrategy: productionDebugger.checkStrategy.bind(productionDebugger),
+  forceGoogleOnly: productionDebugger.forceGoogleOnly.bind(productionDebugger),
+  testFullIntegration: productionDebugger.testFullIntegration.bind(productionDebugger),
+  clearLogs: productionDebugger.clearLogs.bind(productionDebugger),
+  exportLogs: productionDebugger.exportLogs.bind(productionDebugger)
 };
 
-// Make debug utilities available globally in production
-if (typeof window !== 'undefined') {
-  (window as any).QuizAIDebug = productionDebugUtils;
-  console.log('QuizAI Debug utilities available at window.QuizAIDebug');
-  console.log('Type window.QuizAIDebug.help() for available commands');
-}
+// Log availability
+logger.info('Production debug utilities loaded. Use window.QuizAIDebug in browser console.', 'ProductionDebug');
+
+export default productionDebugger;

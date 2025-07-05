@@ -169,8 +169,6 @@ export const en = {
   takeQuizNow: "Take Quiz Now",
   unknownCreator: "Anonymous User",
   sharedQuizError: "Error Loading Quiz", 
-  shareQuizDemoModeTitle: "Demo Sharing Mode",
-  shareQuizDemoModeMessage: "Note: This share link is for demonstration purposes and currently only works reliably on the same browser and device. For full sharing capabilities across different users and devices, a server-side implementation is required.",
   
   // Friendly Sync Error Messages
   driveErrorUnauthorizedFriendly: "Session expired. Click to sign in again.",
@@ -361,8 +359,6 @@ export const vi = {
   takeQuizNow: "Làm Quiz Ngay",
   unknownCreator: "Người dùng Ẩn danh",
   sharedQuizError: "Lỗi Tải Quiz", 
-  shareQuizDemoModeTitle: "Chế độ Chia sẻ Demo",
-  shareQuizDemoModeMessage: "Lưu ý: Liên kết chia sẻ này dành cho mục đích minh họa và hiện chỉ hoạt động đáng tin cậy trên cùng một trình duyệt và thiết bị. Để có đầy đủ chức năng chia sẻ cho nhiều người dùng và thiết bị khác nhau, cần phải triển khai phía máy chủ.",
 
   // Friendly Sync Error Messages
   driveErrorUnauthorizedFriendly: "Phiên đăng nhập hết hạn. Nhấp để đăng nhập lại.",

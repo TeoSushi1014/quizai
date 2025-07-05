@@ -214,9 +214,11 @@ export const AuthStatusModal: React.FC<AuthStatusProps> = ({ onClose }) => {
                 <button
                   onClick={() => {
                     console.log('🔍 Running full diagnostics...');
-                    import('../utils/deploymentDiagnostics').then(({ runDiagnostics }) => {
-                      runDiagnostics();
-                    });
+                    if ((window as any).QuizAIDebug) {
+                      (window as any).QuizAIDebug.runDiagnostics();
+                    } else {
+                      console.log('Debug utilities not available');
+                    }
                   }}
                   className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
                 >

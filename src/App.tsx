@@ -21,6 +21,9 @@ import 'github-markdown-css/github-markdown.css';
 import './styles/markdown-custom.css';
 import './styles/markdown-github.css';
 
+// Load debug utilities in all environments for testing
+import './utils/productionDebug';
+
 import HomePage from './features/quiz/HomePage';
 import DashboardPage from './features/quiz/DashboardPage';
 const QuizCreatePage = lazy(() => import('./features/quiz/QuizCreatePage'));

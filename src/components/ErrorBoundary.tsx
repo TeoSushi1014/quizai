@@ -200,10 +200,12 @@ class ErrorBoundary extends Component<Props, State> {
               <button
                 className="px-6 py-2.5 bg-white/10 text-white rounded-lg hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white/70 focus:ring-offset-2 focus:ring-offset-[var(--color-danger-accent)] transition-colors"
                 onClick={() => {
-                  // Run deployment diagnostics
-                  import('../utils/deploymentDiagnostics').then(({ runDiagnostics }) => {
-                    runDiagnostics();
-                  });
+                  // Run production diagnostics using new debug utilities
+                  if ((window as any).QuizAIDebug) {
+                    (window as any).QuizAIDebug.runDiagnostics();
+                  } else {
+                    console.log('Debug utilities not available');
+                  }
                 }}
               >
                 Run Diagnostics

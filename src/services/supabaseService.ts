@@ -720,111 +720,11 @@ export class SupabaseService {
       }
 
       if (!quizData) {
-        // Check if this is a known demo quiz ID that we should handle
-        const isDemoQuiz = quizId === 'dc65eb4d-ae5f-4932-8c82-cc6c156616d6' || quizId === '7546c2f6-02cb-426e-bbf0-cc324496e4ee';
-        
-        if (isDemoQuiz) {
-          logger.info('Quiz not found in database, creating demo quiz for testing', 'SupabaseService', { quizId });
-        } else {
-          logger.warn('Quiz data not found in quizzes table despite being in shared_quizzes', 'SupabaseService', { 
-            quizId,
-            sharedQuizFound: !!sharedData,
-            sharedDataDetails: sharedData ? { isPublic: sharedData.is_public, expiresAt: sharedData.expires_at } : null
-          });
-          // For non-demo quizzes that are missing, return null to trigger fallback mechanisms
-          return null;
-        }
-        
-        // Special handling for development/demo purposes
-        if (isDemoQuiz) {
-          logger.info('Creating demo quiz data for testing shared quiz functionality', 'SupabaseService', { quizId });
-          
-          // Determine appropriate title based on quiz ID
-          let title = 'Shared Quiz: General Knowledge Test';
-          if (quizId === '7546c2f6-02cb-426e-bbf0-cc324496e4ee') {
-            title = 'Technology & Programming Knowledge Quiz';
-          } else if (quizId === 'dc65eb4d-ae5f-4932-8c82-cc6c156616d6') {
-            title = 'Demo Shared Quiz: Mixed Topics';
-          }
-          
-          // Return a demo quiz for testing purposes with complete information
-          const demoQuiz = {
-            id: quizId,
-            title: title,
-            questions: [
-              {
-                id: 'q1',
-                questionText: 'What is the capital of France?',
-                options: ['London', 'Berlin', 'Paris', 'Madrid'],
-                correctAnswer: '2',
-                explanation: 'Paris is the capital and largest city of France, known for its art, culture, and history.'
-              },
-              {
-                id: 'q2',
-                questionText: 'Which programming language is this QuizAI app built with?',
-                options: ['Python', 'TypeScript/JavaScript', 'Java', 'C++'],
-                correctAnswer: '1',
-                explanation: 'This QuizAI app is built with TypeScript/JavaScript using React framework for the frontend.'
-              },
-              {
-                id: 'q3',
-                questionText: 'What does API stand for in software development?',
-                options: ['Application Programming Interface', 'Advanced Programming Implementation', 'Automated Program Integration', 'Application Process Integration'],
-                correctAnswer: '0',
-                explanation: 'API stands for Application Programming Interface, which allows different software applications to communicate with each other.'
-              },
-              {
-                id: 'q4',
-                questionText: 'What is the purpose of this shared quiz feature?',
-                options: ['To share quizzes with others', 'To backup quizzes', 'To edit quizzes collaboratively', 'To delete quizzes'],
-                correctAnswer: '0',
-                explanation: 'The shared quiz feature allows users to share their created quizzes with others via a public link.'
-              },
-              {
-                id: 'q5',
-                questionText: 'Which database is used for storing shared quizzes?',
-                options: ['MySQL', 'PostgreSQL (Supabase)', 'MongoDB', 'SQLite'],
-                correctAnswer: '1',
-                explanation: 'This app uses Supabase, which is built on PostgreSQL, for storing shared quiz data and user information.'
-              }
-            ],
-            createdAt: '2024-12-20T10:00:00.000Z',
-            lastModified: '2024-12-20T10:00:00.000Z',
-            sourceContentSnippet: 'Demo content for testing shared quiz functionality - comprehensive quiz covering various topics',
-            config: {
-              numQuestions: 5,
-              difficulty: 'Medium' as const,
-              language: 'English',
-              selectedModel: 'gemini' as const,
-              customUserPrompt: 'Create educational questions about technology and general knowledge'
-            },
-            userId: 'demo-user-id',
-            creator: {
-              name: 'QuizAI Demo User',
-              email: 'demo@quizai.app'
-            },
-            isShared: true,
-            sharedTimestamp: '2024-12-20T10:00:00.000Z',
-            // Database fields for mapping
-            created_at: '2024-12-20T10:00:00.000Z',
-            updated_at: '2024-12-20T10:00:00.000Z',
-            user_id: 'demo-user-id',
-            source_content: 'Demo content for testing shared quiz functionality - comprehensive quiz covering various topics'
-          };
-          
-          const mappedQuiz = this.mapDatabaseQuizToQuiz(demoQuiz);
-          logger.info('Demo quiz created successfully with complete information', 'SupabaseService', { 
-            quizId, 
-            title: mappedQuiz.title,
-            questionCount: mappedQuiz.questions.length,
-            hasConfig: !!mappedQuiz.config,
-            hasCreator: !!mappedQuiz.creator,
-            difficulty: mappedQuiz.config?.difficulty,
-            language: mappedQuiz.config?.language
-          });
-          return mappedQuiz;
-        }
-        
+        logger.warn('Quiz data not found in quizzes table despite being in shared_quizzes', 'SupabaseService', { 
+          quizId,
+          sharedQuizFound: !!sharedData,
+          sharedDataDetails: sharedData ? { isPublic: sharedData.is_public, expiresAt: sharedData.expires_at } : null
+        });
         return null;
       }
 

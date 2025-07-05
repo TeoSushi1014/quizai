@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Modal, Button, Input, LoadingSpinner, Alert } from '../../../components/ui';
+import { Modal, Button, Input, LoadingSpinner } from '../../../components/ui';
 import { useAppContext, useTranslation } from '../../../App';
-import { CopyIcon, CheckCircleIcon, FacebookIcon, XIcon, LinkedInIcon, ShareIcon, InformationCircleIcon } from '../../../constants'; 
+import { CopyIcon, CheckCircleIcon, FacebookIcon, XIcon, LinkedInIcon, ShareIcon } from '../../../constants'; 
 import { shareQuizViaAPI } from '../../../services/quizSharingService';
 import { Quiz } from '../../../types';
 import { logger } from '../../../services/logService';
@@ -19,7 +19,6 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, quiz }) => {
   const [shareUrl, setShareUrl] = useState<string>('');
   const [isLoadingUrl, setIsLoadingUrl] = useState(false);
   const [isLinkCopied, setIsLinkCopied] = useState(false);
-  const [isDemoMode, setIsDemoMode] = useState(false);
   const [urlError, setUrlError] = useState<string | null>(null);
   const isShareRequestInProgress = useRef(false); // Prevent duplicate requests
   
@@ -33,13 +32,11 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, quiz }) => {
         isShareRequestInProgress.current = true;
         setIsLoadingUrl(true);
         setIsLinkCopied(false); 
-        setIsDemoMode(false);
         setUrlError(null);
         try {
           const result = await shareQuizViaAPI(quiz, currentUser);
           if (mounted) {
             setShareUrl(result.shareUrl);
-            setIsDemoMode(result.isDemo);
           }
         } catch (error) {
           logger.error('Error generating share URL in Modal:', 'ShareModal', { quizId: quiz.id }, error as Error);
@@ -58,7 +55,6 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, quiz }) => {
         setShareUrl('');
         setIsLoadingUrl(false);
         setIsLinkCopied(false);
-        setIsDemoMode(false);
         setUrlError(null);
         isShareRequestInProgress.current = false;
       }
@@ -118,17 +114,6 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, quiz }) => {
       useSolidBackground={true}
     >
       <div className="space-y-6 py-2">
-        {isDemoMode && !isLoadingUrl && (
-          <Alert variant="warning" className="mb-4">
-            <div className="flex items-start">
-              <InformationCircleIcon className="w-5 h-5 mt-0.5 mr-2 flex-shrink-0" />
-              <div>
-                <p className="font-medium">{t('shareQuizDemoModeTitle')}</p>
-                <p className="mt-1 text-sm">{t('shareQuizDemoModeMessage')}</p>
-              </div>
-            </div>
-          </Alert>
-        )}
         <div>
           <p className="text-sm text-[var(--color-text-secondary)] mb-2">
             {t('shareQuizDescription')}
