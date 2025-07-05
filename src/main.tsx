@@ -14,8 +14,6 @@ import './styles/question-layout-fix.css';
 import './styles/question-title-fix.css';
 import './styles/accordion-question-fix.css';
 
-import('./utils/productionDebug');
-
 import('./services/supabaseService').then(({ supabaseService }) => {
   import('./services/authService').then(({ authService }) => {
     const existingDebug = (window as any).QuizAIDebug || {};
