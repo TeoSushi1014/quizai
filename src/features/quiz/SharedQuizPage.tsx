@@ -5,7 +5,7 @@ import { Quiz } from '../../types';
 import { Button, Card, LoadingSpinner } from '../../components/ui';
 import { UserCircleIcon, CopyIcon, CheckCircleIcon, PlayIcon, PlusCircleIcon, XCircleIcon } from '../../constants';
 import MathText from '../../components/MathText';
-import { getSharedQuiz, listSharedQuizzes } from '../../services/quizSharingService';
+import { getSharedQuiz } from '../../services/quizSharingService';
 import { logger } from '../../services/logService';
 import { validateQuizId } from '../../utils/quizValidationUtils';
 
@@ -71,11 +71,9 @@ const SharedQuizPage: React.FC = () => {
             const testQuiz: Quiz = {
               id: quizId,
               title: 'Test Shared Quiz',
-              description: 'This is a test quiz for sharing functionality',
               questions: [
                 {
                   id: 'q1',
-                  type: 'multiple-choice',
                   questionText: 'What is 2 + 2?',
                   options: ['3', '4', '5', '6'],
                   correctAnswer: '1',
@@ -83,20 +81,14 @@ const SharedQuizPage: React.FC = () => {
                 },
                 {
                   id: 'q2',
-                  type: 'true-false',
                   questionText: 'The earth is round.',
                   options: ['True', 'False'],
                   correctAnswer: '0',
                   explanation: 'The Earth is approximately spherical.'
                 }
               ],
-              timeLimit: 300,
-              shuffleQuestions: false,
-              shuffleOptions: false,
               createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-              tags: ['test', 'demo'],
-              category: 'Test'
+              lastModified: new Date().toISOString()
             };
             
             setSharedQuiz(testQuiz);
@@ -106,8 +98,8 @@ const SharedQuizPage: React.FC = () => {
           }
           
           // Debug information
-          const availableSharedQuizzes = listSharedQuizzes();
-          const debugMessage = `Quiz ${quizId} not found. Available shared quizzes: ${availableSharedQuizzes.join(', ') || 'none'}. User logged in: ${currentUser ? 'Yes' : 'No'}`;
+          // Using Supabase only, no localStorage
+          const debugMessage = `Quiz ${quizId} not found in Supabase. User logged in: ${currentUser ? 'Yes' : 'No'}`;
           setDebugInfo(debugMessage);
           
           setError(t('sharedQuizNotFound'));

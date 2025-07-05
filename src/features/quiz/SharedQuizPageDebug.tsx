@@ -3,17 +3,14 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useAppContext, useTranslation } from '../../App';
+import { useAppContext } from '../../App';
 import { Quiz } from '../../types';
-import { Button, Card, LoadingSpinner } from '../../components/ui';
-import { XCircleIcon } from '../../constants';
-import { getSharedQuiz, listSharedQuizzes } from '../../services/quizSharingService';
+import { getSharedQuiz } from '../../services/quizSharingService';
 import { logger } from '../../services/logService';
 import { validateQuizId } from '../../utils/quizValidationUtils';
 
 const SharedQuizPageDebug: React.FC = () => {
   const { quizId } = useParams<{ quizId?: string }>();
-  const { t } = useTranslation();
   const navigate = useNavigate();
   const { currentUser } = useAppContext();
   
@@ -46,9 +43,9 @@ const SharedQuizPageDebug: React.FC = () => {
           setDebugInfo(`Quiz found: ${fetchedQuizData.title}`);
         } else {
           logger.warn('SharedQuizPageDebug: Quiz not found', 'SharedQuizPageDebug', { quizId });
-          const availableQuizzes = listSharedQuizzes();
+          // No longer using localStorage, all quizzes are in Supabase now
           setError('Quiz not found');
-          setDebugInfo(`Quiz not found. Available: ${availableQuizzes.join(', ') || 'none'}`);
+          setDebugInfo(`Quiz not found in Supabase database.`);
         }
         
       } catch (err) {
