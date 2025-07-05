@@ -15,9 +15,15 @@ import './styles/question-title-fix.css';
 import './styles/accordion-question-fix.css';
 
 // Debug utilities (available in browser console for troubleshooting)
+import('./utils/productionDebug');
+
+// Also import the existing debug utilities
 import('./services/supabaseService').then(({ supabaseService }) => {
   import('./services/authService').then(({ authService }) => {
+    // Extend the existing debug object with additional utilities
+    const existingDebug = (window as any).QuizAIDebug || {};
     (window as any).QuizAIDebug = {
+      ...existingDebug,
       makeQuizShareable: supabaseService.makeQuizShareable.bind(supabaseService),
       debugRLSPolicyIssue: supabaseService.debugRLSPolicyIssue.bind(supabaseService),
       debugUserPermissions: supabaseService.debugUserPermissions.bind(supabaseService),

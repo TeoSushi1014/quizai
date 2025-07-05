@@ -4,6 +4,30 @@ import { UserProfile } from '../types'
 import { logger } from './logService'
 
 export class AuthService {
+  // Check for production-specific authentication issues
+  private isProductionEnvironment(): boolean {
+    return window.location.hostname !== 'localhost' && 
+           !window.location.hostname.includes('127.0.0.1') &&
+           !window.location.hostname.includes('192.168');
+  }
+
+  private shouldUseGoogleOnlyMode(error?: Error): boolean {
+    if (!this.isProductionEnvironment()) {
+      return false; // In development, try full integration
+    }
+
+    // In production, use Google-only mode if:
+    // 1. OAuth token is invalid
+    // 2. RLS policies are blocking access
+    // 3. Supabase configuration issues
+    const errorMessage = error?.message?.toLowerCase() || '';
+    return errorMessage.includes('bad id token') ||
+           errorMessage.includes('406') ||
+           errorMessage.includes('not acceptable') ||
+           errorMessage.includes('rls') ||
+           errorMessage.includes('policy');
+  }
+
   async signInWithGoogle(googleUser: any): Promise<UserProfile | null> {
     try {
       // Enhanced logging for deployment debugging
@@ -61,17 +85,35 @@ export class AuthService {
           
           // Use Supabase's Google OAuth integration if we have an access token
           if (googleUser.access_token) {
-            logger.info('AuthService: Attempting Supabase Google OAuth authentication', 'AuthService', { email });
+            logger.info('AuthService: Attempting Supabase Google OAuth authentication', 'AuthService', { 
+              email,
+              hasIdToken: !!googleUser.access_token,
+              hasSubId: !!googleUser.sub,
+              isProduction: window.location.hostname !== 'localhost'
+            });
             
             try {
+              // In production, we need to use the ID token, not access token
+              // Google OAuth response structure might be different in production
+              const authToken = googleUser.credential || googleUser.id_token || googleUser.access_token;
+              
+              logger.info('AuthService: Using OAuth token for authentication', 'AuthService', { 
+                tokenType: googleUser.credential ? 'credential' : (googleUser.id_token ? 'id_token' : 'access_token'),
+                tokenLength: authToken?.length || 0
+              });
+              
               const { data: oauthData, error: oauthError } = await supabase.auth.signInWithIdToken({
                 provider: 'google',
-                token: googleUser.access_token,
-                access_token: googleUser.access_token
+                token: authToken
               });
               
               if (oauthError) {
-                logger.warn('AuthService: Google OAuth token authentication failed, trying alternative approaches', 'AuthService', { error: oauthError.message });
+                logger.warn('AuthService: Google OAuth token authentication failed, trying alternative approaches', 'AuthService', { 
+                  error: oauthError.message,
+                  errorCode: oauthError.status,
+                  tokenUsed: authToken ? 'present' : 'missing',
+                  suggestion: 'This usually indicates Google OAuth misconfiguration or invalid token format'
+                });
                 throw new Error(`OAuth failed: ${oauthError.message}`);
               }
               
@@ -83,7 +125,35 @@ export class AuthService {
                 });
               }
             } catch (oauthError) {
-              logger.warn('AuthService: Google OAuth method failed, attempting manual user linking approach', 'AuthService', { error: (oauthError as Error).message });
+              logger.warn('AuthService: Google OAuth method failed, attempting manual user linking approach', 'AuthService', { 
+                error: (oauthError as Error).message,
+                isProduction: window.location.hostname !== 'localhost',
+                fallbackStrategy: 'Skip Supabase auth and use Google-only profile'
+              });
+              
+              // In production, if OAuth fails, we should skip Supabase integration entirely
+              // and use Google-only authentication to avoid blocking users
+              if (window.location.hostname !== 'localhost') {
+                logger.info('AuthService: Production environment detected, using Google-only fallback', 'AuthService', {
+                  email,
+                  reason: 'OAuth token authentication failed in production'
+                });
+                
+                const productionFallbackProfile: UserProfile = {
+                  id: googleUser.sub || googleUser.id || `google_${Date.now()}`,
+                  email: googleUser.email,
+                  name: googleUser.name || googleUser.given_name || googleUser.family_name,
+                  imageUrl: googleUser.picture,
+                  accessToken: googleUser.access_token || googleUser.credential
+                };
+                
+                logger.info('AuthService: Using production Google-only profile', 'AuthService', { 
+                  userId: productionFallbackProfile.id,
+                  email: productionFallbackProfile.email
+                });
+                
+                return productionFallbackProfile;
+              }
               
               // For existing users, we need a different approach
               // Try to find the existing user in the database first
@@ -224,13 +294,33 @@ export class AuthService {
           }
         }
         } catch (authError) {
+          const authErrorTyped = authError as Error;
           logger.error('AuthService: Supabase authentication failed, analyzing error for deployment issues', 'AuthService', { 
             email: email,
-            error: (authError as Error).message,
-            isProduction: window.location.hostname !== 'localhost',
+            error: authErrorTyped.message,
+            isProduction: this.isProductionEnvironment(),
             supabaseUrl: import.meta.env.VITE_SUPABASE_URL ? 'configured' : 'missing',
             supabaseKey: import.meta.env.VITE_SUPABASE_ANON_KEY ? 'configured' : 'missing'
           });
+          
+          // Check if we should use Google-only mode
+          if (this.shouldUseGoogleOnlyMode(authErrorTyped)) {
+            logger.info('AuthService: Using Google-only mode due to production issues', 'AuthService', {
+              reason: 'Production environment with authentication failures',
+              errorType: authErrorTyped.message.includes('Bad ID token') ? 'OAuth' : 
+                        authErrorTyped.message.includes('406') ? 'RLS' : 'Unknown'
+            });
+            
+            const fallbackProfile: UserProfile = {
+              id: googleUser.sub || googleUser.id || `google_${Date.now()}`,
+              email: googleUser.email,
+              name: googleUser.name || googleUser.given_name || googleUser.family_name,
+              imageUrl: googleUser.picture,
+              accessToken: googleUser.access_token || googleUser.credential
+            };
+            
+            return fallbackProfile;
+          }
           
           // Common deployment error patterns
           const errorMsg = (authError as Error).message.toLowerCase();
