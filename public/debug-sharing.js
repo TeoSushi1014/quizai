@@ -118,7 +118,58 @@ window.debugUserPermissions = async function() {
   }
 };
 
+// Utility function to list user's quizzes
+window.debugListUserQuizzes = async function(userId = null) {
+  console.log('📚 Listing user quizzes...');
+  
+  try {
+    const { supabase } = await import('./src/services/supabaseClient.js');
+    
+    let effectiveUserId = userId;
+    if (!effectiveUserId) {
+      const appContext = window.appContext || window.App?.useAppContext?.();
+      if (appContext?.currentUser) {
+        effectiveUserId = appContext.currentUser.id;
+      } else {
+        // Try getting from Supabase auth
+        const { data: { user } } = await supabase.auth.getUser();
+        effectiveUserId = user?.id;
+      }
+    }
+    
+    if (!effectiveUserId) {
+      console.error('❌ No user ID available');
+      return [];
+    }
+    
+    console.log('👤 Using User ID:', effectiveUserId);
+    
+    const { data: quizzes, error } = await supabase
+      .from('quizzes')
+      .select('id, title, created_at')
+      .eq('user_id', effectiveUserId)
+      .order('created_at', { ascending: false });
+    
+    if (error) {
+      console.error('❌ Error fetching quizzes:', error.message);
+      return [];
+    }
+    
+    console.log(`✅ Found ${quizzes?.length || 0} quizzes:`);
+    quizzes?.forEach((quiz, index) => {
+      console.log(`${index + 1}. ${quiz.title} (ID: ${quiz.id})`);
+    });
+    
+    return quizzes || [];
+    
+  } catch (error) {
+    console.error('❌ Failed to list quizzes:', error);
+    return [];
+  }
+};
+
 console.log('🎯 Debug functions loaded!');
 console.log('  Run: debugQuizSharing() - Test quiz sharing flow');
 console.log('  Run: debugCheckQuizExists("quiz-id") - Check if quiz exists');
 console.log('  Run: debugUserPermissions() - Check user authentication and permissions');
+console.log('  Run: debugListUserQuizzes() - List all user quizzes');

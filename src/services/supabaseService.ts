@@ -600,32 +600,44 @@ export class SupabaseService {
     }
   }
 
-  async shareQuiz(quizId: string, isPublic: boolean = true, expiresAt?: string): Promise<{ shareToken: string; shareUrl: string } | null> {
+  async shareQuiz(quizId: string, isPublic: boolean = true, expiresAt?: string, userId?: string): Promise<{ shareToken: string; shareUrl: string } | null> {
     try {
-      logger.info('Starting shareQuiz process', 'SupabaseService', { quizId, isPublic });
+      logger.info('Starting shareQuiz process', 'SupabaseService', { quizId, isPublic, userId });
       
-      // Get the current authenticated user first to ensure we have proper context
-      const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser();
+      let currentUserId: string;
       
-      if (userError || !currentUser) {
-        logger.error('No authenticated user found for sharing', 'SupabaseService', { 
+      // If userId is provided, use it; otherwise try to get from Supabase auth
+      if (userId) {
+        currentUserId = userId;
+        logger.info('Using provided user ID for sharing', 'SupabaseService', { 
           quizId, 
-          userError: userError?.message 
+          userId: currentUserId 
         });
-        return null;
+      } else {
+        // Try to get the current authenticated user from Supabase
+        const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser();
+        
+        if (userError || !currentUser) {
+          logger.error('No authenticated user found for sharing and no userId provided', 'SupabaseService', { 
+            quizId, 
+            userError: userError?.message 
+          });
+          return null;
+        }
+        
+        currentUserId = currentUser.id;
+        logger.info('Retrieved authenticated user from Supabase for sharing', 'SupabaseService', { 
+          quizId, 
+          userId: currentUserId 
+        });
       }
-      
-      logger.info('Authenticated user found for sharing', 'SupabaseService', { 
-        quizId, 
-        userId: currentUser.id 
-      });
       
       // First check if the quiz exists in the database and verify ownership
       const { data: existingQuiz, error: quizCheckError } = await supabase
         .from('quizzes')
         .select('id, user_id')
         .eq('id', quizId)
-        .eq('user_id', currentUser.id) // Ensure the current user owns this quiz
+        .eq('user_id', currentUserId) // Ensure the current user owns this quiz
         .maybeSingle();
 
       if (quizCheckError) {
@@ -641,7 +653,7 @@ export class SupabaseService {
       if (!existingQuiz) {
         logger.error('Quiz not found or user does not own this quiz', 'SupabaseService', { 
           quizId, 
-          userId: currentUser.id 
+          userId: currentUserId 
         });
         return null;
       }
@@ -698,7 +710,7 @@ export class SupabaseService {
           code: shareError.code,
           details: shareError.details,
           hint: shareError.hint,
-          currentUserId: currentUser.id,
+          currentUserId: currentUserId,
           quizOwnerId: existingQuiz.user_id
         });
         
@@ -706,7 +718,7 @@ export class SupabaseService {
         if (shareError.code === '42501') {
           logger.error('RLS policy violation: Check Supabase RLS policies for shared_quizzes table', 'SupabaseService', { 
             quizId,
-            currentUserId: currentUser.id,
+            currentUserId: currentUserId,
             quizUserId: existingQuiz.user_id,
             errorHint: 'The RLS policy may require additional conditions or the policy may be incorrectly configured'
           });
@@ -781,7 +793,7 @@ export class SupabaseService {
       }
 
       // Create a new share entry using the existing shareQuiz method
-      return await this.shareQuiz(quizId);
+      return await this.shareQuiz(quizId, true, undefined, currentUser.id);
       
     } catch (error) {
       logger.error('Failed to make quiz shareable', 'SupabaseService', { quizId }, error as Error);

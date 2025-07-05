@@ -85,7 +85,7 @@ export const shareQuizViaAPI = async (quiz: Quiz, currentUser?: UserProfile | nu
     
     // Now share the quiz via Supabase
     logger.info('Starting quiz share process in Supabase', 'quizSharingService', { quizId: quiz.id });
-    const shareResult = await supabaseService.shareQuiz(quiz.id);
+    const shareResult = await supabaseService.shareQuiz(quiz.id, true, undefined, currentUser.id);
     
     if (shareResult) {
       logger.info('Quiz shared via Supabase successfully', 'quizSharingService', { 
