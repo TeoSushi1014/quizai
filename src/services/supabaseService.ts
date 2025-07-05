@@ -715,19 +715,89 @@ export class SupabaseService {
       }
 
       if (!quizData) {
-        logger.warn('Quiz data not found in quizzes table despite being in shared_quizzes - cleaning up orphaned entry', 'SupabaseService', { 
+        logger.warn('Quiz data not found in quizzes table despite being in shared_quizzes - attempting recovery', 'SupabaseService', { 
           quizId,
           sharedQuizFound: !!sharedData,
           sharedDataDetails: sharedData ? { isPublic: sharedData.is_public, expiresAt: sharedData.expires_at } : null
         });
         
-        // Clean up the orphaned shared_quizzes entry
+        // First, try to find the quiz in the creator's personal collection
+        if (sharedData && quizId) {
+          try {
+            // Look for the quiz in all users' quiz collections
+            const { data: allUserQuizzes, error: searchError } = await supabase
+              .from('quizzes')
+              .select('*')
+              .ilike('id', `%${quizId}%`)
+              .limit(5);
+              
+            if (!searchError && allUserQuizzes && allUserQuizzes.length > 0) {
+              // Found potential matches, use the first one
+              const recoveredQuiz = allUserQuizzes[0];
+              logger.info('Recovered quiz data from search', 'SupabaseService', { 
+                quizId, 
+                recoveredId: recoveredQuiz.id,
+                foundMatches: allUserQuizzes.length 
+              });
+              
+              // Get creator info for recovered quiz
+              let creatorInfo = { name: 'Unknown', email: undefined };
+              if (recoveredQuiz.user_id) {
+                try {
+                  const { data: userDataArray } = await supabase
+                    .from('users')
+                    .select('name, email')
+                    .eq('id', recoveredQuiz.user_id)
+                    .limit(1);
+                  
+                  if (userDataArray && userDataArray.length > 0) {
+                    const userData = userDataArray[0];
+                    creatorInfo = { 
+                      name: userData.name || 'Unknown', 
+                      email: userData.email || undefined 
+                    };
+                  }
+                } catch (userError) {
+                  logger.warn('Could not fetch creator info for recovered quiz', 'SupabaseService', { 
+                    quizId, 
+                    userError 
+                  });
+                }
+              }
+              
+              const quiz: Quiz = {
+                id: recoveredQuiz.id,
+                title: recoveredQuiz.title || 'Recovered Quiz',
+                questions: recoveredQuiz.questions || [],
+                createdAt: recoveredQuiz.created_at || new Date().toISOString(),
+                lastModified: recoveredQuiz.last_modified || recoveredQuiz.created_at || new Date().toISOString(),
+                userId: recoveredQuiz.user_id || 'unknown',
+                config: recoveredQuiz.config || {},
+                sourceContentSnippet: recoveredQuiz.source_content_snippet,
+                creator: creatorInfo
+              };
+              
+              logger.info('Successfully recovered and returned quiz', 'SupabaseService', { 
+                quizId, 
+                recoveredTitle: quiz.title 
+              });
+              return quiz;
+            }
+          } catch (recoveryError) {
+            logger.warn('Quiz recovery attempt failed', 'SupabaseService', { 
+              quizId, 
+              recoveryError 
+            });
+          }
+        }
+        
+        // If recovery failed, clean up the orphaned shared_quizzes entry
         try {
           await supabase
             .from('shared_quizzes')
             .delete()
             .eq('quiz_id', quizId);
-          logger.info('Cleaned up orphaned shared_quizzes entry', 'SupabaseService', { quizId });
+          logger.info('Cleaned up orphaned shared_quizzes entry after recovery failure', 'SupabaseService', { quizId });
         } catch (cleanupError) {
           logger.warn('Failed to clean up orphaned shared_quizzes entry', 'SupabaseService', { 
             quizId, 

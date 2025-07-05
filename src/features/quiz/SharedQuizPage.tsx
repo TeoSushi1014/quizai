@@ -74,7 +74,11 @@ const SharedQuizPage: React.FC = () => {
 • There's a data consistency issue in the database
 • The quiz was never properly shared
 
-For detailed diagnosis, run: window.QuizAIDebug.debugQuizSharing("${quizId}") in browser console.`;
+🔧 For detailed diagnosis, open browser console (F12) and run:
+window.QuizAIDebug.debugQuizSharing("${quizId}")
+
+🛠️ If the quiz exists but has data issues, try:
+window.QuizAIDebug.cleanupOrphanedQuiz("${quizId}")`;
           setDebugInfo(debugMessage);
           
           setError(t('sharedQuizNotFound'));
