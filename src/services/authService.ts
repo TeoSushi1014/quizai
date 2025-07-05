@@ -1,4 +1,5 @@
 import { supabaseService } from './supabaseService'
+import { supabase } from './supabaseClient'
 import { UserProfile } from '../types'
 import { logger } from './logService'
 
@@ -19,6 +20,65 @@ export class AuthService {
         throw new Error('No email provided by Google OAuth')
       }
 
+      // First, authenticate with Supabase using the Google token
+      let supabaseUser = null;
+      
+      try {
+        // Try to sign in with Supabase using Google ID token if available
+        if (googleUser.id_token) {
+          logger.info('AuthService: Authenticating with Supabase using Google ID token', 'AuthService');
+          const { data, error } = await supabase.auth.signInWithIdToken({
+            provider: 'google',
+            token: googleUser.id_token
+          });
+          
+          if (error) {
+            logger.warn('AuthService: Supabase Google auth failed, using fallback method', 'AuthService', { error: error.message });
+          } else {
+            supabaseUser = data.user;
+            logger.info('AuthService: Successfully authenticated with Supabase', 'AuthService', { userId: supabaseUser?.id });
+          }
+        }
+      } catch (authError) {
+        logger.warn('AuthService: Supabase authentication failed, using fallback method', 'AuthService', { error: (authError as Error).message });
+      }
+
+      // If Supabase auth failed, create a custom session
+      let supabaseUserId: string = '';
+      if (!supabaseUser) {
+        logger.info('AuthService: Creating custom user session', 'AuthService');
+        
+        // Generate a consistent UUID for the user based on their Google ID or email
+        if (window.crypto && window.crypto.randomUUID) {
+          // For consistency, try to use existing user ID if they exist
+          const existingUser = await supabaseService.getUserByEmail(email);
+          if (existingUser) {
+            supabaseUserId = existingUser.id;
+          } else {
+            supabaseUserId = window.crypto.randomUUID();
+          }
+        } else {
+          supabaseUserId = `google-${googleId}-${Date.now()}`;
+        }
+
+        // Create a minimal user session for Supabase
+        try {
+          const { error: sessionError } = await supabase.auth.setSession({
+            access_token: `custom-${supabaseUserId}`,
+            refresh_token: `refresh-${supabaseUserId}`
+          });
+          
+          if (sessionError) {
+            logger.warn('AuthService: Could not set custom session', 'AuthService', { error: sessionError.message });
+          }
+        } catch (sessionError) {
+          logger.warn('AuthService: Session creation failed', 'AuthService', { error: (sessionError as Error).message });
+        }
+      }
+
+      // Now handle user profile creation/update
+      const userId = supabaseUser?.id || supabaseUserId;
+      
       let existingUser = await supabaseService.getUserByEmail(email)
       
       if (existingUser) {
@@ -41,15 +101,8 @@ export class AuthService {
         return existingUser
       }
 
-      let supabaseUserId: string
-      if (window.crypto && window.crypto.randomUUID) {
-        supabaseUserId = window.crypto.randomUUID()
-      } else {
-        supabaseUserId = `google-${googleId}-${Date.now()}`
-      }
-      
       const newUserProfile: UserProfile = {
-        id: supabaseUserId,
+        id: userId,
         email: email,
         name: googleUser.name || googleUser.given_name || googleUser.family_name,
         imageUrl: googleUser.picture,

@@ -138,8 +138,31 @@ export class SupabaseService {
       }
 
       if (!existingUser) {
-        logger.warn('User not found for update', 'SupabaseService', { userId: id });
-        return null;
+        logger.warn('User not found for update, attempting to create user instead', 'SupabaseService', { userId: id });
+        
+        // If user doesn't exist, try to create it with available data
+        const userProfile: Partial<UserProfile> = {
+          id: id,
+          ...updates
+        };
+        
+        // Get additional user data from auth if available
+        try {
+          const { data: { user: authUser } } = await supabase.auth.getUser();
+          if (authUser && authUser.id === id) {
+            userProfile.email = authUser.email;
+            logger.info('Using auth user email for user creation', 'SupabaseService', { userId: id, email: authUser.email });
+          }
+        } catch (authError) {
+          logger.warn('Could not get auth user data', 'SupabaseService', { userId: id });
+        }
+        
+        if (!userProfile.email) {
+          logger.error('Cannot create user without email', 'SupabaseService', { userId: id });
+          return null;
+        }
+        
+        return await this.createUser(userProfile);
       }
 
       logger.info('User exists, proceeding with update', 'SupabaseService', { 
