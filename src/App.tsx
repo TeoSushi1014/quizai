@@ -532,20 +532,25 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
       lastModified: now,
     };
 
-    // Save to Supabase
+    // Save to Supabase first
     const savedQuiz = await supabaseService.createQuiz(quizWithOwnerAndTimestamp, currentUser.id)
     
     if (savedQuiz) {
+      // Update state which will trigger automatic Drive sync via useEffect
       setAllQuizzes(prev => [savedQuiz, ...prev.filter(q => q.id !== quiz.id)])
       logger.info('Quiz added to Supabase and context state', 'AppContext', { quizId: quiz.id, title: quiz.title })
       
       try {
+        // Update localStorage with all user quizzes from Supabase
         const allQuizzes = await supabaseService.getUserQuizzes(currentUser.id)
         await quizStorage.saveQuizzes(allQuizzes)
         logger.info('Quiz saved to local storage as backup', 'AppContext', { quizId: quiz.id })
       } catch (e) {
         logger.warn('Failed to save backup to localStorage', 'AppContext', { quizId: quiz.id }, e as Error)
       }
+      
+      // Note: Drive sync will be triggered automatically by the useEffect when allQuizzes changes
+      logger.info('Quiz creation completed, Drive sync will be triggered automatically', 'AppContext', { quizId: quiz.id })
     } else {
       throw new Error('Failed to save quiz to database')
     }
@@ -575,24 +580,30 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
         logger.warn('Failed to clean up legacy quiz from local storage', 'AppContext', { quizId }, e as Error);
       }
       
-      // Don't throw an error for legacy quizzes - just log and return
-      logger.info('Legacy quiz successfully removed from application', 'AppContext', { quizId });
+      // Note: State change will automatically trigger Drive sync via useEffect
+      logger.info('Legacy quiz successfully removed from application, Drive sync will be triggered automatically', 'AppContext', { quizId });
       return;
     }
 
+    // Delete from Supabase first
     const success = await supabaseService.deleteQuiz(quizId)
     
     if (success) {
+      // Update state which will trigger automatic Drive sync via useEffect
       setAllQuizzes(prev => prev.filter(q => q.id !== quizId))
       logger.info('Quiz deleted from Supabase and context state', 'AppContext', { quizId })
       
       try {
+        // Update localStorage with remaining user quizzes from Supabase
         const remainingQuizzes = await supabaseService.getUserQuizzes(currentUser.id)
         await quizStorage.saveQuizzes(remainingQuizzes)
         logger.info('Local storage updated after quiz deletion', 'AppContext', { quizId })
       } catch (e) {
         logger.warn('Failed to update localStorage backup', 'AppContext', { quizId }, e as Error)
       }
+      
+      // Note: Drive sync will be triggered automatically by the useEffect when allQuizzes changes
+      logger.info('Quiz deletion completed, Drive sync will be triggered automatically', 'AppContext', { quizId })
     } else {
       throw new Error('Failed to delete quiz from database')
     }
@@ -609,19 +620,25 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
       lastModified: now,
     };
 
+    // Update in Supabase first
     const updatedSupabaseQuiz = await supabaseService.updateQuiz(quizWithTimestamp)
     
     if (updatedSupabaseQuiz) {
+      // Update state which will trigger automatic Drive sync via useEffect
       setAllQuizzes(prev => prev.map(q => q.id === quizWithTimestamp.id ? updatedSupabaseQuiz : q))
       logger.info('Quiz updated in Supabase and context state', 'AppContext', { quizId: updatedQuiz.id, title: updatedQuiz.title })
       
       try {
+        // Update localStorage with all user quizzes from Supabase
         const allQuizzes = await supabaseService.getUserQuizzes(currentUser.id)
         await quizStorage.saveQuizzes(allQuizzes)
         logger.info('Local storage updated after quiz update', 'AppContext', { quizId: updatedQuiz.id })
       } catch (e) {
         logger.warn('Failed to update localStorage backup', 'AppContext', { quizId: updatedQuiz.id }, e as Error)
       }
+      
+      // Note: Drive sync will be triggered automatically by the useEffect when allQuizzes changes
+      logger.info('Quiz update completed, Drive sync will be triggered automatically', 'AppContext', { quizId: updatedQuiz.id })
     } else {
       throw new Error('Failed to update quiz in database')
     }

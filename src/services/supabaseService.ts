@@ -291,30 +291,46 @@ export class SupabaseService {
 
   async getPublicQuizById(quizId: string): Promise<Quiz | null> {
     try {
-      logger.info('Fetching public quiz by ID', 'SupabaseService', { quizId });
+      logger.info('Attempting to fetch public quiz by ID from Supabase', 'SupabaseService', { quizId });
       
-      // First, get the quiz data
+      // Test if Supabase is available first
+      const { error: testError } = await supabase
+        .from('quizzes')
+        .select('count')
+        .limit(1)
+        .maybeSingle();
+      
+      if (testError) {
+        logger.warn('Supabase connection test failed', 'SupabaseService', { 
+          error: testError.message,
+          code: testError.code,
+          hint: testError.hint 
+        });
+        return null; // Fallback to localStorage
+      }
+      
+      // Now try to get the actual quiz
       const { data: quizData, error: quizError } = await supabase
         .from('quizzes')
         .select('*')
         .eq('id', quizId)
-        .single();
+        .maybeSingle();
 
       if (quizError) {
-        if (quizError.code === 'PGRST116') {
-          logger.info('Quiz not found in database', 'SupabaseService', { quizId });
-          return null;
-        }
-        logger.error('Error fetching public quiz', 'SupabaseService', { quizId }, quizError);
-        return null; // Return null instead of throwing to allow fallback
+        logger.warn('Error fetching quiz from Supabase', 'SupabaseService', { 
+          quizId, 
+          error: quizError.message,
+          code: quizError.code 
+        });
+        return null; // Allow fallback to localStorage
       }
 
       if (!quizData) {
-        logger.info('No data returned for quiz', 'SupabaseService', { quizId });
+        logger.info('Quiz not found in Supabase database', 'SupabaseService', { quizId });
         return null;
       }
 
-      // Then get the user data if we have a user_id
+      // Try to get user data if we have a user_id
       let creatorInfo = { name: 'Unknown', email: undefined };
       if (quizData.user_id) {
         try {
@@ -322,20 +338,26 @@ export class SupabaseService {
             .from('users')
             .select('name, email')
             .eq('id', quizData.user_id)
-            .single();
+            .maybeSingle();
           
           if (!userError && userData) {
             creatorInfo = {
               name: userData.name || 'Unknown',
               email: userData.email
             };
+          } else {
+            logger.info('Could not fetch creator info', 'SupabaseService', { 
+              userId: quizData.user_id,
+              error: userError?.message 
+            });
           }
         } catch (userFetchError) {
-          logger.warn('Could not fetch creator info', 'SupabaseService', { userId: quizData.user_id }, userFetchError as Error);
+          logger.warn('Error fetching creator info', 'SupabaseService', { userId: quizData.user_id }, userFetchError as Error);
         }
       }
 
       const quiz = this.mapDatabaseQuizToQuiz(quizData);
+      logger.info('Successfully fetched quiz from Supabase', 'SupabaseService', { quizId });
       return {
         ...quiz,
         creator: creatorInfo,
@@ -344,8 +366,8 @@ export class SupabaseService {
       };
       
     } catch (error) {
-      logger.error('Failed to get public quiz by ID', 'SupabaseService', { quizId }, error as Error);
-      return null;
+      logger.warn('Supabase service unavailable, falling back to localStorage', 'SupabaseService', { quizId }, error as Error);
+      return null; // This will trigger localStorage fallback
     }
   }
 
