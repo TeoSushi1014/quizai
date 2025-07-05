@@ -54,7 +54,7 @@ window.debugQuizSharing = async function() {
     }
   };
 
-  console.log(' Test quiz:', testQuiz);
+  console.log('📝 Test quiz:', testQuiz);
 
   try {
     // Import sharing service
@@ -107,6 +107,18 @@ window.debugCheckQuizExists = async function(quizId) {
   }
 };
 
+// Function to debug user permissions specifically
+window.debugUserPermissions = async function() {
+  try {
+    console.log('🔐 Running user permissions debug...');
+    const { supabaseService } = await import('./src/services/supabaseService.js');
+    await supabaseService.debugUserPermissions();
+  } catch (error) {
+    console.error('❌ Error debugging user permissions:', error);
+  }
+};
+
 console.log('🎯 Debug functions loaded!');
 console.log('  Run: debugQuizSharing() - Test quiz sharing flow');
 console.log('  Run: debugCheckQuizExists("quiz-id") - Check if quiz exists');
+console.log('  Run: debugUserPermissions() - Check user authentication and permissions');

@@ -521,6 +521,13 @@ export class SupabaseService {
   // Check if user has permission to share quizzes (for debugging RLS issues)
   async checkUserSharePermissions(userId: string): Promise<{ canShare: boolean; reason?: string }> {
     try {
+      // Get the current authenticated user
+      const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser();
+      
+      if (userError || !currentUser) {
+        return { canShare: false, reason: `No authenticated user: ${userError?.message || 'User not logged in'}` };
+      }
+      
       // First check if the user can read from shared_quizzes table
       const { error: readError } = await supabase
         .from('shared_quizzes')
@@ -529,16 +536,36 @@ export class SupabaseService {
       
       if (readError) {
         logger.warn('User cannot read from shared_quizzes table', 'SupabaseService', { 
-          userId, 
+          userId: currentUser.id, 
           error: readError.message,
           code: readError.code 
         });
         return { canShare: false, reason: `Cannot read shared_quizzes: ${readError.message}` };
       }
       
-      // Try a test insert with a dummy quiz ID to see if RLS allows inserts
-      const testQuizId = 'test-permissions-check';
-      const testToken = 'test-token';
+      // Check if the user has any quizzes (to test ownership-based RLS)
+      const { data: userQuizzes, error: quizError } = await supabase
+        .from('quizzes')
+        .select('id')
+        .eq('user_id', currentUser.id)
+        .limit(1);
+      
+      if (quizError) {
+        logger.warn('User cannot read their own quizzes', 'SupabaseService', { 
+          userId: currentUser.id, 
+          error: quizError.message,
+          code: quizError.code 
+        });
+        return { canShare: false, reason: `Cannot read user quizzes: ${quizError.message}` };
+      }
+      
+      if (!userQuizzes || userQuizzes.length === 0) {
+        return { canShare: false, reason: 'User has no quizzes to share' };
+      }
+      
+      // Try a test insert with a real quiz ID that the user owns
+      const testQuizId = userQuizzes[0].id;
+      const testToken = `test-token-${Date.now()}`;
       
       const { error: insertError } = await supabase
         .from('shared_quizzes')
@@ -558,7 +585,7 @@ export class SupabaseService {
       
       if (insertError) {
         logger.warn('User cannot insert into shared_quizzes table', 'SupabaseService', { 
-          userId, 
+          userId: currentUser.id, 
           error: insertError.message,
           code: insertError.code 
         });
@@ -577,11 +604,28 @@ export class SupabaseService {
     try {
       logger.info('Starting shareQuiz process', 'SupabaseService', { quizId, isPublic });
       
+      // Get the current authenticated user first to ensure we have proper context
+      const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser();
+      
+      if (userError || !currentUser) {
+        logger.error('No authenticated user found for sharing', 'SupabaseService', { 
+          quizId, 
+          userError: userError?.message 
+        });
+        return null;
+      }
+      
+      logger.info('Authenticated user found for sharing', 'SupabaseService', { 
+        quizId, 
+        userId: currentUser.id 
+      });
+      
       // First check if the quiz exists in the database and verify ownership
       const { data: existingQuiz, error: quizCheckError } = await supabase
         .from('quizzes')
         .select('id, user_id')
         .eq('id', quizId)
+        .eq('user_id', currentUser.id) // Ensure the current user owns this quiz
         .maybeSingle();
 
       if (quizCheckError) {
@@ -595,11 +639,14 @@ export class SupabaseService {
       }
 
       if (!existingQuiz) {
-        logger.error('Quiz not found in database, cannot share via Supabase', 'SupabaseService', { quizId });
+        logger.error('Quiz not found or user does not own this quiz', 'SupabaseService', { 
+          quizId, 
+          userId: currentUser.id 
+        });
         return null;
       }
 
-      logger.info('Quiz exists in database, proceeding with share', 'SupabaseService', { 
+      logger.info('Quiz exists and user owns it, proceeding with share', 'SupabaseService', { 
         quizId, 
         quizUserId: existingQuiz.user_id 
       });
@@ -612,17 +659,6 @@ export class SupabaseService {
         .maybeSingle();
 
       if (shareCheckError && shareCheckError.code !== 'PGRST116') {
-        // Check user permissions if we get an error reading shared_quizzes
-        const permissionCheck = await this.checkUserSharePermissions(existingQuiz.user_id);
-        if (!permissionCheck.canShare) {
-          logger.error('User lacks permission to share quizzes', 'SupabaseService', { 
-            quizId,
-            userId: existingQuiz.user_id,
-            reason: permissionCheck.reason
-          });
-          return null;
-        }
-        
         logger.error('Error checking existing share', 'SupabaseService', { 
           quizId, 
           error: shareCheckError.message,
@@ -661,15 +697,18 @@ export class SupabaseService {
           error: shareError.message,
           code: shareError.code,
           details: shareError.details,
-          hint: shareError.hint 
+          hint: shareError.hint,
+          currentUserId: currentUser.id,
+          quizOwnerId: existingQuiz.user_id
         });
         
         // If it's an RLS policy violation, provide more helpful information
         if (shareError.code === '42501') {
-          logger.error('RLS policy violation: User may not have permission to share this quiz', 'SupabaseService', { 
+          logger.error('RLS policy violation: Check Supabase RLS policies for shared_quizzes table', 'SupabaseService', { 
             quizId,
+            currentUserId: currentUser.id,
             quizUserId: existingQuiz.user_id,
-            errorHint: 'Check if the current user owns this quiz and RLS policies allow sharing'
+            errorHint: 'The RLS policy may require additional conditions or the policy may be incorrectly configured'
           });
         }
         
@@ -698,15 +737,28 @@ export class SupabaseService {
     try {
       logger.info('Making existing quiz shareable', 'SupabaseService', { quizId });
       
-      // First check if the quiz exists
+      // Get the current authenticated user
+      const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser();
+      
+      if (userError || !currentUser) {
+        logger.error('No authenticated user found', 'SupabaseService', { quizId, userError: userError?.message });
+        return null;
+      }
+      
+      // First check if the quiz exists and the user owns it
       const { data: quizData, error: quizError } = await supabase
         .from('quizzes')
-        .select('id, title')
+        .select('id, title, user_id')
         .eq('id', quizId)
+        .eq('user_id', currentUser.id) // Ensure current user owns this quiz
         .maybeSingle();
 
       if (quizError || !quizData) {
-        logger.error('Quiz not found', 'SupabaseService', { quizId, error: quizError?.message });
+        logger.error('Quiz not found or user does not own this quiz', 'SupabaseService', { 
+          quizId, 
+          userId: currentUser.id,
+          error: quizError?.message 
+        });
         return null;
       }
 
@@ -734,6 +786,46 @@ export class SupabaseService {
     } catch (error) {
       logger.error('Failed to make quiz shareable', 'SupabaseService', { quizId }, error as Error);
       return null;
+    }
+  }
+
+  // Debug function to check user authentication and permissions
+  async debugUserPermissions(): Promise<void> {
+    try {
+      console.log('🔍 Debugging User Permissions...');
+      
+      // Check authentication
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
+        console.error('❌ Authentication failed:', authError?.message || 'No user found');
+        return;
+      }
+      
+      console.log('✅ User authenticated:', { id: user.id, email: user.email });
+      
+      // Check quiz ownership
+      const { data: userQuizzes, error: quizError } = await supabase
+        .from('quizzes')
+        .select('id, title, created_at')
+        .eq('user_id', user.id)
+        .limit(5);
+      
+      if (quizError) {
+        console.error('❌ Cannot read user quizzes:', quizError.message);
+        return;
+      }
+      
+      console.log(`✅ User has ${userQuizzes?.length || 0} quizzes`);
+      if (userQuizzes && userQuizzes.length > 0) {
+        console.log('📝 User quizzes:', userQuizzes);
+      }
+      
+      // Check sharing permissions
+      const permissionCheck = await this.checkUserSharePermissions(user.id);
+      console.log('🔐 Share permissions:', permissionCheck);
+      
+    } catch (error) {
+      console.error('❌ Debug failed:', error);
     }
   }
 
