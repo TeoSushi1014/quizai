@@ -29,16 +29,112 @@ class ProductionDebugger {
       
       if (result.userExists) {
         console.log('✅ User exists in database');
-        console.log('👤 User details:', result.userDetails);
       } else {
-        console.log('ℹ️ User does not exist in database');
+        console.log('❌ User not found in database');
       }
       
     } catch (error) {
-      console.error('❌ Authentication test failed:', error);
+      console.error('❌ Auth test failed:', error);
+    } finally {
+      console.groupEnd();
     }
+  }
+
+  async debugQuizSharing(quizId: string): Promise<void> {
+    console.group(`🔍 Quiz Sharing Debug: ${quizId}`);
     
-    console.groupEnd();
+    try {
+      // Check if quiz ID format is valid
+      const isValidFormat = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(quizId);
+      console.log('📋 Quiz ID format valid:', isValidFormat);
+      
+      if (!isValidFormat) {
+        console.error('❌ Invalid quiz ID format');
+        console.groupEnd();
+        return;
+      }
+
+      // Import services
+      const { supabaseService } = await import('../services/supabaseService');
+      const { getSharedQuiz } = await import('../services/quizSharingService');
+      
+      // Check shared_quizzes table
+      console.log('🔍 Checking shared_quizzes table...');
+      const { data: sharedQuizzes, error: sharedError } = await supabase
+        .from('shared_quizzes')
+        .select('*')
+        .eq('quiz_id', quizId);
+      
+      if (sharedError) {
+        console.error('❌ Error checking shared_quizzes:', sharedError);
+      } else {
+        console.log('📊 Shared quizzes entries:', sharedQuizzes);
+      }
+      
+      // Check quizzes table
+      console.log('🔍 Checking quizzes table...');
+      const { data: quizData, error: quizError } = await supabase
+        .from('quizzes')
+        .select('*')
+        .eq('id', quizId);
+      
+      if (quizError) {
+        console.error('❌ Error checking quizzes:', quizError);
+      } else {
+        console.log('📊 Quiz data:', quizData);
+      }
+      
+      // Test getPublicQuizById
+      console.log('🔍 Testing getPublicQuizById...');
+      const publicQuiz = await supabaseService.getPublicQuizById(quizId);
+      console.log('📊 Public quiz result:', publicQuiz);
+      
+      // Test getSharedQuiz
+      console.log('🔍 Testing getSharedQuiz...');
+      const sharedQuiz = await getSharedQuiz(quizId);
+      console.log('📊 Shared quiz result:', sharedQuiz);
+      
+      // Provide recommendations
+      console.log('💡 Recommendations:');
+      if (sharedQuizzes && sharedQuizzes.length > 0 && (!quizData || quizData.length === 0)) {
+        console.log('⚠️ Found orphaned shared_quizzes entry - quiz data missing');
+        console.log('🔧 Run: window.QuizAIDebug.cleanupOrphanedQuiz("' + quizId + '")');
+      } else if ((!sharedQuizzes || sharedQuizzes.length === 0) && quizData && quizData.length > 0) {
+        console.log('⚠️ Quiz exists but not shared publicly');
+        console.log('🔧 The quiz owner needs to share it properly');
+      } else if ((!sharedQuizzes || sharedQuizzes.length === 0) && (!quizData || quizData.length === 0)) {
+        console.log('❌ Quiz does not exist or was deleted');
+      } else {
+        console.log('✅ Quiz sharing appears to be set up correctly');
+      }
+      
+    } catch (error) {
+      console.error('❌ Debug failed:', error);
+    } finally {
+      console.groupEnd();
+    }
+  }
+
+  async cleanupOrphanedQuiz(quizId: string): Promise<void> {
+    console.group(`🧹 Cleaning up orphaned quiz: ${quizId}`);
+    
+    try {
+      const { data, error } = await supabase
+        .from('shared_quizzes')
+        .delete()
+        .eq('quiz_id', quizId);
+      
+      if (error) {
+        console.error('❌ Failed to cleanup orphaned quiz:', error);
+      } else {
+        console.log('✅ Successfully cleaned up orphaned quiz entry');
+        console.log('📊 Cleanup result:', data);
+      }
+    } catch (error) {
+      console.error('❌ Cleanup failed:', error);
+    } finally {
+      console.groupEnd();
+    }
   }
 
   checkConfig(): void {
@@ -262,7 +358,9 @@ const productionDebugger = new ProductionDebugger();
   forceGoogleOnly: productionDebugger.forceGoogleOnly.bind(productionDebugger),
   testFullIntegration: productionDebugger.testFullIntegration.bind(productionDebugger),
   clearLogs: productionDebugger.clearLogs.bind(productionDebugger),
-  exportLogs: productionDebugger.exportLogs.bind(productionDebugger)
+  exportLogs: productionDebugger.exportLogs.bind(productionDebugger),
+  debugQuizSharing: productionDebugger.debugQuizSharing.bind(productionDebugger),
+  cleanupOrphanedQuiz: productionDebugger.cleanupOrphanedQuiz.bind(productionDebugger)
 };
 
 // Log availability

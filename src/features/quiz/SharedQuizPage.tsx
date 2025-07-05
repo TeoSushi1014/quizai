@@ -68,7 +68,13 @@ const SharedQuizPage: React.FC = () => {
         } else {
           logger.warn('SharedQuizPage: Quiz not found via getSharedQuiz.', 'SharedQuizPage', { quizId });
           
-          const debugMessage = `Quiz ${quizId} not found in Supabase. User logged in: ${currentUser ? 'Yes' : 'No'}`;
+          const debugMessage = `Quiz ${quizId} not found. This could be because:
+• The quiz was deleted by its creator
+• The quiz share link has expired  
+• There's a data consistency issue in the database
+• The quiz was never properly shared
+
+For detailed diagnosis, run: window.QuizAIDebug.debugQuizSharing("${quizId}") in browser console.`;
           setDebugInfo(debugMessage);
           
           setError(t('sharedQuizNotFound'));
