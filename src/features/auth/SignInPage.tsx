@@ -29,15 +29,78 @@ const SignInPage: React.FC = () => {
   // Debug: Check if GoogleLogin component is available
   React.useEffect(() => {
     console.log("🔍 SignInPage loaded, GoogleLogin component should be available");
+    console.warn("🚨 IMPORTANT: Use the GREEN BORDERED button (top) for quiz sharing to work!");
+    console.warn("🚨 Do NOT use the small grey button (bottom) - it won't work for sharing!");
+    
+    // Check Google OAuth setup
+    const hasGoogleOAuth = !!(window as any).google;
+    const hasGoogleScript = !!document.querySelector('script[src*="accounts.google.com"]');
+    
     logger.info("SignInPage loaded - checking Google OAuth setup", 'SignInPage', {
-      hasGoogleOAuth: !!(window as any).google,
-      hasGoogleScript: !!document.querySelector('script[src*="accounts.google.com"]')
+      hasGoogleOAuth,
+      hasGoogleScript,
+      currentDomain: window.location.hostname,
+      currentURL: window.location.href
     });
+    
+    // Test if Google OAuth is properly initialized
+    setTimeout(() => {
+      console.log("🧪 Testing Google OAuth availability:", {
+        googleObject: !!(window as any).google,
+        googleAccounts: !!(window as any).google?.accounts,
+        googleId: !!(window as any).google?.accounts?.id,
+        domain: window.location.hostname
+      });
+      
+      if (!(window as any).google?.accounts?.id) {
+        console.error("🔴 Google OAuth not properly loaded! GoogleLogin component may not work.");
+        console.error("🔴 This could be why you're not seeing the ID token authentication working.");
+      }
+    }, 2000);
   }, []);
+
+  const [googleLoginReady, setGoogleLoginReady] = React.useState(false);
+  const [showGoogleLoginFallback, setShowGoogleLoginFallback] = React.useState(false);
 
   const handleLoginError = (error?: any) => { 
     logger.error("Google Login Failed.", 'SignInPage', { errorDetails: error });
   };
+
+  // Check if GoogleLogin component is working
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      const googleLoginButton = document.querySelector('[data-testid="google-login"]') || 
+                               document.querySelector('iframe[src*="accounts.google.com"]') ||
+                               document.querySelector('[role="button"][aria-label*="Google"]');
+      
+      if (googleLoginButton) {
+        setGoogleLoginReady(true);
+        console.log("✅ GoogleLogin component is working!");
+      } else {
+        setShowGoogleLoginFallback(true);
+        console.warn("⚠️ GoogleLogin component not detected - showing fallback instructions");
+        console.warn("🔧 This might be due to Google OAuth client domain configuration");
+        console.warn("🔧 The current domain is:", window.location.hostname);
+        console.warn("🔧 Make sure the Google OAuth client is configured for this domain");
+      }
+    }, 3000);
+    
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Show console instructions
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      console.log("📋 AUTHENTICATION TROUBLESHOOTING:");
+      console.log("1. Look for the GREEN bordered button with 'Sign in with Google'");
+      console.log("2. If you see a yellow warning box, READ IT CAREFULLY");
+      console.log("3. DO NOT click the small red/grey 'Google (Fallback)' button");
+      console.log("4. The green button provides JWT ID tokens needed for Supabase");
+      console.log("5. If green button doesn't work, there may be a domain configuration issue");
+    }, 5000);
+    
+    return () => clearTimeout(timer);
+  }, []);
 
   // New handler for credential-based authentication (provides ID token)
   const handleCredentialResponse = async (credentialResponse: GoogleCredentialResponse) => {
@@ -197,26 +260,40 @@ const SignInPage: React.FC = () => {
         <h1 className="text-2xl sm:text-3xl font-bold text-[var(--color-text-primary)] mb-4 mt-8 sm:mt-10">{t('signInTitle')}</h1>
         <p className="text-[var(--color-text-secondary)] mb-10 text-sm">{t('signInSubtitle')}</p>
         
-        <div className="flex flex-col items-center space-y-4 mb-8">
+        <div className="flex flex-col items-center space-y-6 mb-8">
+          {/* Important Notice */}
+          <div className="w-full max-w-xs sm:w-[280px] bg-yellow-100 border-2 border-yellow-400 rounded-lg p-4 text-center">
+            <div className="text-lg font-bold text-yellow-800 mb-2">🚨 IMPORTANT</div>
+            <div className="text-sm text-yellow-700">
+              To enable <strong>quiz sharing</strong>, you MUST use the <strong>GREEN button</strong> below, NOT the red one!
+            </div>
+          </div>
+
           {/* Primary authentication method: GoogleLogin (provides ID token) */}
           <div className="w-full max-w-xs sm:w-[280px]">
             <div className="text-sm font-medium text-[var(--color-primary-accent)] text-center mb-2">
               ✨ Recommended: Full Features
             </div>
-            <GoogleLogin
-              onSuccess={handleCredentialResponse}
-              onError={() => {
-                logger.error("GoogleLogin component failed", 'SignInPage');
-                handleLoginError("Google Login component failed");
-              }}
-              useOneTap={false}
-              shape="rectangular"
-              theme="outline"
-              size="large"
-              text="signin_with"
-              width="280"
-              locale="en"
-            />
+            <div className="border-4 border-green-500 rounded p-3 bg-green-50 shadow-lg">
+              <GoogleLogin
+                onSuccess={handleCredentialResponse}
+                onError={() => {
+                  logger.error("GoogleLogin component failed", 'SignInPage');
+                  console.error("🔴 GoogleLogin component error occurred!");
+                  handleLoginError("Google Login component failed");
+                }}
+                useOneTap={false}
+                shape="rectangular"
+                theme="outline"
+                size="large"
+                text="signin_with"
+                width="260"
+                locale="en"
+              />
+            </div>
+            <div className="text-sm text-center mt-2 text-green-700 font-bold animate-pulse">
+              👆 CLICK THIS FOR QUIZ SHARING 👆
+            </div>
           </div>
           
           {/* Fallback method: Custom button with access token (if ID token fails) */}
@@ -224,15 +301,20 @@ const SignInPage: React.FC = () => {
             <div className="text-xs text-[var(--color-text-muted)] text-center mb-2">
               ⚠️ Limited Features (Quiz sharing won't work)
             </div>
-            <Button
-              onClick={handleCustomGoogleLoginClick}
-              variant="subtle" 
-              size="sm" 
-              leftIcon={<img src="https://img.icons8.com/color/48/google-logo.png" alt="Google" className="w-4 h-4" />}
-              className="w-full !justify-start !text-[var(--color-text-secondary)] hover:!bg-[var(--color-bg-surface-2)] !border-[var(--color-border-subtle)] hover:!border-[var(--color-border-interactive)] !px-3 !py-2 !rounded-md shadow-sm"
-            >
-              <span className="ml-2 text-xs font-medium">Google (Fallback)</span>
-            </Button>
+            <div className="border-2 border-red-500 rounded p-2 bg-red-50 opacity-60">
+              <Button
+                onClick={handleCustomGoogleLoginClick}
+                variant="subtle" 
+                size="sm" 
+                leftIcon={<img src="https://img.icons8.com/color/48/google-logo.png" alt="Google" className="w-4 h-4" />}
+                className="w-full !justify-start !text-[var(--color-text-secondary)] hover:!bg-[var(--color-bg-surface-2)] !border-[var(--color-border-subtle)] hover:!border-[var(--color-border-interactive)] !px-3 !py-2 !rounded-md shadow-sm"
+              >
+                <span className="ml-2 text-xs font-medium">Google (Fallback)</span>
+              </Button>
+            </div>
+            <div className="text-xs text-center mt-1 text-red-600 font-bold">
+              ❌ DON'T USE THIS - NO SHARING!
+            </div>
           </div>
         </div>
         
