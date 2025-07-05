@@ -1,23 +1,38 @@
-import { Quiz, Question, UserProfile } from '../types'; 
+import { Quiz, UserProfile } from '../types';
 import { logger } from './logService';
+import { validateQuizId } from '../utils/quizValidationUtils';
 
 interface QuizForSharing extends Quiz {
-  creator?: { name: string, email?: string }; 
+  creator?: { name: string, email?: string };
   isShared?: boolean;
   sharedTimestamp?: string;
 }
 
-export const prepareQuizForSharing = (quiz: Quiz, currentUser?: UserProfile | null): QuizForSharing => { 
+const SHARED_QUIZ_STORAGE_KEY = 'quizai_shared_quizzes_v2';
+
+export const prepareQuizForSharing = (quiz: Quiz, currentUser?: UserProfile | null): QuizForSharing => {
+  // Validate quiz before sharing
+  if (!quiz.id || !validateQuizId(quiz.id)) {
+    throw new Error('Cannot share quiz: Invalid quiz ID format');
+  }
+
+  if (!quiz.questions || quiz.questions.length === 0) {
+    throw new Error('Cannot share quiz: Quiz has no questions');
+  }
+
   const sharedQuiz: QuizForSharing = {
     ...quiz,
-    creator: currentUser ? { name: currentUser.name || 'Anonymous' } : { name: 'Anonymous' },
+    creator: currentUser ? { 
+      name: currentUser.name || 'Anonymous',
+      email: currentUser.email || undefined
+    } : { name: 'Anonymous' },
     isShared: true,
     sharedTimestamp: new Date().toISOString()
   };
   return sharedQuiz;
 };
 
-export const shareQuizViaAPI = async (quiz: Quiz, currentUser?: UserProfile | null): Promise<{ shareUrl: string; isDemo: boolean }> => { 
+export const shareQuizViaAPI = async (quiz: Quiz, currentUser?: UserProfile | null): Promise<{ shareUrl: string; isDemo: boolean }> => {
   try {
     const quizForSharing = prepareQuizForSharing(quiz, currentUser);
     
@@ -26,6 +41,7 @@ export const shareQuizViaAPI = async (quiz: Quiz, currentUser?: UserProfile | nu
     
     if (apiUrl) {
       logger.info('Sharing quiz via API', 'quizSharingService', { quizId: quiz.id, apiUrl });
+      
       const response = await fetch(`${apiUrl}/api/shared-quizzes`, {
         method: 'POST',
         headers: {
@@ -42,58 +58,112 @@ export const shareQuizViaAPI = async (quiz: Quiz, currentUser?: UserProfile | nu
       
       const data = await response.json();
       logger.info('Quiz shared via API successfully', 'quizSharingService', { quizId: quiz.id, shareUrl: data.shareUrl });
-      return { shareUrl: data.shareUrl || `${window.location.origin}${window.location.pathname}#/shared/${quiz.id}`, isDemo: false }; 
+      return { shareUrl: data.shareUrl || `${window.location.origin}${window.location.pathname}#/shared/${quiz.id}`, isDemo: false };
     }
     
+    // Fallback to localStorage simulation
     logger.info('No API_URL configured, using localStorage for sharing simulation', 'quizSharingService', { quizId: quiz.id });
-    const sharedQuizzes = JSON.parse(localStorage.getItem('quizai_shared_quizzes') || '{}');
-    sharedQuizzes[quiz.id] = quizForSharing;
-    localStorage.setItem('quizai_shared_quizzes', JSON.stringify(sharedQuizzes));
+    return await shareQuizLocally(quizForSharing);
     
-    return { 
-      shareUrl: `${window.location.origin}${window.location.pathname}#/shared/${quiz.id}`, 
-      isDemo: true 
-    };
   } catch (error) {
     logger.error('Failed to share quiz', 'quizSharingService', { quizId: quiz.id }, error as Error);
     throw error;
   }
 };
 
+const shareQuizLocally = async (quizForSharing: QuizForSharing): Promise<{ shareUrl: string; isDemo: boolean }> => {
+  try {
+    const sharedQuizzes = JSON.parse(localStorage.getItem(SHARED_QUIZ_STORAGE_KEY) || '{}');
+    sharedQuizzes[quizForSharing.id] = quizForSharing;
+    localStorage.setItem(SHARED_QUIZ_STORAGE_KEY, JSON.stringify(sharedQuizzes));
+    
+    logger.info('Quiz shared locally', 'quizSharingService', { quizId: quizForSharing.id });
+    
+    return { 
+      shareUrl: `${window.location.origin}${window.location.pathname}#/shared/${quizForSharing.id}`, 
+      isDemo: true 
+    };
+  } catch (error) {
+    logger.error('Failed to share quiz locally', 'quizSharingService', { quizId: quizForSharing.id }, error as Error);
+    throw error;
+  }
+};
+
 export const getSharedQuiz = async (quizId: string): Promise<QuizForSharing | null> => {
   try {
+    // Validate quiz ID first
+    if (!quizId || !validateQuizId(quizId)) {
+      logger.warn('Invalid quiz ID provided to getSharedQuiz', 'quizSharingService', { quizId });
+      return null;
+    }
+
     // @ts-ignore
     const apiUrl = typeof import.meta.env !== 'undefined' ? import.meta.env.VITE_API_URL : undefined;
+    
     if (apiUrl) {
       logger.info('Fetching shared quiz via API', 'quizSharingService', { quizId, apiUrl });
-      const response = await fetch(`${apiUrl}/api/shared-quizzes/${quizId}`);
       
-      if (!response.ok) {
-        if (response.status === 404) {
+      try {
+        const response = await fetch(`${apiUrl}/api/shared-quizzes/${quizId}`);
+        
+        if (response.ok) {
+          const data = await response.json();
+          logger.info('Shared quiz fetched via API successfully', 'quizSharingService', { quizId });
+          return parseQuizFromSharedJson(data);
+        } else if (response.status === 404) {
           logger.warn('Shared quiz not found via API', 'quizSharingService', { quizId });
-          return null;
+          // Fall through to localStorage check
+        } else {
+          const errorData = await response.text();
+          logger.error('API fetch shared quiz failed', 'quizSharingService', { status: response.status, errorData });
+          // Fall through to localStorage check
         }
-        const errorData = await response.text();
-        logger.error('API fetch shared quiz failed', 'quizSharingService', { status: response.status, errorData });
-        throw new Error(`Failed to get shared quiz via API: ${response.statusText}`);
+      } catch (apiError) {
+        logger.error('API request failed', 'quizSharingService', { quizId }, apiError as Error);
+        // Fall through to localStorage check
       }
-      
-      const data = await response.json();
-      logger.info('Shared quiz fetched via API successfully', 'quizSharingService', { quizId });
-      return parseQuizFromSharedJson(data);
     }
     
-    logger.info('No API_URL configured, fetching shared quiz from localStorage simulation', 'quizSharingService', { quizId });
-    const sharedQuizzes = JSON.parse(localStorage.getItem('quizai_shared_quizzes') || '{}');
-    const quizData = sharedQuizzes[quizId];
-    
-    if (quizData) {
-        return parseQuizFromSharedJson(quizData);
-    }
-    return null;
+    // Try localStorage as fallback
+    logger.info('Fetching shared quiz from localStorage', 'quizSharingService', { quizId });
+    return await getSharedQuizLocally(quizId);
 
   } catch (error) {
     logger.error('Failed to get shared quiz', 'quizSharingService', { quizId }, error as Error);
+    return null;
+  }
+};
+
+const getSharedQuizLocally = async (quizId: string): Promise<QuizForSharing | null> => {
+  try {
+    const sharedQuizzes = JSON.parse(localStorage.getItem(SHARED_QUIZ_STORAGE_KEY) || '{}');
+    const quizData = sharedQuizzes[quizId];
+    
+    if (quizData) {
+      logger.info('Shared quiz found in localStorage', 'quizSharingService', { quizId });
+      return parseQuizFromSharedJson(quizData);
+    }
+    
+    // Check legacy storage key
+    const legacySharedQuizzes = JSON.parse(localStorage.getItem('quizai_shared_quizzes') || '{}');
+    const legacyQuizData = legacySharedQuizzes[quizId];
+    
+    if (legacyQuizData) {
+      logger.info('Shared quiz found in legacy localStorage', 'quizSharingService', { quizId });
+      const parsedQuiz = parseQuizFromSharedJson(legacyQuizData);
+      
+      // Migrate to new storage
+      const newSharedQuizzes = JSON.parse(localStorage.getItem(SHARED_QUIZ_STORAGE_KEY) || '{}');
+      newSharedQuizzes[quizId] = parsedQuiz;
+      localStorage.setItem(SHARED_QUIZ_STORAGE_KEY, JSON.stringify(newSharedQuizzes));
+      
+      return parsedQuiz;
+    }
+    
+    logger.warn('Shared quiz not found in localStorage', 'quizSharingService', { quizId });
+    return null;
+  } catch (error) {
+    logger.error('Failed to get shared quiz from localStorage', 'quizSharingService', { quizId }, error as Error);
     return null;
   }
 };
@@ -104,11 +174,17 @@ export const parseQuizFromSharedJson = (data: any): QuizForSharing => {
     throw new Error('Invalid shared quiz data structure');
   }
   
+  // Validate quiz ID
+  if (!validateQuizId(data.id)) {
+    logger.error('Shared quiz has invalid ID format', 'quizSharingService', { quizId: data.id });
+    throw new Error('Shared quiz has invalid ID format');
+  }
+  
   return {
     id: data.id,
     title: data.title,
-    questions: data.questions.map((q: any) => ({ 
-        id: q.id || `q-${Math.random().toString(36).substr(2,9)}`,
+    questions: data.questions.map((q: any, index: number) => ({ 
+        id: q.id || `q-${data.id}-${index}`,
         questionText: q.questionText || "",
         options: Array.isArray(q.options) ? q.options : [],
         correctAnswer: q.correctAnswer || "",
@@ -127,4 +203,26 @@ export const parseQuizFromSharedJson = (data: any): QuizForSharing => {
     isShared: true, 
     sharedTimestamp: data.sharedTimestamp || new Date().toISOString(),
   };
+};
+
+// Utility function to list all shared quizzes (for debugging)
+export const listSharedQuizzes = (): string[] => {
+  try {
+    const sharedQuizzes = JSON.parse(localStorage.getItem(SHARED_QUIZ_STORAGE_KEY) || '{}');
+    return Object.keys(sharedQuizzes);
+  } catch (error) {
+    logger.error('Failed to list shared quizzes', 'quizSharingService', undefined, error as Error);
+    return [];
+  }
+};
+
+// Utility function to clear all shared quizzes (for debugging)
+export const clearSharedQuizzes = (): void => {
+  try {
+    localStorage.removeItem(SHARED_QUIZ_STORAGE_KEY);
+    localStorage.removeItem('quizai_shared_quizzes'); // Clear legacy storage too
+    logger.info('Cleared all shared quizzes', 'quizSharingService');
+  } catch (error) {
+    logger.error('Failed to clear shared quizzes', 'quizSharingService', undefined, error as Error);
+  }
 };

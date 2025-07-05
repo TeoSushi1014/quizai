@@ -1,32 +1,45 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAppContext, useTranslation } from '../../App';
-import { Quiz, Question } from '../../types';
-import { Button, Card, LoadingSpinner, Tooltip } from '../../components/ui';
-import { UserCircleIcon, CopyIcon, CheckCircleIcon, PlayIcon, ChartBarIcon, PlusCircleIcon, XCircleIcon } from '../../constants'; // Updated UserIcon to UserCircleIcon
+import { Quiz } from '../../types';
+import { Button, Card, LoadingSpinner } from '../../components/ui';
+import { UserCircleIcon, CopyIcon, CheckCircleIcon, PlayIcon, PlusCircleIcon, XCircleIcon } from '../../constants';
 import MathText from '../../components/MathText';
-import { getSharedQuiz, parseQuizFromSharedJson } from '../../services/quizSharingService'; // Adjusted import path
+import { getSharedQuiz, listSharedQuizzes } from '../../services/quizSharingService';
 import { logger } from '../../services/logService';
+import { validateQuizId } from '../../utils/quizValidationUtils';
 
 const SharedQuizPage: React.FC = () => {
-  const { quizId } = useParams<{ quizId?: string }>(); // quizId can be undefined initially
-  const { t, language } = useTranslation();
+  const { quizId } = useParams<{ quizId?: string }>();
+  const { t } = useTranslation();
   const navigate = useNavigate();
-  const { quizzes: localUserQuizzes, setActiveQuiz, setQuizResult, currentUser } = useAppContext(); // Added currentUser
+  const { quizzes: localUserQuizzes, setActiveQuiz, setQuizResult, currentUser } = useAppContext();
   
   const [sharedQuiz, setSharedQuiz] = useState<Quiz | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [copySuccess, setCopySuccess] = useState(false);
+  const [debugInfo, setDebugInfo] = useState<string>('');
   
   useEffect(() => {
     const loadSharedQuiz = async () => {
       setLoading(true);
       setError(null);
+      setDebugInfo('');
 
       if (!quizId) {
         logger.warn('SharedQuizPage: No quizId in params.', 'SharedQuizPage');
         setError(t('sharedQuizNotFound'));
+        setDebugInfo('No quiz ID provided in URL');
+        setLoading(false);
+        return;
+      }
+      
+      // Validate quiz ID format
+      if (!validateQuizId(quizId)) {
+        logger.warn('SharedQuizPage: Invalid quiz ID format.', 'SharedQuizPage', { quizId });
+        setError(t('sharedQuizNotFound'));
+        setDebugInfo(`Invalid quiz ID format: ${quizId}`);
         setLoading(false);
         return;
       }
@@ -38,6 +51,7 @@ const SharedQuizPage: React.FC = () => {
             if (userOwnedQuiz) {
                 logger.info('SharedQuizPage: Displaying quiz owned by current user.', 'SharedQuizPage', { quizId });
                 setSharedQuiz(userOwnedQuiz);
+                setDebugInfo('Quiz found in user\'s collection');
                 setLoading(false);
                 return;
             }
@@ -47,22 +61,29 @@ const SharedQuizPage: React.FC = () => {
         const fetchedQuizData = await getSharedQuiz(quizId);
         if (fetchedQuizData) {
           logger.info('SharedQuizPage: Quiz data fetched successfully.', 'SharedQuizPage', { quizId });
-          // The fetchedQuizData should already be in QuizForSharing format, which is compatible with Quiz
           setSharedQuiz(fetchedQuizData as Quiz);
+          setDebugInfo('Quiz found via sharing mechanism');
         } else {
           logger.warn('SharedQuizPage: Quiz not found via getSharedQuiz.', 'SharedQuizPage', { quizId });
+          
+          // Debug information
+          const availableSharedQuizzes = listSharedQuizzes();
+          const debugMessage = `Quiz ${quizId} not found. Available shared quizzes: ${availableSharedQuizzes.join(', ') || 'none'}`;
+          setDebugInfo(debugMessage);
+          
           setError(t('sharedQuizNotFound'));
         }
       } catch (err) {
         logger.error('Error loading shared quiz:', 'SharedQuizPage', { quizId }, err as Error);
         setError(t('sharedQuizLoadError'));
+        setDebugInfo(`Error: ${(err as Error).message}`);
       } finally {
         setLoading(false);
       }
     };
     
     loadSharedQuiz();
-  }, [quizId, localUserQuizzes, t, currentUser]); // Added currentUser
+  }, [quizId, localUserQuizzes, t, currentUser]);
   
   const handleCopyLink = async () => {
     const shareUrl = window.location.href;
@@ -78,7 +99,7 @@ const SharedQuizPage: React.FC = () => {
   const handleStartQuiz = () => {
     if (!sharedQuiz) return;
     setActiveQuiz(sharedQuiz);
-    setQuizResult(null); // Clear previous result before starting new quiz
+    setQuizResult(null);
     navigate(`/quiz/${sharedQuiz.id}`);
   };
   
@@ -92,14 +113,38 @@ const SharedQuizPage: React.FC = () => {
   
   if (error || !sharedQuiz) {
     return (
-      <Card className="max-w-lg mx-auto mt-10 sm:mt-16 p-8 text-center animate-fadeInUp shadow-2xl" useGlassEffect>
+      <div className="container mx-auto px-4 py-8 sm:py-12">
+        <Card className="max-w-lg mx-auto mt-10 sm:mt-16 p-8 text-center animate-fadeInUp shadow-2xl" useGlassEffect>
           <XCircleIcon className="w-16 h-16 text-[var(--color-danger-accent)] mx-auto mb-6" />
           <h2 className="text-2xl font-semibold text-[var(--color-text-primary)] mb-3">{t('sharedQuizError')}</h2>
-          <p className="text-[var(--color-text-secondary)] mb-8">{error || t('sharedQuizNotFound')}</p>
-          <Button variant="primary" onClick={() => navigate('/')} size="lg" className="py-3 px-8 rounded-xl">
-            {t('home')}
-          </Button>
-      </Card>
+          <p className="text-[var(--color-text-secondary)] mb-4">{error || t('sharedQuizNotFound')}</p>
+          
+          {/* Debug Information */}
+          {debugInfo && (
+            <div className="bg-[var(--color-bg-surface-2)] p-4 rounded-lg mb-6 text-left">
+              <div className="flex items-center mb-2">
+                <span className="text-sm font-semibold text-[var(--color-text-primary)]">Debug Information</span>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] font-mono break-all">{debugInfo}</p>
+              {quizId && (
+                <p className="text-xs text-[var(--color-text-muted)] font-mono mt-2">
+                  Quiz ID: {quizId}<br/>
+                  Valid Format: {validateQuizId(quizId) ? 'Yes' : 'No'}
+                </p>
+              )}
+            </div>
+          )}
+          
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Button variant="primary" onClick={() => navigate('/')} size="lg" className="py-3 px-8 rounded-xl">
+              {t('home')}
+            </Button>
+            <Button variant="outline" onClick={() => navigate('/create')} size="lg" className="py-3 px-8 rounded-xl">
+              {t('createQuiz')}
+            </Button>
+          </div>
+        </Card>
+      </div>
     );
   }
   
@@ -133,7 +178,7 @@ const SharedQuizPage: React.FC = () => {
         {(sharedQuiz as any).creator?.name && (
             <div className="flex items-center text-sm text-[var(--color-text-secondary)] mt-3">
             <UserCircleIcon className="w-4 h-4 mr-2 text-[var(--color-text-muted)]" />
-            <span>{t('dashboardQuizCardCreated', { date: '' })} </span>
+            <span>{t('dashboardQuizCardCreated', { date: '' })} {(sharedQuiz as any).creator.name}</span>
             </div>
         )}
       </div>
@@ -162,7 +207,7 @@ const SharedQuizPage: React.FC = () => {
         <div className="mb-10">
           <h2 className="text-xl font-semibold text-[var(--color-text-primary)] mb-5">{t('previewQuestions')}</h2>
           <div className="space-y-4">
-            {sharedQuiz.questions.slice(0, 3).map((question, index) => ( // Show up to 3 questions
+            {sharedQuiz.questions.slice(0, 3).map((question, index) => (
               <div key={question.id} className="bg-[var(--color-bg-surface-2)]/60 p-4 sm:p-5 rounded-xl border border-[var(--color-border-default)] shadow-md">
                 <div className="font-medium text-[var(--color-text-primary)] mb-2 text-sm sm:text-base">
                   <span className="text-[var(--color-primary-accent)] mr-2 font-semibold">{index + 1}.</span>
