@@ -159,128 +159,159 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
   useEffect(() => {
     const initializeApp = async () => {
         if (initializationStarted) {
+            logger.info('Initialization already started, skipping duplicate call', 'AppInit');
             return;
         }
         
         setInitializationStarted(true);
+        logger.info('Starting app initialization', 'AppInit');
         
-        const savedLanguage = localStorage.getItem(LOCALSTORAGE_LANGUAGE_KEY) as Language | null;
-        if (savedLanguage && translations[savedLanguage]) {
-            setLanguageState(savedLanguage);
-        }
-
-        // Check for existing Supabase session first
+        // Add timeout to prevent infinite hanging
+        const initTimeout = setTimeout(() => {
+          logger.error('App initialization timed out after 10 seconds', 'AppInit');
+          setAppInitialized(true);
+          setIsLoading(false);
+        }, 10000);
+        
         try {
-          const { data: { session } } = await supabase.auth.getSession();
-          
-          if (session?.user) {
-            logger.info('Found existing Supabase session', 'AppInit', { 
-              userId: session.user.id,
-              email: session.user.email 
-            });
-            
-            // Try to get user profile from database
-            try {
-              const userProfile = await supabaseService.getUserByEmail(session.user.email!);
-              
-              if (userProfile) {
-                const restoredUser: UserProfile = {
-                  ...userProfile,
-                  supabaseId: session.user.id,
-                  // Don't store access tokens in localStorage for security
-                };
-                setCurrentUser(restoredUser);
-                logger.info('User session restored from Supabase', 'AppInit', { 
-                  userId: restoredUser.id,
-                  email: restoredUser.email 
-                });
-              } else {
-                // User exists in Supabase auth but not in our database
-                const basicUser: UserProfile = {
-                  id: session.user.id,
-                  supabaseId: session.user.id,
-                  email: session.user.email!,
-                  name: session.user.user_metadata?.name || session.user.email!,
-                  imageUrl: session.user.user_metadata?.picture || null,
-                };
-                setCurrentUser(basicUser);
-                logger.info('User session restored with basic profile', 'AppInit', { 
-                  userId: basicUser.id 
-                });
-              }
-            } catch (profileError) {
-              logger.error('Error loading user profile from database', 'AppInit', {}, profileError as Error);
-              // Clear invalid session
-              await supabase.auth.signOut();
-              setCurrentUser(null);
-            }
-          } else {
-            // No Supabase session, try Google token fallback (for backward compatibility)
-            const savedUserJson = localStorage.getItem(LOCALSTORAGE_USER_KEY);
-            const savedToken = localStorage.getItem(LOCALSTORAGE_AUTH_TOKEN_KEY);
+          const savedLanguage = localStorage.getItem(LOCALSTORAGE_LANGUAGE_KEY) as Language | null;
+          if (savedLanguage && translations[savedLanguage]) {
+              setLanguageState(savedLanguage);
+          }
 
-            if (savedToken && isTokenStillValid() && savedUserJson) {
-              logger.info('Attempting Google token validation for legacy users', 'AppInit');
+          // Check for existing Supabase session first
+          try {
+            const { data: { session } } = await supabase.auth.getSession();
+            
+            if (session?.user) {
+              logger.info('Found existing Supabase session', 'AppInit', { 
+                userId: session.user.id,
+                email: session.user.email 
+              });
               
-              if (authInProgressRef.current) {
-                return;
-              }
-              
-              authInProgressRef.current = true;
+              // Try to get user profile from database
               try {
-                const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-                  headers: { Authorization: `Bearer ${savedToken}` },
-                });
+                const userProfile = await supabaseService.getUserByEmail(session.user.email!);
                 
-                if (userInfoResponse.ok) {
-                  const userInfo = await userInfoResponse.json();
-                  const localUser = JSON.parse(savedUserJson) as UserProfile;
-                  
-                  const fallbackUser: UserProfile = {
-                    ...localUser,
-                    id: userInfo.sub,
-                    email: userInfo.email,
-                    name: userInfo.name,
-                    imageUrl: userInfo.picture?.replace(/=s\d+-c$/, '=s256-c') || userInfo.picture,
-                    accessToken: savedToken,
+                if (userProfile) {
+                  const restoredUser: UserProfile = {
+                    ...userProfile,
+                    supabaseId: session.user.id,
+                    // Don't store access tokens in localStorage for security
                   };
-                  
-                  setCurrentUser(fallbackUser);
-                  logger.info('Legacy Google session restored', 'AppInit', { 
-                    userId: fallbackUser.id 
+                  setCurrentUser(restoredUser);
+                  logger.info('User session restored from Supabase', 'AppInit', { 
+                    userId: restoredUser.id,
+                    email: restoredUser.email 
                   });
                 } else {
-                  logger.warn('Google token validation failed', 'AppInit');
-                  setCurrentUser(null);
+                  // User exists in Supabase auth but not in our database
+                  const basicUser: UserProfile = {
+                    id: session.user.id,
+                    supabaseId: session.user.id,
+                    email: session.user.email!,
+                    name: session.user.user_metadata?.name || session.user.email!,
+                    imageUrl: session.user.user_metadata?.picture || null,
+                  };
+                  setCurrentUser(basicUser);
+                  logger.info('User session restored with basic profile', 'AppInit', { 
+                    userId: basicUser.id 
+                  });
                 }
-              } catch (e) {
-                logger.error("Error validating Google token", 'AppInit', undefined, e as Error);
+              } catch (profileError) {
+                logger.error('Error loading user profile from database', 'AppInit', {}, profileError as Error);
+                // Clear invalid session
+                await supabase.auth.signOut();
                 setCurrentUser(null);
-              } finally {
-                authInProgressRef.current = false;
               }
             } else {
-              setCurrentUser(null);
+              // No Supabase session, try Google token fallback (for backward compatibility)
+              const savedUserJson = localStorage.getItem(LOCALSTORAGE_USER_KEY);
+              const savedToken = localStorage.getItem(LOCALSTORAGE_AUTH_TOKEN_KEY);
+
+              if (savedToken && isTokenStillValid() && savedUserJson) {
+                logger.info('Attempting Google token validation for legacy users', 'AppInit');
+                
+                if (authInProgressRef.current) {
+                  logger.info('Auth already in progress, skipping Google token validation', 'AppInit');
+                  return;
+                }
+                
+                authInProgressRef.current = true;
+                try {
+                  const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                    headers: { Authorization: `Bearer ${savedToken}` },
+                  });
+                  
+                  if (userInfoResponse.ok) {
+                    const userInfo = await userInfoResponse.json();
+                    const localUser = JSON.parse(savedUserJson) as UserProfile;
+                    
+                    const fallbackUser: UserProfile = {
+                      ...localUser,
+                      id: userInfo.sub,
+                      email: userInfo.email,
+                      name: userInfo.name,
+                      imageUrl: userInfo.picture?.replace(/=s\d+-c$/, '=s256-c') || userInfo.picture,
+                      accessToken: savedToken,
+                    };
+                    
+                    setCurrentUser(fallbackUser);
+                    logger.info('Legacy Google session restored', 'AppInit', { 
+                      userId: fallbackUser.id 
+                    });
+                  } else {
+                    logger.warn('Google token validation failed', 'AppInit');
+                    setCurrentUser(null);
+                  }
+                } catch (e) {
+                  logger.error("Error validating Google token", 'AppInit', undefined, e as Error);
+                  setCurrentUser(null);
+                } finally {
+                  authInProgressRef.current = false;
+                }
+              } else {
+                setCurrentUser(null);
+              }
             }
+          } catch (sessionError) {
+            logger.error('Error checking Supabase session', 'AppInit', {}, sessionError as Error);
+            setCurrentUser(null);
           }
-        } catch (sessionError) {
-          logger.error('Error checking Supabase session', 'AppInit', {}, sessionError as Error);
-          setCurrentUser(null);
-        }
 
-        const savedResultJson = localStorage.getItem(LOCALSTORAGE_QUIZ_RESULT_KEY);
-        if (savedResultJson) {
-            try { setQuizResult(JSON.parse(savedResultJson) as QuizResult); }
-            catch (e) {
-                logger.error("Failed to parse quiz result from localStorage", 'AppInit', undefined, e as Error);
-                localStorage.removeItem(LOCALSTORAGE_QUIZ_RESULT_KEY);
-            }
-        }
+          const savedResultJson = localStorage.getItem(LOCALSTORAGE_QUIZ_RESULT_KEY);
+          if (savedResultJson) {
+              try { setQuizResult(JSON.parse(savedResultJson) as QuizResult); }
+              catch (e) {
+                  logger.error("Failed to parse quiz result from localStorage", 'AppInit', undefined, e as Error);
+                  localStorage.removeItem(LOCALSTORAGE_QUIZ_RESULT_KEY);
+              }
+          }
 
-        setAppInitialized(true);
+        } catch (error) {
+          logger.error('Error during app initialization', 'AppInit', {}, error as Error);
+        } finally {
+          clearTimeout(initTimeout);
+          setAppInitialized(true);
+          logger.info('App initialization completed', 'AppInit');
+        }
     };
+    
     initializeApp();
-  }, [setCurrentUser, isTokenStillValid]); 
+  }, []); // Remove dependencies to prevent re-runs 
+
+  // Emergency initialization timeout - force initialize after 15 seconds
+  useEffect(() => {
+    const emergencyTimeout = setTimeout(() => {
+      if (!appInitialized) {
+        logger.error('Emergency timeout: App failed to initialize within 15 seconds', 'EmergencyInit');
+        setAppInitialized(true);
+        setIsLoading(false);
+      }
+    }, 15000);
+
+    return () => clearTimeout(emergencyTimeout);
+  }, [appInitialized]);
 
   useEffect(() => {
     if (!appInitialized) return;
@@ -337,42 +368,33 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
 
 
   useEffect(() => {
-    // Set up Supabase auth state listener
+    // Only set up auth listener after app is initialized to avoid conflicts
+    if (!appInitialized) return;
+
+    // Set up Supabase auth state listener for ongoing session changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       logger.info('Supabase auth state changed', 'AuthListener', { 
         event, 
         hasSession: !!session,
-        userId: session?.user?.id 
+        userId: session?.user?.id,
+        appInitialized 
       });
 
-      if (event === 'SIGNED_OUT' || !session) {
-        // User signed out or session expired
+      // Only handle explicit auth events, not initial session
+      if (event === 'SIGNED_OUT') {
+        logger.info('User signed out via auth state change', 'AuthListener');
         setCurrentUser(null);
-      } else if (event === 'SIGNED_IN' && session) {
-        // User signed in - try to get their profile
-        try {
-          const userProfile = await supabaseService.getUserByEmail(session.user.email!);
-          
-          if (userProfile) {
-            const restoredUser: UserProfile = {
-              ...userProfile,
-              supabaseId: session.user.id,
-            };
-            setCurrentUser(restoredUser);
-            logger.info('User profile updated from auth state change', 'AuthListener', { 
-              userId: restoredUser.id 
-            });
-          }
-        } catch (error) {
-          logger.error('Error updating user profile from auth state change', 'AuthListener', {}, error as Error);
-        }
+      } else if (event === 'TOKEN_REFRESHED' && session) {
+        logger.info('Token refreshed, session is still valid', 'AuthListener');
+        // Session is automatically maintained, no need to update user
       }
+      // Ignore SIGNED_IN events during initialization to prevent conflicts
     });
 
     return () => {
       subscription.unsubscribe();
     };
-  }, [setCurrentUser]);
+  }, [appInitialized, setCurrentUser]);
 
   useEffect(() => {
     if (appInitialized) {
@@ -818,10 +840,23 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
             alignItems: 'center', justifyContent: 'center',
             backgroundColor: 'var(--color-bg-body)'
         }}>
-            <svg className="animate-spin text-[var(--color-primary-accent)] w-14 h-14" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3"></circle>
-              <path className="opacity-80" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
+            <div className="flex flex-col items-center space-y-4">
+              <svg className="animate-spin text-[var(--color-primary-accent)] w-14 h-14" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3"></circle>
+                <path className="opacity-80" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              <p className="text-sm text-[var(--color-text-secondary)]">Loading QuizAI...</p>
+              <button 
+                onClick={() => {
+                  logger.warn('Emergency initialization triggered by user', 'AppInit');
+                  setAppInitialized(true);
+                }}
+                className="mt-4 px-4 py-2 text-xs bg-[var(--color-primary-accent)] text-white rounded hover:opacity-80 transition-opacity"
+                style={{ display: 'block' }}
+              >
+                Click if stuck loading
+              </button>
+            </div>
         </div>
     );
   }
