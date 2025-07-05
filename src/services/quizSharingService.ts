@@ -47,21 +47,29 @@ export const shareQuizViaAPI = async (quiz: Quiz, currentUser?: UserProfile | nu
       userExists = await supabaseService.createUser(currentUser);
     }
     
-    // Check if quiz exists in Supabase, if not create it
-    let quizExists = null;
-    try {
-      const existingQuizzes = await supabaseService.getUserQuizzes(currentUser.id);
-      quizExists = existingQuizzes.find(q => q.id === quiz.id);
-    } catch (error) {
-      logger.warn('Failed to get user quizzes, will create quiz anyway', 'quizSharingService', { userId: currentUser.id, error });
+    // Always try to create/update quiz to ensure it exists
+    logger.info('Force creating/updating quiz in Supabase', 'quizSharingService', { quizId: quiz.id });
+    
+    // Try to create the quiz - if it exists, this might fail but that's ok
+    let quizCreationResult = await supabaseService.createQuiz(quiz, currentUser.id);
+    
+    // If creation failed, try to update existing quiz
+    if (!quizCreationResult) {
+      logger.info('Quiz creation failed, attempting to update existing quiz', 'quizSharingService', { quizId: quiz.id });
+      quizCreationResult = await supabaseService.updateQuiz(quiz);
     }
     
-    if (!quizExists) {
-      logger.info('Quiz not found in Supabase, creating it', 'quizSharingService', { quizId: quiz.id });
-      const createdQuiz = await supabaseService.createQuiz(quiz, currentUser.id);
-      if (!createdQuiz) {
-        throw new Error('Failed to create quiz in Supabase');
+    // Verify quiz exists now
+    try {
+      const verifyQuizzes = await supabaseService.getUserQuizzes(currentUser.id);
+      const finalQuizCheck = verifyQuizzes.find(q => q.id === quiz.id);
+      if (!finalQuizCheck) {
+        throw new Error('Quiz still not found in Supabase after creation/update attempts');
       }
+      logger.info('Quiz verified to exist in Supabase', 'quizSharingService', { quizId: quiz.id });
+    } catch (verifyError) {
+      logger.error('Failed to verify quiz exists in Supabase', 'quizSharingService', { quizId: quiz.id }, verifyError as Error);
+      throw new Error('Unable to ensure quiz exists in Supabase database');
     }
     
     // Now share the quiz via Supabase

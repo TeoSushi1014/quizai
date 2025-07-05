@@ -155,6 +155,13 @@ export class SupabaseService {
 
   async createQuiz(quiz: Quiz, userId: string): Promise<Quiz | null> {
     try {
+      logger.info('Starting quiz creation in Supabase', 'SupabaseService', { 
+        quizId: quiz.id, 
+        userId, 
+        title: quiz.title,
+        questionCount: quiz.questions?.length 
+      });
+
       const quizForDb = {
         id: quiz.id,
         user_id: userId,
@@ -165,18 +172,42 @@ export class SupabaseService {
         config: quiz.config || {}
       }
 
+      logger.info('Quiz data prepared for database', 'SupabaseService', { 
+        quizForDb: {
+          ...quizForDb,
+          questions: `${quiz.questions?.length} questions`
+        }
+      });
+
       const { data, error } = await supabase
         .from('quizzes')
         .insert([quizForDb])
         .select()
         .single()
 
-      if (error) throw error
+      if (error) {
+        logger.error('Supabase quiz creation failed', 'SupabaseService', { 
+          quizId: quiz.id,
+          error: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint
+        });
+        throw error;
+      }
       
-      logger.info('Quiz created in Supabase', 'SupabaseService', { quizId: data.id })
+      logger.info('Quiz created in Supabase successfully', 'SupabaseService', { 
+        quizId: data.id,
+        createdAt: data.created_at 
+      });
       return this.mapDatabaseQuizToQuiz(data)
     } catch (error) {
-      logger.error('Failed to create quiz', 'SupabaseService', { quizId: quiz.id }, error as Error)
+      logger.error('Failed to create quiz - full error details', 'SupabaseService', { 
+        quizId: quiz.id,
+        userId,
+        errorName: (error as Error).name,
+        errorMessage: (error as Error).message
+      }, error as Error)
       return null
     }
   }
