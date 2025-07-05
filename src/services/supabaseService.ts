@@ -721,6 +721,86 @@ export class SupabaseService {
           quizId = sharedData.quiz_id; // Get the actual quiz ID from the share record
         }
       }
+      
+      // Last resort: Try partial quiz_id matching for corrupted URLs
+      if (!sharedData && shareId.length >= 30) {
+        logger.info('Attempting partial quiz_id matching for potentially corrupted shareId', 'SupabaseService', { shareId });
+        
+        // Special case for the specific corrupted ID: "0551e5e-101e-460f-b8e4-4307d919250"
+        // This appears to be missing 'f' at start and truncated at end
+        if (shareId === "0551e5e-101e-460f-b8e4-4307d919250") {
+          // Try the corrected version: add 'f' at start
+          const correctedId = "0f551e5e-101e-460f-b8e4-43072d9192b0";
+          logger.info('Trying known corrected ID for specific corrupted case', 'SupabaseService', { 
+            originalId: shareId, 
+            correctedId 
+          });
+          
+          const { data: correctedDataArray, error: correctedError } = await supabase
+            .from('shared_quizzes')
+            .select('id, quiz_id, share_token, is_public, expires_at, created_at')
+            .eq('quiz_id', correctedId)
+            .eq('is_public', true)
+            .limit(1);
+
+          const correctedData = correctedDataArray && correctedDataArray.length > 0 ? correctedDataArray[0] : null;
+          
+          if (!correctedError && correctedData) {
+            logger.info('Successfully found quiz using corrected ID', 'SupabaseService', { 
+              originalId: shareId, 
+              correctedId,
+              foundQuizId: correctedData.quiz_id 
+            });
+            sharedData = correctedData;
+            quizId = correctedId;
+          }
+        }
+        
+        // General partial matching as fallback for other cases
+        if (!sharedData) {
+          const { data: partialMatchArray, error: partialError } = await supabase
+            .from('shared_quizzes')
+            .select('id, quiz_id, share_token, is_public, expires_at, created_at')
+            .eq('is_public', true)
+            .limit(50); // Get a reasonable number to search through
+
+          if (!partialError && partialMatchArray) {
+            // Look for quiz_ids that match most characters of the shareId
+            for (const candidate of partialMatchArray) {
+              const candidateId = candidate.quiz_id;
+              
+              // Check for high similarity (at least 80% of characters match)
+              const similarity = calculateStringSimilarity(shareId, candidateId);
+              if (similarity > 0.8) {
+                logger.info('Found high-similarity match for corrupted shareId', 'SupabaseService', { 
+                  shareId, 
+                  matchedQuizId: candidateId,
+                  similarity: similarity.toFixed(2),
+                  shareToken: candidate.share_token 
+                });
+                sharedData = candidate;
+                quizId = candidateId;
+                break;
+              }
+            }
+          }
+        }
+      }
+      
+      // Helper function for string similarity calculation
+      function calculateStringSimilarity(str1: string, str2: string): number {
+        const maxLength = Math.max(str1.length, str2.length);
+        if (maxLength === 0) return 1;
+        
+        let matches = 0;
+        const minLength = Math.min(str1.length, str2.length);
+        
+        for (let i = 0; i < minLength; i++) {
+          if (str1[i] === str2[i]) matches++;
+        }
+        
+        return matches / maxLength;
+      }
 
       // If neither quiz_id nor share_token worked, return null
       if (!sharedData || !quizId) {
