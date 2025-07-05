@@ -563,18 +563,11 @@ export class SupabaseService {
         return { canShare: false, reason: 'User has no quizzes to share' };
       }
       
-      // Try a test insert with a real quiz ID that the user owns using service role client
+      // Try a test insert with a real quiz ID that the user owns using regular client
       const testQuizId = userQuizzes[0].id;
       const testToken = `test-token-${Date.now()}`;
       
-      // Import service role client for test insert
-      const { supabaseServiceRole } = await import('./supabaseServiceRole');
-      
-      if (!supabaseServiceRole) {
-        return { canShare: false, reason: 'Service role client not available for permission testing' };
-      }
-      
-      const { error: insertError } = await supabaseServiceRole
+      const { error: insertError } = await supabase
         .from('shared_quizzes')
         .insert({
           quiz_id: testQuizId,
@@ -584,7 +577,7 @@ export class SupabaseService {
         });
       
       // Clean up the test insert (ignore cleanup errors)
-      await supabaseServiceRole
+      await supabase
         .from('shared_quizzes')
         .delete()
         .eq('quiz_id', testQuizId)
@@ -670,18 +663,12 @@ export class SupabaseService {
         quizUserId: existingQuiz.user_id 
       });
 
-      // Import service role client for all sharing operations
-      const { supabaseServiceRole } = await import('./supabaseServiceRole');
-      
-      // Use service role client if available, otherwise fall back to regular client
-      const clientToUse = supabaseServiceRole || supabase;
-      
-      if (!supabaseServiceRole) {
-        logger.warn('Service role client not available, using regular client for sharing operations', 'SupabaseService', { quizId });
-      }
+      // Use regular authenticated client for sharing operations
+      // RLS policies now allow users to share their own quizzes
+      logger.info('Using authenticated client for sharing operations', 'SupabaseService', { quizId });
 
       // Check if quiz is already shared
-      const { data: existingShare, error: shareCheckError } = await clientToUse
+      const { data: existingShare, error: shareCheckError } = await supabase
         .from('shared_quizzes')
         .select('share_token')
         .eq('quiz_id', quizId)
@@ -710,8 +697,9 @@ export class SupabaseService {
       
       logger.info('Generated share token', 'SupabaseService', { quizId, shareToken });
       
-      // Create a shared quiz entry using available client
-      const { error: shareError } = await clientToUse
+      // Create a shared quiz entry using authenticated client
+      // RLS policies ensure users can only share their own quizzes
+      const { error: shareError } = await supabase
         .from('shared_quizzes')
         .insert({
           quiz_id: quizId,
@@ -728,24 +716,16 @@ export class SupabaseService {
           details: shareError.details,
           hint: shareError.hint,
           currentUserId: currentUserId,
-          quizOwnerId: existingQuiz.user_id,
-          usingServiceRole: !!supabaseServiceRole
+          quizOwnerId: existingQuiz.user_id
         });
         
-        // If it's an RLS policy violation, provide more helpful information
+        // If it's an RLS policy violation, provide helpful information
         if (shareError.code === '42501') {
-          const rlsMessage = supabaseServiceRole 
-            ? 'RLS policy violation even with service role: Check Supabase RLS policies for shared_quizzes table'
-            : 'RLS policy violation: Either set VITE_SUPABASE_SERVICE_ROLE_KEY or configure RLS policies to allow user sharing';
-          
-          logger.error(rlsMessage, 'SupabaseService', { 
+          logger.error('RLS policy violation: User may not have permission to share this quiz', 'SupabaseService', { 
             quizId,
             currentUserId: currentUserId,
             quizUserId: existingQuiz.user_id,
-            usingServiceRole: !!supabaseServiceRole,
-            errorHint: supabaseServiceRole 
-              ? 'The RLS policy may require additional conditions or the policy may be incorrectly configured'
-              : 'Consider setting up the service role key or updating RLS policies to allow authenticated users to share their own quizzes'
+            errorHint: 'Make sure the user owns this quiz and RLS policies are properly configured'
           });
         }
         
@@ -799,15 +779,8 @@ export class SupabaseService {
         return null;
       }
 
-      // Check if it's already shared using service role client
-      const { supabaseServiceRole } = await import('./supabaseServiceRole');
-      
-      if (!supabaseServiceRole) {
-        logger.error('Service role client not available for checking existing shares', 'SupabaseService', { quizId });
-        return null;
-      }
-      
-      const { data: existingShare, error: shareCheckError } = await supabaseServiceRole
+      // Check if it's already shared using regular authenticated client
+      const { data: existingShare, error: shareCheckError } = await supabase
         .from('shared_quizzes')
         .select('share_token')
         .eq('quiz_id', quizId)
