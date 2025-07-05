@@ -40,26 +40,44 @@ export const shareQuizViaAPI = async (quiz: Quiz, currentUser?: UserProfile | nu
     
     const supabaseService = await import('./supabaseService').then(m => m.supabaseService);
     
+    // Check if user exists in Supabase first
+    let userExists = await supabaseService.getUserById(currentUser.id);
+    if (!userExists) {
+      logger.info('User not found in Supabase, creating user first', 'quizSharingService', { userId: currentUser.id });
+      userExists = await supabaseService.createUser(currentUser);
+    }
+    
     // Check if quiz exists in Supabase, if not create it
-    const existingQuizzes = await supabaseService.getUserQuizzes(currentUser.id);
-    const quizExists = existingQuizzes.find(q => q.id === quiz.id);
+    let quizExists = null;
+    try {
+      const existingQuizzes = await supabaseService.getUserQuizzes(currentUser.id);
+      quizExists = existingQuizzes.find(q => q.id === quiz.id);
+    } catch (error) {
+      logger.warn('Failed to get user quizzes, will create quiz anyway', 'quizSharingService', { userId: currentUser.id, error });
+    }
     
     if (!quizExists) {
       logger.info('Quiz not found in Supabase, creating it', 'quizSharingService', { quizId: quiz.id });
-      await supabaseService.createQuiz(quiz, currentUser.id);
+      const createdQuiz = await supabaseService.createQuiz(quiz, currentUser.id);
+      if (!createdQuiz) {
+        throw new Error('Failed to create quiz in Supabase');
+      }
     }
     
     // Now share the quiz via Supabase
+    logger.info('Starting quiz share process in Supabase', 'quizSharingService', { quizId: quiz.id });
     const shareResult = await supabaseService.shareQuiz(quiz.id);
     
     if (shareResult) {
       logger.info('Quiz shared via Supabase successfully', 'quizSharingService', { 
         quizId: quiz.id, 
-        shareUrl: shareResult.shareUrl 
+        shareUrl: shareResult.shareUrl,
+        shareToken: shareResult.shareToken 
       });
       return { shareUrl: shareResult.shareUrl, isDemo: false };
     } else {
-      throw new Error('Failed to create share entry in Supabase');
+      logger.error('shareQuiz returned null - check Supabase logs', 'quizSharingService', { quizId: quiz.id });
+      throw new Error('Failed to create share entry in Supabase - shareQuiz returned null');
     }
     
   } catch (error) {

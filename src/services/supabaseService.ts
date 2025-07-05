@@ -401,6 +401,8 @@ export class SupabaseService {
 
   async shareQuiz(quizId: string, isPublic: boolean = true, expiresAt?: string): Promise<{ shareToken: string; shareUrl: string } | null> {
     try {
+      logger.info('Starting shareQuiz process', 'SupabaseService', { quizId, isPublic });
+      
       // First check if the quiz exists in the database
       const { data: existingQuiz, error: quizCheckError } = await supabase
         .from('quizzes')
@@ -411,18 +413,24 @@ export class SupabaseService {
       if (quizCheckError) {
         logger.error('Error checking if quiz exists', 'SupabaseService', { 
           quizId, 
-          error: quizCheckError.message 
+          error: quizCheckError.message,
+          code: quizCheckError.code,
+          details: quizCheckError.details 
         });
         return null;
       }
 
       if (!existingQuiz) {
-        logger.warn('Quiz not found in database, cannot share via Supabase', 'SupabaseService', { quizId });
+        logger.error('Quiz not found in database, cannot share via Supabase', 'SupabaseService', { quizId });
         return null;
       }
 
+      logger.info('Quiz exists in database, proceeding with share', 'SupabaseService', { quizId });
+
       // Generate a unique share token
       const shareToken = `share_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
+      logger.info('Generated share token', 'SupabaseService', { quizId, shareToken });
       
       // Create a shared quiz entry
       const { error: shareError } = await supabase
@@ -438,7 +446,9 @@ export class SupabaseService {
         logger.error('Failed to create shared quiz entry', 'SupabaseService', { 
           quizId, 
           error: shareError.message,
-          code: shareError.code 
+          code: shareError.code,
+          details: shareError.details,
+          hint: shareError.hint 
         });
         return null;
       }
