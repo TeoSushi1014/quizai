@@ -21,44 +21,13 @@ const SignInPage: React.FC = () => {
     }
   }, [currentUser, navigate, location.state]);
 
-  // Debug: Check if GoogleLogin component is available
-  React.useEffect(() => {
-    console.log("🔍 SignInPage loaded, GoogleLogin component should be available");
-    
-    // Check Google OAuth setup
-    const hasGoogleOAuth = !!(window as any).google;
-    const hasGoogleScript = !!document.querySelector('script[src*="accounts.google.com"]');
-    
-    logger.info("SignInPage loaded - checking Google OAuth setup", 'SignInPage', {
-      hasGoogleOAuth,
-      hasGoogleScript,
-      currentDomain: window.location.hostname,
-      currentURL: window.location.href
-    });
-    
-    // Test if Google OAuth is properly initialized
-    setTimeout(() => {
-      console.log("🧪 Testing Google OAuth availability:", {
-        googleObject: !!(window as any).google,
-        googleAccounts: !!(window as any).google?.accounts,
-        googleId: !!(window as any).google?.accounts?.id,
-        domain: window.location.hostname
-      });
-      
-      if (!(window as any).google?.accounts?.id) {
-        console.error("🔴 Google OAuth not properly loaded! GoogleLogin component may not work.");
-        console.error("🔴 This could be why you're not seeing the ID token authentication working.");
-      }
-    }, 2000);
-  }, []);
-
   const handleLoginError = (error?: any) => { 
     logger.error("Google Login Failed.", 'SignInPage', { errorDetails: error });
   };
 
-  // New handler for credential-based authentication (provides ID token)
+  // Handle credential-based authentication (provides ID token)
   const handleCredentialResponse = async (credentialResponse: GoogleCredentialResponse) => {
-    logger.info("🎉 GoogleLogin SUCCESS - ID token received!", 'SignInPage', { 
+    logger.info("🎉 Google Login successful - ID token received!", 'SignInPage', { 
       hasCredential: !!credentialResponse.credential,
       credentialLength: credentialResponse.credential?.length || 0
     });
@@ -86,25 +55,20 @@ const SignInPage: React.FC = () => {
           idToken: credentialResponse.credential, // This is the ID token we need for Supabase
         };
         
-        logger.info("User profile created from ID token. Calling login context function.", 'SignInPage', { 
+        logger.info("Calling login...", 'SignInPage', { 
           userId: userProfile.id,
-          hasIdToken: true 
+          hasIdToken: true
         });
         
-        try {
-          const loginResult = await login(userProfile);
-          
-          if (loginResult) {
-            logger.info("Login completed successfully, redirecting...", 'SignInPage', { userId: loginResult.id });
-            const from = (location.state as any)?.from?.pathname || '/dashboard';
-            navigate(from, { replace: true });
-          } else {
-            logger.error("Login returned null result", 'SignInPage');
-            handleLoginError(new Error("Login failed - no user returned"));
-          }
-        } catch (loginError) {
-          logger.error("Login process failed", 'SignInPage', undefined, loginError as Error);
-          handleLoginError(loginError);
+        const loginResult = await login(userProfile);
+        
+        if (loginResult) {
+          logger.info("Login completed successfully, redirecting...", 'SignInPage', { userId: loginResult.id });
+          const from = (location.state as any)?.from?.pathname || '/dashboard';
+          navigate(from, { replace: true });
+        } else {
+          logger.error("Login returned null result", 'SignInPage');
+          handleLoginError(new Error("Login failed - no user returned"));
         }
       } catch (error) {
         logger.error("Error during credential processing or login", 'SignInPage', undefined, error as Error);
@@ -122,46 +86,35 @@ const SignInPage: React.FC = () => {
         className="max-w-md w-full text-center shadow-2xl p-8 sm:p-10 md:p-12 !rounded-2xl" 
         useGlassEffect={true}
       >
-        <h1 className="text-2xl sm:text-3xl font-bold text-[var(--color-text-primary)] mb-4 mt-8 sm:mt-10">{t('signInTitle')}</h1>
-        <p className="text-[var(--color-text-secondary)] mb-10 text-sm">{t('signInSubtitle')}</p>
+        <h1 className="text-2xl sm:text-3xl font-bold text-[var(--color-text-primary)] mb-4 mt-8 sm:mt-10">
+          {t('signInTitle')}
+        </h1>
+        <p className="text-[var(--color-text-secondary)] mb-10 text-sm">
+          {t('signInSubtitle')}
+        </p>
         
-        <div className="flex flex-col items-center space-y-6 mb-8">
-          {/* Primary authentication method: GoogleLogin (provides ID token) */}
-          <div className="w-full max-w-xs sm:w-[280px]">
-            <div className="text-sm font-medium text-[var(--color-primary-accent)] text-center mb-2">
-              ✨ Sign in with Google
-            </div>
-            <div className="border-4 border-green-500 rounded p-3 bg-green-50 shadow-lg">
-              <GoogleLogin
-                onSuccess={handleCredentialResponse}
-                onError={(error?: any) => {
-                  logger.error("GoogleLogin component failed", 'SignInPage', { 
-                    error,
-                    domain: window.location.hostname,
-                    userAgent: navigator.userAgent,
-                    isSecureContext: window.isSecureContext
-                  });
-                  console.error("🔴 GoogleLogin component error occurred!", error);
-                  console.error("🔴 If you see Cross-Origin-Opener-Policy errors, this might be a domain configuration issue");
-                  console.error("🔴 Current domain:", window.location.hostname);
-                  handleLoginError("Google Login component failed");
-                }}
-                useOneTap={false}
-                shape="rectangular"
-                theme="outline"
-                size="large"
-                text="signin_with"
-                width="260"
-                locale="en"
-              />
-            </div>
-          </div>
+        <div className="flex flex-col items-center mb-8">
+          <GoogleLogin
+            onSuccess={handleCredentialResponse}
+            onError={handleLoginError}
+            useOneTap={false}
+            shape="rectangular"
+            theme="outline"
+            size="large"
+            text="signin_with"
+            width="300"
+            locale="en"
+          />
         </div>
         
         <p className="text-xs text-[var(--color-text-muted)]">
           {t('signInAgreementPrompt')} {' '}
-          <a href="#" className="text-[var(--color-primary-accent)] hover:underline font-medium">{t('footerTerms')}</a> {t('and')} {' '}
-          <a href="#" className="text-[var(--color-primary-accent)] hover:underline font-medium">{t('footerPrivacy')}</a>.
+          <a href="#" className="text-[var(--color-primary-accent)] hover:underline font-medium">
+            {t('footerTerms')}
+          </a> {t('and')} {' '}
+          <a href="#" className="text-[var(--color-primary-accent)] hover:underline font-medium">
+            {t('footerPrivacy')}
+          </a>.
         </p>
       </Card>
     </div>
