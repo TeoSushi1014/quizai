@@ -26,14 +26,24 @@ const SignInPage: React.FC = () => {
     }
   }, [currentUser, navigate, location.state]);
 
+  // Debug: Check if GoogleLogin component is available
+  React.useEffect(() => {
+    console.log("🔍 SignInPage loaded, GoogleLogin component should be available");
+    logger.info("SignInPage loaded - checking Google OAuth setup", 'SignInPage', {
+      hasGoogleOAuth: !!(window as any).google,
+      hasGoogleScript: !!document.querySelector('script[src*="accounts.google.com"]')
+    });
+  }, []);
+
   const handleLoginError = (error?: any) => { 
     logger.error("Google Login Failed.", 'SignInPage', { errorDetails: error });
   };
 
   // New handler for credential-based authentication (provides ID token)
   const handleCredentialResponse = async (credentialResponse: GoogleCredentialResponse) => {
-    logger.info("Google Credential Login Succeeded (ID token obtained).", 'SignInPage', { 
-      hasCredential: !!credentialResponse.credential 
+    logger.info("🎉 GoogleLogin SUCCESS - ID token received!", 'SignInPage', { 
+      hasCredential: !!credentialResponse.credential,
+      credentialLength: credentialResponse.credential?.length || 0
     });
     
     if (credentialResponse.credential) {
@@ -151,7 +161,8 @@ const SignInPage: React.FC = () => {
   });
 
   const handleCustomGoogleLoginClick = () => {
-    logger.info("Custom Google Login button clicked.", 'SignInPage');
+    logger.info("⚠️  FALLBACK Google Login button clicked - this will use access token only!", 'SignInPage');
+    console.warn("🔸 User clicked FALLBACK authentication - quiz sharing will NOT work!");
     if (!siteKey) {
       logger.warn('VITE_RECAPTCHA_SITE_KEY is not configured. Proceeding with login directly.', 'SignInPage');
       initiateGoogleLogin();
@@ -189,9 +200,15 @@ const SignInPage: React.FC = () => {
         <div className="flex flex-col items-center space-y-4 mb-8">
           {/* Primary authentication method: GoogleLogin (provides ID token) */}
           <div className="w-full max-w-xs sm:w-[280px]">
+            <div className="text-sm font-medium text-[var(--color-primary-accent)] text-center mb-2">
+              ✨ Recommended: Full Features
+            </div>
             <GoogleLogin
               onSuccess={handleCredentialResponse}
-              onError={() => handleLoginError("Google Login failed")}
+              onError={() => {
+                logger.error("GoogleLogin component failed", 'SignInPage');
+                handleLoginError("Google Login component failed");
+              }}
               useOneTap={false}
               shape="rectangular"
               theme="outline"
@@ -205,7 +222,7 @@ const SignInPage: React.FC = () => {
           {/* Fallback method: Custom button with access token (if ID token fails) */}
           <div className="w-full max-w-xs sm:w-[280px]">
             <div className="text-xs text-[var(--color-text-muted)] text-center mb-2">
-              Or use fallback authentication:
+              ⚠️ Limited Features (Quiz sharing won't work)
             </div>
             <Button
               onClick={handleCustomGoogleLoginClick}
