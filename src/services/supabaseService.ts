@@ -295,7 +295,7 @@ export class SupabaseService {
       
       // Test if Supabase is available first
       const { error: testError } = await supabase
-        .from('quizzes')
+        .from('shared_quizzes')
         .select('count')
         .limit(1)
         .maybeSingle();
@@ -307,6 +307,34 @@ export class SupabaseService {
           hint: testError.hint 
         });
         return null; // Fallback to localStorage
+      }
+      
+      // First check if the quiz is actually shared/public
+      const { data: sharedData, error: sharedError } = await supabase
+        .from('shared_quizzes')
+        .select('quiz_id, is_public, expires_at')
+        .eq('quiz_id', quizId)
+        .eq('is_public', true)
+        .maybeSingle();
+
+      if (sharedError) {
+        logger.warn('Error checking if quiz is shared', 'SupabaseService', { 
+          quizId, 
+          error: sharedError.message,
+          code: sharedError.code 
+        });
+        return null;
+      }
+
+      if (!sharedData) {
+        logger.info('Quiz is not publicly shared', 'SupabaseService', { quizId });
+        return null;
+      }
+
+      // Check if the shared quiz has expired
+      if (sharedData.expires_at && new Date(sharedData.expires_at) < new Date()) {
+        logger.info('Shared quiz has expired', 'SupabaseService', { quizId, expiresAt: sharedData.expires_at });
+        return null;
       }
       
       // Now try to get the actual quiz
@@ -368,6 +396,91 @@ export class SupabaseService {
     } catch (error) {
       logger.warn('Supabase service unavailable, falling back to localStorage', 'SupabaseService', { quizId }, error as Error);
       return null; // This will trigger localStorage fallback
+    }
+  }
+
+  async shareQuiz(quizId: string, isPublic: boolean = true, expiresAt?: string): Promise<{ shareToken: string; shareUrl: string } | null> {
+    try {
+      // Generate a unique share token
+      const shareToken = `share_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
+      // Create a shared quiz entry
+      const { error: shareError } = await supabase
+        .from('shared_quizzes')
+        .insert({
+          quiz_id: quizId,
+          share_token: shareToken,
+          is_public: isPublic,
+          expires_at: expiresAt || null
+        });
+
+      if (shareError) {
+        logger.error('Failed to create shared quiz entry', 'SupabaseService', { 
+          quizId, 
+          error: shareError.message,
+          code: shareError.code 
+        });
+        return null;
+      }
+
+      const shareUrl = `${window.location.origin}${window.location.pathname}#/shared/${quizId}`;
+      
+      logger.info('Quiz shared successfully', 'SupabaseService', { 
+        quizId, 
+        shareToken, 
+        shareUrl,
+        isPublic 
+      });
+      
+      return { shareToken, shareUrl };
+      
+    } catch (error) {
+      logger.error('Failed to share quiz', 'SupabaseService', { quizId }, error as Error);
+      return null;
+    }
+  }
+
+  // Utility function to make an existing quiz shareable (can be called from browser console)
+  async makeQuizShareable(quizId: string): Promise<{ shareToken: string; shareUrl: string } | null> {
+    try {
+      logger.info('Making existing quiz shareable', 'SupabaseService', { quizId });
+      
+      // First check if the quiz exists
+      const { data: quizData, error: quizError } = await supabase
+        .from('quizzes')
+        .select('id, title')
+        .eq('id', quizId)
+        .maybeSingle();
+
+      if (quizError || !quizData) {
+        logger.error('Quiz not found', 'SupabaseService', { quizId, error: quizError?.message });
+        return null;
+      }
+
+      // Check if it's already shared
+      const { data: existingShare, error: shareCheckError } = await supabase
+        .from('shared_quizzes')
+        .select('share_token')
+        .eq('quiz_id', quizId)
+        .maybeSingle();
+
+      if (shareCheckError) {
+        logger.error('Error checking existing share', 'SupabaseService', { quizId, error: shareCheckError.message });
+        return null;
+      }
+
+      if (existingShare) {
+        const shareUrl = `${window.location.origin}${window.location.pathname}#/shared/${quizId}`;
+        logger.info('Quiz is already shareable', 'SupabaseService', { quizId, shareToken: existingShare.share_token });
+        return { shareToken: existingShare.share_token, shareUrl };
+      }
+
+      // Create a new share entry
+      return await this.shareQuiz(quizId);
+      
+    } catch (error) {
+      logger.error('Failed to make quiz shareable', 'SupabaseService', { quizId }, error as Error);
+      return null;
     }
   }
 

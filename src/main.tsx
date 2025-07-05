@@ -14,6 +14,15 @@ import './styles/question-layout-fix.css';
 import './styles/question-title-fix.css';
 import './styles/accordion-question-fix.css';
 
+// Debug utilities (available in browser console for troubleshooting)
+import('./services/supabaseService').then(({ supabaseService }) => {
+  (window as any).QuizAIDebug = {
+    makeQuizShareable: supabaseService.makeQuizShareable.bind(supabaseService),
+    supabaseService
+  };
+  console.log('QuizAI Debug utilities available at window.QuizAIDebug');
+});
+
 const rootElement = document.getElementById('root');
 if (!rootElement) {
   throw new Error("Could not find root element to mount to");

@@ -37,6 +37,26 @@ export const shareQuizViaAPI = async (quiz: Quiz, currentUser?: UserProfile | nu
   try {
     const quizForSharing = prepareQuizForSharing(quiz, currentUser);
     
+    // Try to share via Supabase first
+    try {
+      logger.info('Attempting to share quiz via Supabase', 'quizSharingService', { quizId: quiz.id });
+      
+      const supabaseService = await import('./supabaseService').then(m => m.supabaseService);
+      const shareResult = await supabaseService.shareQuiz(quiz.id);
+      
+      if (shareResult) {
+        logger.info('Quiz shared via Supabase successfully', 'quizSharingService', { 
+          quizId: quiz.id, 
+          shareUrl: shareResult.shareUrl 
+        });
+        return { shareUrl: shareResult.shareUrl, isDemo: false };
+      }
+    } catch (supabaseError) {
+      logger.warn('Supabase sharing failed, falling back to API/localStorage', 'quizSharingService', { 
+        quizId: quiz.id 
+      }, supabaseError as Error);
+    }
+    
     // @ts-ignore
     const apiUrl = typeof import.meta.env !== 'undefined' ? import.meta.env.VITE_API_URL : undefined;
     
