@@ -863,11 +863,12 @@ export class SupabaseService {
         const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser();
         
         if (userError || !currentUser) {
-          logger.error('No authenticated user found for sharing and no userId provided', 'SupabaseService', { 
+          logger.error('No authenticated Supabase user found for sharing', 'SupabaseService', { 
             quizId, 
-            userError: userError?.message 
+            userError: userError?.message,
+            hint: 'User must be properly authenticated with Supabase to share quizzes'
           });
-          return null;
+          throw new Error('User must be properly authenticated with Supabase to share quizzes');
         }
         
         currentUserId = currentUser.id;

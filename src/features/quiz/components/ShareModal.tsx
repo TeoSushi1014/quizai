@@ -41,7 +41,12 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, quiz }) => {
         } catch (error) {
           logger.error('Error generating share URL in Modal:', 'ShareModal', { quizId: quiz.id }, error as Error);
           if (mounted) {
-            setUrlError(t('dashboardShareLinkFailed')); 
+            const errorMessage = (error as Error).message;
+            if (errorMessage.includes('properly authenticated with Supabase')) {
+              setUrlError('Please sign in again to share quizzes'); 
+            } else {
+              setUrlError(t('dashboardShareLinkFailed')); 
+            }
             setShareUrl(''); 
           }
         } finally {

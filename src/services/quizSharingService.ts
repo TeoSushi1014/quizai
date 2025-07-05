@@ -36,27 +36,59 @@ export const shareQuizViaAPI = async (quiz: Quiz, currentUser?: UserProfile | nu
 
   const supabaseService = await import('./supabaseService').then(m => m.supabaseService);
   
-  // Use supabaseId - if not available, the authentication system should ensure user has one
-  if (!currentUser.supabaseId) {
+  // Try to get current Supabase session first
+  const { supabase } = await import('./supabaseClient');
+  const { data: { user: supabaseUser }, error: sessionError } = await supabase.auth.getUser();
+  
+  let effectiveUserId: string;
+  
+  if (supabaseUser && !sessionError) {
+    // User has active Supabase session, use Supabase ID
+    effectiveUserId = supabaseUser.id;
+    logger.info('Using active Supabase session for sharing', 'quizSharingService', { 
+      quizId: quiz.id, 
+      supabaseUserId: effectiveUserId,
+      googleUserId: currentUser.id
+    });
+  } else if (currentUser.supabaseId) {
+    // User has Supabase ID but no active session, try using it
+    effectiveUserId = currentUser.supabaseId;
+    logger.info('Using stored Supabase ID for sharing', 'quizSharingService', { 
+      quizId: quiz.id, 
+      supabaseUserId: effectiveUserId,
+      googleUserId: currentUser.id
+    });
+  } else {
+    // User only has Google authentication - provide helpful error message
+    logger.error('User authentication incomplete - missing Supabase session', 'quizSharingService', { 
+      quizId: quiz.id, 
+      googleUserId: currentUser.id,
+      hasSupabaseId: !!currentUser.supabaseId,
+      sessionError: sessionError?.message,
+      hint: 'Full authentication with Supabase is required for sharing features'
+    });
     throw new Error('User must be properly authenticated with Supabase to share quizzes');
   }
 
   logger.info('Sharing quiz via Supabase', 'quizSharingService', { 
     quizId: quiz.id, 
-    userId: currentUser.supabaseId 
+    userId: effectiveUserId 
   });
 
   // Ensure user exists in Supabase
-  let userExists = await supabaseService.getUserById(currentUser.supabaseId);
+  let userExists = await supabaseService.getUserById(effectiveUserId);
   if (!userExists) {
     logger.info('User not found in Supabase, creating user first', 'quizSharingService', { 
-      userId: currentUser.supabaseId 
+      userId: effectiveUserId 
     });
-    userExists = await supabaseService.createUser(currentUser);
+    userExists = await supabaseService.createUser({
+      ...currentUser,
+      id: effectiveUserId // Use the effective Supabase ID
+    });
   }
 
   // Ensure quiz exists in Supabase
-  const existingUserQuizzes = await supabaseService.getUserQuizzes(currentUser.supabaseId);
+  const existingUserQuizzes = await supabaseService.getUserQuizzes(effectiveUserId);
   const existingQuiz = existingUserQuizzes.find(q => q.id === quiz.id);
   
   if (existingQuiz) {
@@ -68,11 +100,11 @@ export const shareQuizViaAPI = async (quiz: Quiz, currentUser?: UserProfile | nu
     logger.info('Quiz does not exist in Supabase, creating it', 'quizSharingService', { 
       quizId: quiz.id 
     });
-    await supabaseService.createQuiz(quiz, currentUser.supabaseId);
+    await supabaseService.createQuiz(quiz, effectiveUserId);
   }
 
   // Share the quiz
-  const shareResult = await supabaseService.shareQuiz(quiz.id, true, undefined, currentUser.supabaseId);
+  const shareResult = await supabaseService.shareQuiz(quiz.id, true, undefined, effectiveUserId);
   
   if (!shareResult) {
     throw new Error('Failed to create share entry in Supabase');
@@ -112,33 +144,48 @@ export const getSharedQuiz = async (quizId: string, currentUser?: UserProfile | 
   }
 
   // If user is logged in, also check their own quizzes
-  if (currentUser?.supabaseId) {
+  if (currentUser) {
     logger.info('Checking user\'s own quizzes', 'quizSharingService', { 
-      quizId, 
-      userId: currentUser.supabaseId 
+      quizId,
+      hasSupabaseId: !!currentUser.supabaseId,
+      googleUserId: currentUser.id
     });
     
-    const userQuizzes = await supabaseService.getUserQuizzes(currentUser.supabaseId);
-    const foundQuiz = userQuizzes.find(quiz => quiz.id === quizId);
+    // Try to get current Supabase session first
+    const { supabase } = await import('./supabaseClient');
+    const { data: { user: supabaseUser }, error: sessionError } = await supabase.auth.getUser();
     
-    if (foundQuiz) {
-      logger.info('Quiz found in user Supabase quizzes', 'quizSharingService', { quizId });
+    let effectiveUserId: string | null = null;
+    
+    if (supabaseUser && !sessionError) {
+      effectiveUserId = supabaseUser.id;
+    } else if (currentUser.supabaseId) {
+      effectiveUserId = currentUser.supabaseId;
+    }
+    
+    if (effectiveUserId) {
+      const userQuizzes = await supabaseService.getUserQuizzes(effectiveUserId);
+      const foundQuiz = userQuizzes.find(quiz => quiz.id === quizId);
       
-      // Ensure the quiz has a proper title
-      if (!foundQuiz.title || foundQuiz.title.trim() === '') {
-        foundQuiz.title = 'Shared Quiz';
-        logger.info('Updated empty user quiz title with fallback', 'quizSharingService', { quizId });
+      if (foundQuiz) {
+        logger.info('Quiz found in user Supabase quizzes', 'quizSharingService', { quizId });
+        
+        // Ensure the quiz has a proper title
+        if (!foundQuiz.title || foundQuiz.title.trim() === '') {
+          foundQuiz.title = 'Shared Quiz';
+          logger.info('Updated empty user quiz title with fallback', 'quizSharingService', { quizId });
+        }
+        
+        return {
+          ...foundQuiz,
+          creator: { 
+            name: currentUser.name || 'Unknown', 
+            email: currentUser.email || undefined 
+          },
+          isShared: true,
+          sharedTimestamp: new Date().toISOString()
+        };
       }
-      
-      return {
-        ...foundQuiz,
-        creator: { 
-          name: currentUser.name || 'Unknown', 
-          email: currentUser.email || undefined 
-        },
-        isShared: true,
-        sharedTimestamp: new Date().toISOString()
-      };
     }
   }
 
