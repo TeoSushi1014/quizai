@@ -38,8 +38,23 @@ export const shareQuizViaAPI = async (quiz: Quiz, currentUser?: UserProfile | nu
     const quizForSharing = prepareQuizForSharing(quiz, currentUser);
     
     // Skip Supabase for now and go directly to localStorage to fix the hanging issue
-    logger.info('Using localStorage for quiz sharing (bypassing Supabase)', 'quizSharingService', { quizId: quiz.id });
-    return await shareQuizLocally(quizForSharing);
+    logger.info('Using localStorage for quiz sharing (bypassing Supabase)', 'quizSharingService', { 
+      quizId: quiz.id,
+      quizTitle: quiz.title,
+      questionCount: quiz.questions?.length 
+    });
+    
+    const result = await shareQuizLocally(quizForSharing);
+    
+    // Verify the quiz was stored correctly
+    const storedQuiz = await getSharedQuizLocally(quiz.id);
+    if (storedQuiz) {
+      logger.info('Quiz verification: stored and retrievable', 'quizSharingService', { quizId: quiz.id });
+    } else {
+      logger.error('Quiz verification: failed to retrieve after storing', 'quizSharingService', { quizId: quiz.id });
+    }
+    
+    return result;
     
     // TODO: Re-enable Supabase sharing after fixing authentication
     /*
@@ -110,11 +125,29 @@ export const shareQuizViaAPI = async (quiz: Quiz, currentUser?: UserProfile | nu
 
 const shareQuizLocally = async (quizForSharing: QuizForSharing): Promise<{ shareUrl: string; isDemo: boolean }> => {
   try {
+    logger.info('Starting local quiz sharing', 'quizSharingService', { 
+      quizId: quizForSharing.id,
+      quizTitle: quizForSharing.title,
+      questionCount: quizForSharing.questions?.length
+    });
+    
     const sharedQuizzes = JSON.parse(localStorage.getItem(SHARED_QUIZ_STORAGE_KEY) || '{}');
     sharedQuizzes[quizForSharing.id] = quizForSharing;
     localStorage.setItem(SHARED_QUIZ_STORAGE_KEY, JSON.stringify(sharedQuizzes));
     
-    logger.info('Quiz shared locally', 'quizSharingService', { quizId: quizForSharing.id });
+    // Verify it was stored
+    const verification = JSON.parse(localStorage.getItem(SHARED_QUIZ_STORAGE_KEY) || '{}');
+    const stored = verification[quizForSharing.id];
+    
+    if (stored) {
+      logger.info('Quiz shared locally successfully', 'quizSharingService', { 
+        quizId: quizForSharing.id,
+        storedTitle: stored.title,
+        storedQuestionCount: stored.questions?.length
+      });
+    } else {
+      logger.error('Quiz sharing failed - not found after storage', 'quizSharingService', { quizId: quizForSharing.id });
+    }
     
     return { 
       shareUrl: `${window.location.origin}${window.location.pathname}#/shared/${quizForSharing.id}`, 
@@ -187,21 +220,45 @@ export const getSharedQuiz = async (quizId: string, currentUser?: UserProfile | 
 
 const getSharedQuizLocally = async (quizId: string): Promise<QuizForSharing | null> => {
   try {
+    logger.info('Searching for quiz in localStorage', 'quizSharingService', { 
+      quizId,
+      storageKey: SHARED_QUIZ_STORAGE_KEY
+    });
+    
     const sharedQuizzes = JSON.parse(localStorage.getItem(SHARED_QUIZ_STORAGE_KEY) || '{}');
     const quizData = sharedQuizzes[quizId];
     
+    logger.info('localStorage content check', 'quizSharingService', { 
+      quizId,
+      hasQuizData: !!quizData,
+      allQuizIds: Object.keys(sharedQuizzes),
+      totalQuizzes: Object.keys(sharedQuizzes).length
+    });
+    
     if (quizData) {
-      logger.info('Shared quiz found in localStorage', 'quizSharingService', { quizId });
+      logger.info('Shared quiz found in localStorage', 'quizSharingService', { 
+        quizId,
+        quizTitle: quizData.title,
+        questionCount: quizData.questions?.length
+      });
       return parseQuizFromSharedJson(quizData);
     }
     
+    // Check legacy storage
     const legacySharedQuizzes = JSON.parse(localStorage.getItem('quizai_shared_quizzes') || '{}');
     const legacyQuizData = legacySharedQuizzes[quizId];
+    
+    logger.info('Legacy localStorage check', 'quizSharingService', { 
+      quizId,
+      hasLegacyData: !!legacyQuizData,
+      legacyQuizIds: Object.keys(legacySharedQuizzes)
+    });
     
     if (legacyQuizData) {
       logger.info('Shared quiz found in legacy localStorage', 'quizSharingService', { quizId });
       const parsedQuiz = parseQuizFromSharedJson(legacyQuizData);
       
+      // Migrate to new storage
       const newSharedQuizzes = JSON.parse(localStorage.getItem(SHARED_QUIZ_STORAGE_KEY) || '{}');
       newSharedQuizzes[quizId] = parsedQuiz;
       localStorage.setItem(SHARED_QUIZ_STORAGE_KEY, JSON.stringify(newSharedQuizzes));
@@ -209,7 +266,7 @@ const getSharedQuizLocally = async (quizId: string): Promise<QuizForSharing | nu
       return parsedQuiz;
     }
     
-    logger.warn('Shared quiz not found in localStorage', 'quizSharingService', { quizId });
+    logger.warn('Shared quiz not found in any localStorage', 'quizSharingService', { quizId });
     return null;
   } catch (error) {
     logger.error('Failed to get shared quiz from localStorage', 'quizSharingService', { quizId }, error as Error);
