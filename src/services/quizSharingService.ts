@@ -96,10 +96,12 @@ export const getSharedQuiz = async (quizId: string, currentUser?: UserProfile | 
       return null;
     }
 
+    // For logged-in users, try Supabase first
     if (currentUser) {
       logger.info('User is logged in, fetching quiz from Supabase', 'quizSharingService', { quizId, userId: currentUser.id });
       
       try {
+        // First try to get from user's own quizzes
         const userQuizzes = await supabaseService.getUserQuizzes(currentUser.id);
         const foundQuiz = userQuizzes.find(quiz => quiz.id === quizId);
         
@@ -113,8 +115,8 @@ export const getSharedQuiz = async (quizId: string, currentUser?: UserProfile | 
           };
         }
         
-        logger.info('Quiz not found in user Supabase quizzes, checking other users', 'quizSharingService', { quizId });
-        
+        // Then try to get from public quizzes
+        logger.info('Quiz not found in user Supabase quizzes, checking public quizzes', 'quizSharingService', { quizId });
         const publicQuiz = await supabaseService.getPublicQuizById(quizId);
         if (publicQuiz) {
           logger.info('Quiz found as public quiz in Supabase', 'quizSharingService', { quizId });
@@ -122,39 +124,26 @@ export const getSharedQuiz = async (quizId: string, currentUser?: UserProfile | 
         }
         
       } catch (supabaseError) {
-        logger.error('Error fetching quiz from Supabase', 'quizSharingService', { quizId }, supabaseError as Error);
+        logger.error('Supabase connection failed, falling back to localStorage', 'quizSharingService', { quizId }, supabaseError as Error);
+        // Continue to localStorage fallback
       }
+    } else {
+      logger.info('User not logged in, checking localStorage only', 'quizSharingService', { quizId });
     }
 
-    // @ts-ignore
-    const apiUrl = typeof import.meta.env !== 'undefined' ? import.meta.env.VITE_API_URL : undefined;
-    
-    if (apiUrl) {
-      logger.info('Fetching shared quiz via API', 'quizSharingService', { quizId, apiUrl });
-      
-      try {
-        const response = await fetch(`${apiUrl}/api/shared-quizzes/${quizId}`);
-        
-        if (response.ok) {
-          const data = await response.json();
-          logger.info('Shared quiz fetched via API successfully', 'quizSharingService', { quizId });
-          return parseQuizFromSharedJson(data);
-        } else if (response.status === 404) {
-          logger.warn('Shared quiz not found via API', 'quizSharingService', { quizId });
-        } else {
-          const errorData = await response.text();
-          logger.error('API fetch shared quiz failed', 'quizSharingService', { status: response.status, errorData });
-        }
-      } catch (apiError) {
-        logger.error('API request failed', 'quizSharingService', { quizId }, apiError as Error);
-      }
+    // Fallback to localStorage for both logged-in (if Supabase fails) and non-logged-in users
+    logger.info('Attempting to fetch quiz from localStorage', 'quizSharingService', { quizId });
+    const localQuiz = await getSharedQuizLocally(quizId);
+    if (localQuiz) {
+      logger.info('Quiz found in localStorage', 'quizSharingService', { quizId });
+      return localQuiz;
     }
-    
-    logger.info('Fetching shared quiz from localStorage', 'quizSharingService', { quizId });
-    return await getSharedQuizLocally(quizId);
 
+    logger.warn('Quiz not found in any storage location', 'quizSharingService', { quizId });
+    return null;
+    
   } catch (error) {
-    logger.error('Failed to get shared quiz', 'quizSharingService', { quizId }, error as Error);
+    logger.error('Unexpected error in getSharedQuiz', 'quizSharingService', { quizId }, error as Error);
     return null;
   }
 };

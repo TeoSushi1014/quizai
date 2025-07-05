@@ -297,7 +297,7 @@ export class SupabaseService {
         .from('quizzes')
         .select(`
           *,
-          users!inner(name, email)
+          users(name, email)
         `)
         .eq('id', quizId)
         .single();
@@ -307,7 +307,13 @@ export class SupabaseService {
           logger.info('Quiz not found in database', 'SupabaseService', { quizId });
           return null;
         }
+        logger.error('Error fetching public quiz', 'SupabaseService', { quizId }, error);
         throw error;
+      }
+
+      if (!data) {
+        logger.info('No data returned for quiz', 'SupabaseService', { quizId });
+        return null;
       }
 
       const quiz = this.mapDatabaseQuizToQuiz(data);
