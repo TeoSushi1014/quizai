@@ -645,9 +645,9 @@ export class SupabaseService {
     }
   }
 
-  async getPublicQuizById(shareId: string): Promise<Quiz | null> {
+  async getPublicQuizById(quizId: string): Promise<Quiz | null> {
     try {
-      logger.info('Attempting to fetch public quiz by share ID from Supabase', 'SupabaseService', { shareId });
+      logger.info('Attempting to fetch public quiz by quiz ID from Supabase', 'SupabaseService', { quizId });
       
       const { error: testError } = await supabase
         .from('shared_quizzes')
@@ -664,12 +664,11 @@ export class SupabaseService {
         return null; // Fallback to localStorage
       }
       
-      // First find the shared quiz entry using the share ID (not quiz_id)
-      // The shareId parameter is the actual ID of the shared_quizzes record
+      // Find the shared quiz entry using the quiz_id (the parameter is actually the quiz ID, not share ID)
       const { data: sharedDataArray, error: sharedError } = await supabase
         .from('shared_quizzes')
-        .select('id, quiz_id, is_public, expires_at, title, created_by')
-        .eq('id', shareId)
+        .select('id, quiz_id, share_token, is_public, expires_at, created_at')
+        .eq('quiz_id', quizId)
         .eq('is_public', true)
         .limit(1);
 
@@ -677,7 +676,7 @@ export class SupabaseService {
 
       if (sharedError) {
         logger.warn('Error checking if quiz is shared', 'SupabaseService', { 
-          shareId, 
+          quizId, 
           error: sharedError.message,
           code: sharedError.code 
         });
@@ -685,30 +684,26 @@ export class SupabaseService {
       }
 
       if (!sharedData) {
-        logger.info('Quiz is not publicly shared or share ID not found', 'SupabaseService', { shareId });
+        logger.info('Quiz is not publicly shared or quiz not found', 'SupabaseService', { quizId });
         return null;
       }
 
       // Check if the shared quiz has expired
       if (sharedData.expires_at && new Date(sharedData.expires_at) < new Date()) {
-        logger.info('Shared quiz has expired', 'SupabaseService', { shareId, expiresAt: sharedData.expires_at });
+        logger.info('Shared quiz has expired', 'SupabaseService', { quizId, expiresAt: sharedData.expires_at });
         return null;
       }
       
-      // Now get the actual quiz using the quiz_id from the shared_quizzes record
-      const actualQuizId = sharedData.quiz_id;
+      // Now get the actual quiz using the quiz_id (which should be the same as quizId)
       const { data: quizDataArray, error: quizError } = await supabase
         .from('quizzes')
         .select('*')
-        .eq('id', actualQuizId)
+        .eq('id', quizId)
         .limit(1);
 
-      const quizData = quizDataArray && quizDataArray.length > 0 ? quizDataArray[0] : null;
-
-      if (quizError) {
+      const quizData = quizDataArray && quizDataArray.length > 0 ? quizDataArray[0] : null;      if (quizError) {
         logger.error('Error fetching quiz from Supabase', 'SupabaseService', { 
-          shareId,
-          actualQuizId, 
+          quizId, 
           error: quizError.message,
           code: quizError.code 
         });
@@ -716,136 +711,35 @@ export class SupabaseService {
       }
 
       if (!quizData) {
-        logger.warn('Quiz data not found in quizzes table despite being in shared_quizzes - attempting recovery', 'SupabaseService', { 
-          shareId,
-          actualQuizId,
+        logger.warn('Quiz data not found in quizzes table despite being in shared_quizzes', 'SupabaseService', { 
+          quizId,
           sharedQuizFound: !!sharedData,
           sharedDataDetails: sharedData ? { 
-            id: sharedData.id,
+            shareId: sharedData.id,
             quiz_id: sharedData.quiz_id,
+            share_token: sharedData.share_token,
             isPublic: sharedData.is_public, 
             expiresAt: sharedData.expires_at,
-            title: sharedData.title,
-            created_by: sharedData.created_by
+            createdAt: sharedData.created_at
           } : null
         });
         
-        // Recovery attempt: search for quiz by title and creator from shared data
-        if (sharedData && sharedData.title && sharedData.created_by) {
-          try {
-            // Look for the quiz by title and creator
-            const { data: searchResults, error: searchError } = await supabase
-              .from('quizzes')
-              .select('*')
-              .eq('user_id', sharedData.created_by)
-              .ilike('title', `%${sharedData.title}%`)
-              .limit(5);
-              
-            if (!searchError && searchResults && searchResults.length > 0) {
-              // Found potential matches, use the first one
-              const recoveredQuiz = searchResults[0];
-              logger.info('Recovered quiz data from search by title and creator', 'SupabaseService', { 
-                shareId,
-                actualQuizId,
-                recoveredId: recoveredQuiz.id,
-                foundMatches: searchResults.length,
-                searchTitle: sharedData.title,
-                searchCreator: sharedData.created_by
-              });
-              
-              // Update the shared_quizzes entry with the correct quiz_id
-              try {
-                await supabase
-                  .from('shared_quizzes')
-                  .update({ quiz_id: recoveredQuiz.id })
-                  .eq('id', shareId);
-                  
-                logger.info('Updated shared_quizzes entry with recovered quiz ID', 'SupabaseService', {
-                  shareId,
-                  oldQuizId: actualQuizId,
-                  newQuizId: recoveredQuiz.id
-                });
-              } catch (updateError) {
-                logger.warn('Failed to update shared_quizzes entry', 'SupabaseService', {
-                  shareId,
-                  updateError
-                });
-              }
-              
-              // Get creator info for recovered quiz
-              let creatorInfo = { name: 'Unknown', email: undefined };
-              if (recoveredQuiz.user_id) {
-                try {
-                  const { data: userDataArray } = await supabase
-                    .from('users')
-                    .select('name, email')
-                    .eq('id', recoveredQuiz.user_id)
-                    .limit(1);
-                  
-                  if (userDataArray && userDataArray.length > 0) {
-                    const userData = userDataArray[0];
-                    creatorInfo = { 
-                      name: userData.name || 'Unknown', 
-                      email: userData.email || undefined 
-                    };
-                  }
-                } catch (userError) {
-                  logger.warn('Could not fetch creator info for recovered quiz', 'SupabaseService', { 
-                    shareId,
-                    actualQuizId,
-                    recoveredId: recoveredQuiz.id,
-                    userError 
-                  });
-                }
-              }
-              
-              const quiz: Quiz = {
-                id: recoveredQuiz.id,
-                title: recoveredQuiz.title || 'Recovered Quiz',
-                questions: recoveredQuiz.questions || [],
-                createdAt: recoveredQuiz.created_at || new Date().toISOString(),
-                lastModified: recoveredQuiz.last_modified || recoveredQuiz.created_at || new Date().toISOString(),
-                userId: recoveredQuiz.user_id || 'unknown',
-                config: recoveredQuiz.config || {},
-                sourceContentSnippet: recoveredQuiz.source_content_snippet,
-                creator: creatorInfo
-              };
-              
-              logger.info('Successfully recovered and returned quiz', 'SupabaseService', { 
-                shareId,
-                actualQuizId,
-                recoveredId: recoveredQuiz.id,
-                recoveredTitle: quiz.title 
-              });
-              return quiz;
-            }
-          } catch (recoveryError) {
-            logger.warn('Quiz recovery attempt failed', 'SupabaseService', { 
-              shareId,
-              actualQuizId,
-              recoveryError 
-            });
-          }
-        }
-        
-        // If recovery failed, clean up the orphaned shared_quizzes entry
+        // Clean up the orphaned shared_quizzes entry
         try {
           await supabase
             .from('shared_quizzes')
             .delete()
-            .eq('id', shareId);
-          logger.info('Cleaned up orphaned shared_quizzes entry after recovery failure', 'SupabaseService', { 
-            shareId,
-            actualQuizId
+            .eq('quiz_id', quizId);
+          logger.info('Cleaned up orphaned shared_quizzes entry', 'SupabaseService', { 
+            quizId
           });
         } catch (cleanupError) {
           logger.warn('Failed to clean up orphaned shared_quizzes entry', 'SupabaseService', { 
-            shareId,
-            actualQuizId,
+            quizId,
             cleanupError 
           });
         }
-        
+
         return null;
       }
 
@@ -880,8 +774,7 @@ export class SupabaseService {
 
       const quiz = this.mapDatabaseQuizToQuiz(quizData);
       logger.info('Successfully fetched quiz from Supabase', 'SupabaseService', { 
-        shareId,
-        actualQuizId,
+        quizId,
         quizTitle: quiz.title
       });
       return {
@@ -892,7 +785,7 @@ export class SupabaseService {
       };
       
     } catch (error) {
-      logger.warn('Supabase service unavailable, falling back to localStorage', 'SupabaseService', { shareId }, error as Error);
+      logger.warn('Supabase service unavailable, falling back to localStorage', 'SupabaseService', { quizId }, error as Error);
       return null; // This will trigger localStorage fallback
     }
   }
