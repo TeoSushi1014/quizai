@@ -58,7 +58,7 @@ const SharedQuizPage: React.FC = () => {
         }
 
         // Priority 2: Try to fetch from shared mechanism (localStorage sim or API)
-        const fetchedQuizData = await getSharedQuiz(quizId);
+        const fetchedQuizData = await getSharedQuiz(quizId, currentUser);
         if (fetchedQuizData) {
           logger.info('SharedQuizPage: Quiz data fetched successfully.', 'SharedQuizPage', { quizId });
           setSharedQuiz(fetchedQuizData as Quiz);
@@ -68,7 +68,7 @@ const SharedQuizPage: React.FC = () => {
           
           // Debug information
           const availableSharedQuizzes = listSharedQuizzes();
-          const debugMessage = `Quiz ${quizId} not found. Available shared quizzes: ${availableSharedQuizzes.join(', ') || 'none'}`;
+          const debugMessage = `Quiz ${quizId} not found. Available shared quizzes: ${availableSharedQuizzes.join(', ') || 'none'}. User logged in: ${currentUser ? 'Yes' : 'No'}`;
           setDebugInfo(debugMessage);
           
           setError(t('sharedQuizNotFound'));

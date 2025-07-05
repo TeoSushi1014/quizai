@@ -289,6 +289,44 @@ export class SupabaseService {
     }
   }
 
+  async getPublicQuizById(quizId: string): Promise<Quiz | null> {
+    try {
+      logger.info('Fetching public quiz by ID', 'SupabaseService', { quizId });
+      
+      const { data, error } = await supabase
+        .from('quizzes')
+        .select(`
+          *,
+          users!inner(name, email)
+        `)
+        .eq('id', quizId)
+        .single();
+
+      if (error) {
+        if (error.code === 'PGRST116') {
+          logger.info('Quiz not found in database', 'SupabaseService', { quizId });
+          return null;
+        }
+        throw error;
+      }
+
+      const quiz = this.mapDatabaseQuizToQuiz(data);
+      return {
+        ...quiz,
+        creator: {
+          name: data.users?.name || 'Unknown',
+          email: data.users?.email
+        },
+        isShared: true,
+        sharedTimestamp: data.created_at
+      };
+      
+    } catch (error) {
+      logger.error('Failed to get public quiz by ID', 'SupabaseService', { quizId }, error as Error);
+      return null;
+    }
+  }
+
   private mapDatabaseQuizToQuiz(dbQuiz: any): Quiz {
     return {
       id: dbQuiz.id,
