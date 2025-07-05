@@ -551,7 +551,9 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
         email: user.email,
         name: user.name,
         picture: user.imageUrl,
-        access_token: tokenResponse?.access_token || user.accessToken
+        access_token: tokenResponse?.access_token || user.accessToken,
+        credential: user.idToken, // Pass the ID token as credential if available
+        idToken: user.idToken // Also pass as idToken for fallback
       }
       
       try {

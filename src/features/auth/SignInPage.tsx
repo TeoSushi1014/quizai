@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { TokenResponse, useGoogleLogin } from '@react-oauth/google'; 
+import { TokenResponse, useGoogleLogin, GoogleCredentialResponse, GoogleLogin } from '@react-oauth/google'; 
 import { useAppContext, useTranslation } from '../../App';
 import { UserProfile } from '../../types';
 import { Button, Card } from '../../components/ui';
@@ -30,6 +30,66 @@ const SignInPage: React.FC = () => {
     logger.error("Google Login Failed.", 'SignInPage', { errorDetails: error });
   };
 
+  // New handler for credential-based authentication (provides ID token)
+  const handleCredentialResponse = async (credentialResponse: GoogleCredentialResponse) => {
+    logger.info("Google Credential Login Succeeded (ID token obtained).", 'SignInPage', { 
+      hasCredential: !!credentialResponse.credential 
+    });
+    
+    if (credentialResponse.credential) {
+      try {
+        // Decode the JWT to get user info
+        const base64Url = credentialResponse.credential.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+          return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
+        
+        const userInfo = JSON.parse(jsonPayload);
+        logger.info("ID token decoded successfully", 'SignInPage', { 
+          userId: userInfo.sub,
+          email: userInfo.email 
+        });
+
+        const userProfile: UserProfile = {
+          id: userInfo.sub,
+          name: userInfo.name,
+          email: userInfo.email,
+          imageUrl: userInfo.picture,
+          accessToken: credentialResponse.credential, // Use credential as token
+          idToken: credentialResponse.credential, // This is the ID token we need
+        };
+        
+        logger.info("User profile created from ID token. Calling login context function.", 'SignInPage', { 
+          userId: userProfile.id,
+          hasIdToken: true 
+        });
+        
+        try {
+          const loginResult = await login(userProfile);
+          
+          if (loginResult) {
+            logger.info("Login completed successfully, redirecting...", 'SignInPage', { userId: loginResult.id });
+            const from = (location.state as any)?.from?.pathname || '/dashboard';
+            navigate(from, { replace: true });
+          } else {
+            logger.error("Login returned null result", 'SignInPage');
+            handleLoginError(new Error("Login failed - no user returned"));
+          }
+        } catch (loginError) {
+          logger.error("Login process failed", 'SignInPage', undefined, loginError as Error);
+          handleLoginError(loginError);
+        }
+      } catch (error) {
+        logger.error("Error during credential processing or login", 'SignInPage', undefined, error as Error);
+        handleLoginError(error);
+      }
+    } else {
+      logger.error("Credential response received but no credential token", 'SignInPage', { credentialResponse });
+      handleLoginError(credentialResponse);
+    }
+  };
+
   const handleLoginSuccess = async (tokenResponse: TokenResponse) => {
     logger.info("Google Login Succeeded (token obtained).", 'SignInPage', { hasAccessToken: !!tokenResponse.access_token });
     if (tokenResponse.access_token) {
@@ -55,6 +115,7 @@ const SignInPage: React.FC = () => {
           name: userInfo.name,
           email: userInfo.email,
           imageUrl: pictureUrl,
+          accessToken: tokenResponse.access_token,
         };
         logger.info("User info fetched successfully. Calling login context function.", 'SignInPage', { userId: userProfile.id });
         
@@ -125,16 +186,37 @@ const SignInPage: React.FC = () => {
         <h1 className="text-2xl sm:text-3xl font-bold text-[var(--color-text-primary)] mb-4 mt-8 sm:mt-10">{t('signInTitle')}</h1>
         <p className="text-[var(--color-text-secondary)] mb-10 text-sm">{t('signInSubtitle')}</p>
         
-        <div className="flex justify-center mb-8">
+        <div className="flex flex-col items-center space-y-4 mb-8">
+          {/* Primary authentication method: GoogleLogin (provides ID token) */}
+          <div className="w-full max-w-xs sm:w-[280px]">
+            <GoogleLogin
+              onSuccess={handleCredentialResponse}
+              onError={() => handleLoginError("Google Login failed")}
+              useOneTap={false}
+              shape="rectangular"
+              theme="outline"
+              size="large"
+              text="signin_with"
+              width="280"
+              locale="en"
+            />
+          </div>
+          
+          {/* Fallback method: Custom button with access token (if ID token fails) */}
+          <div className="w-full max-w-xs sm:w-[280px]">
+            <div className="text-xs text-[var(--color-text-muted)] text-center mb-2">
+              Or use fallback authentication:
+            </div>
             <Button
               onClick={handleCustomGoogleLoginClick}
               variant="subtle" 
-              size="lg" 
-              leftIcon={<img src="https://img.icons8.com/color/48/google-logo.png" alt="Google" className="w-5 h-5" />}
-              className="w-full max-w-xs sm:w-[280px] !justify-start !text-[var(--color-text-primary)] hover:!bg-[var(--color-bg-surface-3)] !border-[var(--color-border-interactive)] hover:!border-[var(--color-border-strong)] !px-4 !py-3 !rounded-lg shadow-md"
+              size="sm" 
+              leftIcon={<img src="https://img.icons8.com/color/48/google-logo.png" alt="Google" className="w-4 h-4" />}
+              className="w-full !justify-start !text-[var(--color-text-secondary)] hover:!bg-[var(--color-bg-surface-2)] !border-[var(--color-border-subtle)] hover:!border-[var(--color-border-interactive)] !px-3 !py-2 !rounded-md shadow-sm"
             >
-              <span className="ml-3 text-sm font-medium">{t('loginWithGoogle')}</span>
+              <span className="ml-2 text-xs font-medium">Google (Fallback)</span>
             </Button>
+          </div>
         </div>
         
         <p className="text-xs text-[var(--color-text-muted)]">

@@ -50,6 +50,14 @@ export class AuthService {
         strategy: result.supabaseId ? 'Full Integration' : 'Google Only'
       });
 
+      // If user doesn't have Supabase integration, they should be informed about limitations
+      if (!result.supabaseId) {
+        logger.info('AuthService: User authenticated with Google-only mode (limited features)', 'AuthService', {
+          userId: result.id,
+          limitation: 'Quiz sharing and cloud sync features will be unavailable'
+        });
+      }
+
       return result;
 
     } catch (error) {

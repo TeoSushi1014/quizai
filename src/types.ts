@@ -61,6 +61,7 @@ export interface UserProfile {
   email?: string | null;
   imageUrl?: string | null;
   accessToken?: string; 
+  idToken?: string; // Google ID token for Supabase authentication
   bio?: string | null;
   quizCount?: number | null;
   completionCount?: number | null;
