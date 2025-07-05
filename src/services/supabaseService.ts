@@ -93,7 +93,6 @@ export class SupabaseService {
           logger.warn('SupabaseService: RLS policy violation, attempting to find existing user by email', 'SupabaseService', { email: profile.email });
           
           try {
-            // Temporarily try without session check for user lookup
             const { data: existingData, error: lookupError } = await supabase
               .from('users')
               .select('*')
@@ -186,7 +185,6 @@ export class SupabaseService {
           return null
         }
         
-        // Log more details about the error for debugging
         logger.error('SupabaseService: Error fetching user by email', 'SupabaseService', { 
           email,
           error: error.message,
@@ -371,7 +369,6 @@ export class SupabaseService {
       }
     }
     
-    // If we've exhausted all attempts, just return a new ID and hope for the best
     const { generateQuizId } = await import('../utils/uuidUtils');
     const fallbackId = generateQuizId();
     logger.warn('Could not verify quiz ID uniqueness after max attempts, using fallback', 'SupabaseService', { 
@@ -521,7 +518,6 @@ export class SupabaseService {
 
   async deleteQuiz(quizId: string): Promise<boolean> {
     try {
-      // Validate the UUID format before attempting deletion
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
       if (!uuidRegex.test(quizId)) {
         logger.error('Attempted to delete quiz with invalid UUID format', 'SupabaseService', { quizId });
@@ -653,7 +649,6 @@ export class SupabaseService {
     try {
       logger.info('Attempting to fetch public quiz by ID from Supabase', 'SupabaseService', { quizId });
       
-      // Test if Supabase is available first
       const { error: testError } = await supabase
         .from('shared_quizzes')
         .select('count')
@@ -772,7 +767,6 @@ export class SupabaseService {
     }
   }
 
-  // Check if user has permission to share quizzes (for debugging RLS issues)
   async checkUserSharePermissions(userId: string): Promise<{ canShare: boolean; reason?: string }> {
     try {
       // Get the current authenticated user
@@ -797,7 +791,6 @@ export class SupabaseService {
         return { canShare: false, reason: `Cannot read shared_quizzes: ${readError.message}` };
       }
       
-      // Check if the user has any quizzes (to test ownership-based RLS)
       const { data: userQuizzes, error: quizError } = await supabase
         .from('quizzes')
         .select('id')
@@ -817,7 +810,6 @@ export class SupabaseService {
         return { canShare: false, reason: 'User has no quizzes to share' };
       }
       
-      // Try a test insert with a real quiz ID that the user owns using regular client
       const testQuizId = userQuizzes[0].id;
       const testToken = `test-token-${Date.now()}`;
       
@@ -830,7 +822,6 @@ export class SupabaseService {
           expires_at: null
         });
       
-      // Clean up the test insert (ignore cleanup errors)
       await supabase
         .from('shared_quizzes')
         .delete()
@@ -1067,260 +1058,6 @@ export class SupabaseService {
     } catch (error) {
       logger.error('Failed to make quiz shareable', 'SupabaseService', { quizId }, error as Error);
       return null;
-    }
-  }
-
-  // Debug function to check user authentication and permissions
-  async debugUserPermissions(): Promise<void> {
-    try {
-      console.log('🔍 Debugging User Permissions...');
-      
-      // Check authentication
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
-      if (authError || !user) {
-        console.error('❌ Authentication failed:', authError?.message || 'No user found');
-        return;
-      }
-      
-      console.log('✅ User authenticated:', { id: user.id, email: user.email });
-      
-      // Check if user exists in database
-      const { data: dbUser, error: userError } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', user.id);
-      
-      if (userError) {
-        console.error('❌ Cannot read user from database:', userError.message);
-        return;
-      }
-      
-      console.log(`✅ User in database:`, dbUser);
-      
-      // Check for duplicates
-      const { data: duplicates, error: dupError } = await supabase
-        .from('users')
-        .select('id, email, created_at')
-        .eq('email', user.email);
-      
-      if (!dupError && duplicates && duplicates.length > 1) {
-        console.warn('⚠️ Duplicate users found:', duplicates);
-      }
-      
-      // Check quiz ownership
-      const { data: userQuizzes, error: quizError } = await supabase
-        .from('quizzes')
-        .select('id, title, created_at')
-        .eq('user_id', user.id)
-        .limit(5);
-      
-      if (quizError) {
-        console.error('❌ Cannot read user quizzes:', quizError.message);
-        return;
-      }
-      
-      console.log(`✅ User has ${userQuizzes?.length || 0} quizzes`);
-      if (userQuizzes && userQuizzes.length > 0) {
-        console.log('📝 User quizzes:', userQuizzes);
-      }
-      
-      // Check sharing permissions
-      const permissionCheck = await this.checkUserSharePermissions(user.id);
-      console.log('🔐 Share permissions:', permissionCheck);
-      
-    } catch (error) {
-      console.error('❌ Debug failed:', error);
-    }
-  }
-
-  // Debug specific user issues
-  async debugUserIssues(userId: string): Promise<void> {
-    try {
-      console.log('🔍 Debugging User Issues for:', userId);
-      
-      // Check user existence and duplicates
-      const { data: users, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', userId);
-      
-      if (error) {
-        console.error('❌ Error fetching user:', error);
-        return;
-      }
-      
-      console.log(`Found ${users.length} users with ID ${userId}:`, users);
-      
-      if (users.length === 0) {
-        console.warn('⚠️ No user found with this ID');
-        return;
-      }
-      
-      if (users.length > 1) {
-        console.error('❌ Multiple users found with same ID! This should not happen.');
-        return;
-      }
-      
-      // Test update permissions
-      const testUpdate = { name: users[0].name || 'Test' };
-      console.log('🧪 Testing update with:', testUpdate);
-      
-      const { error: updateError } = await supabase
-        .from('users')
-        .update(testUpdate)
-        .eq('id', userId)
-        .select();
-      
-      if (updateError) {
-        console.error('❌ Update test failed:', updateError);
-      } else {
-        console.log('✅ Update test passed');
-      }
-      
-    } catch (error) {
-      console.error('❌ Debug user issues failed:', error);
-    }
-  }
-
-  // Debug and fix RLS policy recursion issue
-  async debugRLSPolicyIssue(): Promise<void> {
-    try {
-      console.log('🔍 Debugging RLS Policy Recursion Issue...');
-      
-      // Check authentication first
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
-      if (authError || !user) {
-        console.error('❌ Authentication failed:', authError?.message || 'No user found');
-        return;
-      }
-      
-      console.log('✅ User authenticated:', { id: user.id, email: user.email });
-      
-      // Test individual table access
-      console.log('🧪 Testing individual table access...');
-      
-      // Test users table (should work if authenticated)
-      try {
-        const { error: usersError } = await supabase
-          .from('users')
-          .select('count')
-          .limit(1);
-        
-        if (usersError) {
-          console.error('❌ Users table error:', usersError);
-        } else {
-          console.log('✅ Users table accessible');
-        }
-      } catch (usersTestError) {
-        console.error('❌ Users table test failed:', usersTestError);
-      }
-      
-      // Test quizzes table (this is where the recursion error occurs)
-      try {
-        const { error: quizzesError } = await supabase
-          .from('quizzes')
-          .select('count')
-          .limit(1);
-        
-        if (quizzesError) {
-          console.error('❌ Quizzes table error (THIS IS THE RECURSION ERROR):', quizzesError);
-          console.log('💡 Error code 42P17 indicates infinite recursion in RLS policies');
-          console.log('💡 Go to Supabase Dashboard → Authentication → Policies');
-          console.log('💡 Look for policies on "quizzes" table that reference each other');
-          console.log('💡 Temporarily disable ALL RLS policies on "quizzes" table to test');
-        } else {
-          console.log('✅ Quizzes table accessible');
-        }
-      } catch (quizzesTestError) {
-        console.error('❌ Quizzes table test failed:', quizzesTestError);
-      }
-      
-      // Test shared_quizzes table
-      try {
-        const { error: sharedError } = await supabase
-          .from('shared_quizzes')
-          .select('count')
-          .limit(1);
-        
-        if (sharedError) {
-          console.error('❌ Shared quizzes table error:', sharedError);
-        } else {
-          console.log('✅ Shared quizzes table accessible');
-        }
-      } catch (sharedTestError) {
-        console.error('❌ Shared quizzes table test failed:', sharedTestError);
-      }
-      
-    } catch (error) {
-      console.error('❌ RLS debug failed:', error);
-    }
-  }
-
-  // Debug API keys configuration
-  async debugApiKeys(): Promise<void> {
-    try {
-      console.log('🔑 Debugging API Keys Configuration...');
-      
-      // Check if api_keys table exists
-      try {
-        const { error: tableError } = await supabase
-          .from('api_keys')
-          .select('count')
-          .limit(1);
-        
-        if (tableError) {
-          console.error('❌ API Keys table error:', tableError);
-          console.log('💡 Run the SQL commands to create the api_keys table first');
-          return;
-        } else {
-          console.log('✅ API Keys table accessible');
-        }
-      } catch (tableTestError) {
-        console.error('❌ API Keys table test failed:', tableTestError);
-        return;
-      }
-
-      // List all available API keys
-      try {
-        const { data: apiKeys, error: listError } = await supabase
-          .from('api_keys')
-          .select('key_name, owner_email, description, created_at')
-          .order('created_at', { ascending: false });
-
-        if (listError) {
-          console.error('❌ Cannot list API keys:', listError);
-          return;
-        }
-
-        console.log('📋 Available API Keys:');
-        if (apiKeys && apiKeys.length > 0) {
-          apiKeys.forEach(key => {
-            console.log(`  • ${key.key_name} (${key.owner_email}) - ${key.description || 'No description'}`);
-          });
-        } else {
-          console.warn('⚠️ No API keys found in database');
-          console.log('💡 Run the INSERT commands to add API keys');
-        }
-
-        // Test required API keys
-        const requiredKeys = ['GEMINI_API_KEY', 'VITE_RECAPTCHA_SITE_KEY', 'VITE_RECAPTCHA_ASSESSMENT_API_KEY'];
-        console.log('🧪 Testing required API keys...');
-        
-        for (const keyName of requiredKeys) {
-          const hasKey = apiKeys?.some(k => k.key_name === keyName);
-          if (hasKey) {
-            console.log(`✅ ${keyName} - Found`);
-          } else {
-            console.log(`❌ ${keyName} - Missing`);
-          }
-        }
-
-      } catch (listTestError) {
-        console.error('❌ API Keys list test failed:', listTestError);
-      }
-      
-    } catch (error) {
-      console.error('❌ API Keys debug failed:', error);
     }
   }
 

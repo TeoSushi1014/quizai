@@ -142,10 +142,6 @@ export const en = {
   errorBoundaryTitle: "Oops! Something went wrong.",
   errorBoundaryMessage: "We're sorry, but an unexpected error occurred. You can try refreshing the page or clicking the button below.",
 
-  // Test keys
-  testString: "This is a test string.",
-  stringWithParam: "Hello {name}!",
-
   // Share Feature Keys
   shareQuizTitle: "Share Quiz",
   shareQuizDescription: "Share this quiz with others using the link below:",
@@ -331,10 +327,6 @@ export const vi = {
   errorBoundaryTitle: "Ối! Có lỗi xảy ra.",
   errorBoundaryMessage: "Chúng tôi rất tiếc, nhưng đã xảy ra lỗi không mong muốn. Bạn có thể thử làm mới trang hoặc nhấp vào nút bên dưới.",
 
-
-  // Test keys
-  testString: "Đây là một chuỗi kiểm tra.",
-  stringWithParam: "Xin chào {name}!",
 
   // Share Feature Keys
   shareQuizTitle: "Chia sẻ Quiz",

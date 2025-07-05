@@ -21,7 +21,6 @@ const SharedQuizPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [copySuccess, setCopySuccess] = useState(false);
   const [debugInfo, setDebugInfo] = useState<string>('');
-  const [isQuizSaved, setIsQuizSaved] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   
   useEffect(() => {
@@ -69,39 +68,6 @@ const SharedQuizPage: React.FC = () => {
         } else {
           logger.warn('SharedQuizPage: Quiz not found via getSharedQuiz.', 'SharedQuizPage', { quizId });
           
-          // For testing purposes, create a test quiz if this specific ID is requested
-          if (quizId === 'a35130c9-2b62-4327-85f2-f1796c37c47a') {
-            const testQuiz: Quiz = {
-              id: quizId,
-              title: 'Test Shared Quiz',
-              questions: [
-                {
-                  id: 'q1',
-                  questionText: 'What is 2 + 2?',
-                  options: ['3', '4', '5', '6'],
-                  correctAnswer: '1',
-                  explanation: 'Basic arithmetic: 2 + 2 = 4'
-                },
-                {
-                  id: 'q2',
-                  questionText: 'The earth is round.',
-                  options: ['True', 'False'],
-                  correctAnswer: '0',
-                  explanation: 'The Earth is approximately spherical.'
-                }
-              ],
-              createdAt: new Date().toISOString(),
-              lastModified: new Date().toISOString()
-            };
-            
-            setSharedQuiz(testQuiz);
-            setDebugInfo('Test quiz created for demonstration');
-            setLoading(false);
-            return;
-          }
-          
-          // Debug information
-          // Using Supabase only, no localStorage
           const debugMessage = `Quiz ${quizId} not found in Supabase. User logged in: ${currentUser ? 'Yes' : 'No'}`;
           setDebugInfo(debugMessage);
           
@@ -173,7 +139,6 @@ const SharedQuizPage: React.FC = () => {
 
       // Add to user's quiz collection
       addQuiz(savedQuiz);
-      setIsQuizSaved(true);
       
       showSuccessNotification('Quiz saved to your collection!');
       logger.info('Shared quiz saved to user collection', 'SharedQuizPage', { 

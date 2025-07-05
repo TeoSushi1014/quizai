@@ -65,7 +65,7 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, quiz }) => {
       mounted = false; 
       isShareRequestInProgress.current = false;
     };
-  }, [isOpen, quiz?.id, currentUser?.id, t]); // Fixed: removed shareUrl, isLoadingUrl, urlError from dependencies
+  }, [isOpen, quiz?.id, currentUser?.id, t]);
   
   const handleCopyLink = async () => {
     if (!shareUrl || isLoadingUrl || urlError) return;

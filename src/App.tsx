@@ -21,7 +21,6 @@ import 'github-markdown-css/github-markdown.css';
 import './styles/markdown-custom.css';
 import './styles/markdown-github.css';
 
-// Load debug utilities in all environments for testing
 import './utils/productionDebug';
 
 import HomePage from './features/quiz/HomePage';
@@ -716,7 +715,6 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     showSuccessNotification, showErrorNotification,
   ]);
 
-  // Add debug utilities to window for troubleshooting
   useEffect(() => {
     if (typeof window !== 'undefined') {
       (window as any).QuizAIDebug = {
@@ -734,7 +732,6 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
           console.log('Current Supabase session:', session);
           return session;
         },
-        debugSupabase: () => supabaseService.debugUserPermissions(),
         testUserOperations: async () => {
           if (!currentUser) {
             console.log('No current user');
