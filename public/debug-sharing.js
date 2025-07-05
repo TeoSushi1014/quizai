@@ -118,6 +118,41 @@ window.debugUserPermissions = async function() {
   }
 };
 
+// Utility function to test service role access
+window.debugServiceRoleAccess = async function() {
+  console.log('🔧 Testing Service Role Access...');
+  
+  try {
+    const { supabaseServiceRole } = await import('/src/services/supabaseServiceRole.ts');
+    
+    if (!supabaseServiceRole) {
+      console.error('❌ Service role client not available');
+      console.log('💡 Check that VITE_SUPABASE_SERVICE_ROLE_KEY is set in environment');
+      return false;
+    }
+    
+    console.log('✅ Service role client is available');
+    
+    // Test read access to shared_quizzes table
+    const { data, error } = await supabaseServiceRole
+      .from('shared_quizzes')
+      .select('count')
+      .limit(1);
+    
+    if (error) {
+      console.error('❌ Service role cannot access shared_quizzes table:', error.message);
+      return false;
+    }
+    
+    console.log('✅ Service role can access shared_quizzes table');
+    return true;
+    
+  } catch (error) {
+    console.error('❌ Service role test failed:', error);
+    return false;
+  }
+};
+
 // Utility function to list user's quizzes
 window.debugListUserQuizzes = async function(userId = null) {
   console.log('📚 Listing user quizzes...');
@@ -168,8 +203,55 @@ window.debugListUserQuizzes = async function(userId = null) {
   }
 };
 
+// Function to debug user permissions specifically
+window.debugUserPermissions = async function() {
+  try {
+    console.log('🔐 Running user permissions debug...');
+    const { supabaseService } = await import('./src/services/supabaseService.js');
+    await supabaseService.debugUserPermissions();
+  } catch (error) {
+    console.error('❌ Error debugging user permissions:', error);
+  }
+};
+
+// Utility function to test service role access
+window.debugServiceRoleAccess = async function() {
+  console.log('🔧 Testing Service Role Access...');
+  
+  try {
+    const { supabaseServiceRole } = await import('./src/services/supabaseServiceRole.js');
+    
+    if (!supabaseServiceRole) {
+      console.error('❌ Service role client not available');
+      console.log('💡 Check that VITE_SUPABASE_SERVICE_ROLE_KEY is set in environment');
+      return false;
+    }
+    
+    console.log('✅ Service role client is available');
+    
+    // Test read access to shared_quizzes table
+    const { data, error } = await supabaseServiceRole
+      .from('shared_quizzes')
+      .select('count')
+      .limit(1);
+    
+    if (error) {
+      console.error('❌ Service role cannot access shared_quizzes table:', error.message);
+      return false;
+    }
+    
+    console.log('✅ Service role can access shared_quizzes table');
+    return true;
+    
+  } catch (error) {
+    console.error('❌ Service role test failed:', error);
+    return false;
+  }
+};
+
 console.log('🎯 Debug functions loaded!');
 console.log('  Run: debugQuizSharing() - Test quiz sharing flow');
 console.log('  Run: debugCheckQuizExists("quiz-id") - Check if quiz exists');
 console.log('  Run: debugUserPermissions() - Check user authentication and permissions');
 console.log('  Run: debugListUserQuizzes() - List all user quizzes');
+console.log('  Run: debugServiceRoleAccess() - Test service role client access');
