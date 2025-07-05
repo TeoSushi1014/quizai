@@ -293,38 +293,54 @@ export class SupabaseService {
     try {
       logger.info('Fetching public quiz by ID', 'SupabaseService', { quizId });
       
-      const { data, error } = await supabase
+      // First, get the quiz data
+      const { data: quizData, error: quizError } = await supabase
         .from('quizzes')
-        .select(`
-          *,
-          users(name, email)
-        `)
+        .select('*')
         .eq('id', quizId)
         .single();
 
-      if (error) {
-        if (error.code === 'PGRST116') {
+      if (quizError) {
+        if (quizError.code === 'PGRST116') {
           logger.info('Quiz not found in database', 'SupabaseService', { quizId });
           return null;
         }
-        logger.error('Error fetching public quiz', 'SupabaseService', { quizId }, error);
-        throw error;
+        logger.error('Error fetching public quiz', 'SupabaseService', { quizId }, quizError);
+        return null; // Return null instead of throwing to allow fallback
       }
 
-      if (!data) {
+      if (!quizData) {
         logger.info('No data returned for quiz', 'SupabaseService', { quizId });
         return null;
       }
 
-      const quiz = this.mapDatabaseQuizToQuiz(data);
+      // Then get the user data if we have a user_id
+      let creatorInfo = { name: 'Unknown', email: undefined };
+      if (quizData.user_id) {
+        try {
+          const { data: userData, error: userError } = await supabase
+            .from('users')
+            .select('name, email')
+            .eq('id', quizData.user_id)
+            .single();
+          
+          if (!userError && userData) {
+            creatorInfo = {
+              name: userData.name || 'Unknown',
+              email: userData.email
+            };
+          }
+        } catch (userFetchError) {
+          logger.warn('Could not fetch creator info', 'SupabaseService', { userId: quizData.user_id }, userFetchError as Error);
+        }
+      }
+
+      const quiz = this.mapDatabaseQuizToQuiz(quizData);
       return {
         ...quiz,
-        creator: {
-          name: data.users?.name || 'Unknown',
-          email: data.users?.email
-        },
+        creator: creatorInfo,
         isShared: true,
-        sharedTimestamp: data.created_at
+        sharedTimestamp: quizData.created_at
       };
       
     } catch (error) {
