@@ -1,0 +1,1 @@
+import{l as e}from"./index-Ch07Wi7n.js";import"./utils-rUpm7H1u.js";import"./vendor-DoC2WAmd.js";import"./ui-BGuvgkTr.js";import"./router-BxjC687J.js";import"./markdown-Bj7tmv2T.js";e.warn("VITE_SUPABASE_SERVICE_ROLE_KEY is not set - some operations requiring elevated privileges may fail","supabaseServiceRole");const a=null;export{a as supabaseServiceRole};
