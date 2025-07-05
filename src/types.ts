@@ -93,18 +93,6 @@ export interface AppContextType {
   updateUserProfile: (updatedProfile: Partial<UserProfile>) => Promise<boolean>;
 
   isLoading: boolean;
-  isDriveLoading: boolean; 
-  driveSyncError: string | null; 
-  lastDriveSync: Date | null; 
-  syncWithGoogleDrive: () => Promise<void>; 
-  setDriveSyncError: (error: string | null) => void; 
-  syncState: SyncState; 
-  currentSyncActivityMessage: string | null;
-  
-  isDriveSyncEnabled: boolean;
-  setDriveSyncEnabled: (enabled: boolean) => void;
-  driveSyncMode: 'auto' | 'manual' | 'backup-only';
-  setDriveSyncMode: (mode: 'auto' | 'manual' | 'backup-only') => void; 
 
   showSuccessNotification: (message: string, duration?: number, key?: string) => void;
   showErrorNotification: (message: string, duration?: number, key?: string) => void;

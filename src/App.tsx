@@ -2,8 +2,8 @@ import React, { useState, useCallback, useEffect, createContext, useContext, Rea
 import { HashRouter, Routes, Route, useNavigate, useLocation, NavLink as RouterNavLink, Navigate } from 'react-router-dom'; 
 import { GoogleOAuthProvider, googleLogout, TokenResponse } from '@react-oauth/google';
 import { useSwipeable } from 'react-swipeable';
-import { Quiz, AppContextType, Language, QuizResult, UserProfile, SyncState } from './types';
-import { APP_NAME, KeyIcon, LogoutIcon, HomeIcon, PlusCircleIcon, ChartBarIcon, SettingsIconMobileNav, InformationCircleIcon, XCircleIcon, RefreshIcon, CheckCircleIcon, ChevronDownIcon, UserCircleIcon, PlusIcon } from './constants'; 
+import { Quiz, AppContextType, Language, QuizResult, UserProfile } from './types';
+import { APP_NAME, KeyIcon, LogoutIcon, HomeIcon, PlusCircleIcon, ChartBarIcon, SettingsIconMobileNav, ChevronDownIcon, UserCircleIcon, PlusIcon } from './constants'; 
 import { Button, LoadingSpinner, Tooltip } from './components/ui';
 import { UserAvatar } from './components/UserAvatar'; 
 import ErrorBoundary from './components/ErrorBoundary'; 
@@ -30,9 +30,8 @@ const SignInPage = lazy(() => import('./features/auth/SignInPage'));
 const QuizPracticePage = lazy(() => import('./features/quiz/QuizPracticePage'));
 const SyncSettingsPage = lazy(() => import('./features/settings/SyncSettingsPage'));
 const ProfilePage = lazy(() => import('./features/user/ProfilePage'));
-const SharedQuizPage = lazy(() => import('./features/quiz/SharedQuizPageDebug')); 
+const SharedQuizPage = lazy(() => import('./features/quiz/SharedQuizPage')); 
 
-import { loadQuizDataFromDrive, saveQuizDataToDrive } from './services/driveService';
 import { quizStorage } from './services/storageService'; 
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -56,34 +55,16 @@ export const useTranslation = () => {
 const GOOGLE_CLIENT_ID = "486123633428-14f8o50husb82sho688e0qvc962ucr4n.apps.googleusercontent.com";
 const LOCALSTORAGE_USER_KEY = 'quizai_currentUser_v2';
 const LOCALSTORAGE_LANGUAGE_KEY = 'appLanguage';
-const LOCALSTORAGE_DRIVE_SYNC_KEY = 'driveLastSyncTimestamp';
 const LOCALSTORAGE_QUIZ_RESULT_KEY = 'quizResult';
 const LOCALSTORAGE_AUTH_TOKEN_KEY = 'quizai_accessToken_v2';
 const LOCALSTORAGE_AUTH_EXPIRY_KEY = 'quizai_accessTokenExpiry_v2';
 
 
-const SYNC_CONFIG = {
-  BACKGROUND_SYNC: true,
-  QUIET_SUCCESS: true,
-  DEBOUNCE_BACKGROUND_SYNC_MS: 1000,
-  DEBOUNCE_FOREGROUND_SYNC_MS: 3000, 
-  MIN_SYNC_INTERVAL_MS: 10000,
-  AUTO_SYNC_ATTEMPT_WINDOW_MS: 60000,
-  AUTO_SYNC_ATTEMPT_LIMIT: 5,
-  MANUAL_SYNC_ATTEMPT_WINDOW_MS: 30000,
-  MANUAL_SYNC_ATTEMPT_LIMIT: 3,
-  MESSAGE_DISPLAY_DURATION_MS: 2000,
-  MAX_RETRIES: 3, 
-  RETRY_DELAY_MS: 3000, 
-  QUIET_ERRORS: true, 
-};
-
-
-const mergeQuizzes = (localQuizzes: Quiz[], driveQuizzes: Quiz[]): Quiz[] => {
-  logger.info('Merging local and Drive quizzes', 'MergeUtils', { localCount: localQuizzes.length, driveCount: driveQuizzes.length });
+const mergeQuizzes = (localQuizzes: Quiz[], supabaseQuizzes: Quiz[]): Quiz[] => {
+  logger.info('Merging local and Supabase quizzes', 'MergeUtils', { localCount: localQuizzes.length, supabaseCount: supabaseQuizzes.length });
   const quizMap = new Map<string, Quiz>();
 
-  [...localQuizzes, ...driveQuizzes].forEach(quiz => {
+  [...localQuizzes, ...supabaseQuizzes].forEach(quiz => {
     const existingQuiz = quizMap.get(quiz.id);
     if (!existingQuiz) {
       quizMap.set(quiz.id, quiz);
@@ -110,26 +91,7 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true); 
   const [appInitialized, setAppInitialized] = useState(false);
   const [initializationStarted, setInitializationStarted] = useState(false);
-
-  const [isDriveLoading, setIsDriveLoading] = useState(false);
-  const [driveSyncError, setDriveSyncErrorState] = useState<string | null>(null);
-  const [lastDriveSync, setLastDriveSync] = useState<Date | null>(null);
-  const [syncState, setSyncState] = useState<SyncState>('idle');
-  const [currentSyncActivityMessage, setCurrentSyncActivityMessage] = useState<string | null>(null);
-  
-  const [isDriveSyncEnabled, setIsDriveSyncEnabled] = useState(() => {
-    const saved = localStorage.getItem('driveSyncEnabled');
-    return saved !== null ? JSON.parse(saved) : false;
-  });
-  const [driveSyncMode, setDriveSyncModeState] = useState<'auto' | 'manual' | 'backup-only'>(() => {
-    const saved = localStorage.getItem('driveSyncMode');
-    return (saved as 'auto' | 'manual' | 'backup-only') || 'backup-only';
-  });
-  
-  const saveToDriveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const saveToDriveMinIntervalRef = useRef(0);
-  const autoSyncAttemptLimitRef = useRef({ count: 0, lastWindowStart: 0 });
-  const manualSyncAttemptLimitRef = useRef({ count: 0, lastWindowStart: 0 }); 
+  const authInProgressRef = useRef(false);
   
   const tForProvider = useMemo(() => getTranslator(language), [language]);
   const { showSuccess: showSuccessNotification, showError: showErrorNotification } = useNotification();
@@ -171,31 +133,6 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     }
   }, []);
 
-  const setDriveSyncError = useCallback((errorKey: string | null) => {
-    if (errorKey === null) {
-        setDriveSyncErrorState(null);
-    } else {
-        const errorMessage = tForProvider(errorKey as keyof typeof translations.en) || tForProvider('driveErrorGeneric');
-        setDriveSyncErrorState(errorMessage); 
-        setSyncState('error'); 
-        setCurrentSyncActivityMessage(null); 
-        logger.warn(`Drive Sync Error set: ${errorMessage}`, 'DriveContext', { errorKey });
-    }
-  }, [tForProvider]);
-
-  // Drive sync settings callbacks
-  const setDriveSyncEnabled = useCallback((enabled: boolean) => {
-    setIsDriveSyncEnabled(enabled);
-    localStorage.setItem('driveSyncEnabled', JSON.stringify(enabled));
-    logger.info(`Drive sync ${enabled ? 'enabled' : 'disabled'}`, 'DriveSettings');
-  }, []);
-
-  const setDriveSyncMode = useCallback((mode: 'auto' | 'manual' | 'backup-only') => {
-    setDriveSyncModeState(mode);
-    localStorage.setItem('driveSyncMode', mode);
-    logger.info(`Drive sync mode changed to: ${mode}`, 'DriveSettings');
-  }, []);
-
   const isTokenStillValid = useCallback(() => {
     const expiryTimeStr = localStorage.getItem(LOCALSTORAGE_AUTH_EXPIRY_KEY);
     if (!expiryTimeStr) return false;
@@ -221,6 +158,12 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
         const savedToken = localStorage.getItem(LOCALSTORAGE_AUTH_TOKEN_KEY);
 
         if (savedToken && isTokenStillValid()) {
+            if (authInProgressRef.current) {
+                logger.info('Authentication already in progress, skipping duplicate call', 'AppInit');
+                return;
+            }
+            
+            authInProgressRef.current = true;
             try {
                 const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
                     headers: { Authorization: `Bearer ${savedToken}` },
@@ -261,6 +204,8 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
             } catch (e) {
                 logger.error("Error restoring session with token", 'AppInit', undefined, e as Error);
                 setCurrentUser(null);
+            } finally {
+                authInProgressRef.current = false;
             }
         } else if (savedUserJson && !savedToken) {
             setCurrentUser(null);
@@ -275,23 +220,6 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
             }
         }
 
-        const lastSyncTimestamp = localStorage.getItem(LOCALSTORAGE_DRIVE_SYNC_KEY);
-        if (lastSyncTimestamp) setLastDriveSync(new Date(lastSyncTimestamp));
-
-        const migrateDriveSyncSettings = () => {
-          const hasExistingDriveSync = !!lastSyncTimestamp;
-          const hasSettingsConfigured = localStorage.getItem('driveSyncEnabled') !== null;
-          
-          if (hasExistingDriveSync && !hasSettingsConfigured) {
-            setIsDriveSyncEnabled(true);
-            setDriveSyncModeState('auto');
-            localStorage.setItem('driveSyncEnabled', 'true');
-            localStorage.setItem('driveSyncMode', 'auto');
-          }
-        };
-        
-        migrateDriveSyncSettings();
-
         setAppInitialized(true);
     };
     initializeApp();
@@ -300,18 +228,25 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
   useEffect(() => {
     if (!appInitialized) return;
 
-    const loadInitialQuizzesAndSync = async () => {
+    const loadInitialQuizzes = async () => {
       setIsLoading(true);
-      setDriveSyncError(null);
       
       try {
         const localQuizzes = await quizStorage.getAllQuizzes();
         setAllQuizzes(localQuizzes);
-        setIsLoading(false);
         
-        if (currentUser?.accessToken) {
-          syncInBackground(localQuizzes);
+        if (currentUser?.id) {
+          try {
+            const supabaseQuizzes = await supabaseService.getUserQuizzes(currentUser.id);
+            const mergedQuizzes = mergeQuizzes(localQuizzes, supabaseQuizzes);
+            setAllQuizzes(mergedQuizzes);
+            await quizStorage.saveQuizzes(mergedQuizzes);
+          } catch (error) {
+            logger.error('Error syncing with Supabase', 'QuizLoading', undefined, error as Error);
+          }
         }
+        
+        setIsLoading(false);
       } catch (error) {
         logger.error('Error loading initial quizzes', 'QuizLoading', undefined, error as Error);
         setIsLoading(false);
@@ -319,180 +254,16 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
       }
     };
 
-    const syncInBackground = async (localQuizzes: Quiz[]) => {
-      setIsDriveLoading(true);
-      setSyncState('syncing');
-      setCurrentSyncActivityMessage(tForProvider('initialSyncMessage'));
-      
-      try {
-        const supabaseQuizzes = await supabaseService.getUserQuizzes(currentUser!.id);
-        
-        const mergedAfterSupabase = mergeQuizzes(localQuizzes, supabaseQuizzes);
-        setAllQuizzes(mergedAfterSupabase);
-        await quizStorage.saveQuizzes(mergedAfterSupabase);
-        
-        if (isDriveSyncEnabled) {
-          try {
-            const driveQuizzes = await loadQuizDataFromDrive(currentUser!.accessToken);
-            
-            if (driveQuizzes !== null) {
-              const finalMerged = mergeQuizzes(mergedAfterSupabase, driveQuizzes);
-              setAllQuizzes(finalMerged);
-              await quizStorage.saveQuizzes(finalMerged);
-              
-              saveQuizDataToDrive(currentUser!.accessToken, finalMerged).catch(error => {
-                logger.warn('Background Drive save failed', 'DriveSync', undefined, error as Error);
-              });
-              
-              localStorage.setItem(LOCALSTORAGE_DRIVE_SYNC_KEY, new Date().toISOString());
-              setLastDriveSync(new Date());
-            }
-          } catch (driveError) {
-            logger.warn('Drive sync failed during background load', 'DriveSync', undefined, driveError as Error);
-          }
-        }
-        
-        setSyncState('idle');
-        setCurrentSyncActivityMessage(null);
-        
-      } catch (error) {
-        logger.error('Background sync failed', 'QuizLoading', undefined, error as Error);
-        setSyncState('error');
-        setDriveSyncError('driveErrorGeneric');
-      } finally {
-        setIsDriveLoading(false);
-      }
-    };
-
-    loadInitialQuizzesAndSync();
-  }, [appInitialized, currentUser?.id, currentUser?.accessToken, tForProvider, isDriveSyncEnabled]);
+    loadInitialQuizzes();
+  }, [appInitialized, currentUser?.id]);
 
 
-  const triggerSaveToDrive = useCallback((quizzesToSave: Quiz[]) => {
-    if (!isDriveSyncEnabled || driveSyncMode === 'manual') {
-      logger.debug("triggerSaveToDrive: Skipping - Drive sync disabled or manual mode", 'DriveSync', { 
-        enabled: isDriveSyncEnabled, 
-        mode: driveSyncMode 
-      });
-      return;
-    }
-
-    if (Date.now() - saveToDriveMinIntervalRef.current < SYNC_CONFIG.MIN_SYNC_INTERVAL_MS) {
-      logger.debug("triggerSaveToDrive: Skipping schedule, too soon since last save.", 'DriveSync');
-      return;
-    }
-  
-    if (saveToDriveTimeoutRef.current) {
-      clearTimeout(saveToDriveTimeoutRef.current);
-    }
-    
-    saveToDriveTimeoutRef.current = setTimeout(async () => {
-      saveToDriveMinIntervalRef.current = Date.now();
-  
-      const now = Date.now();
-      if (now - autoSyncAttemptLimitRef.current.lastWindowStart < SYNC_CONFIG.AUTO_SYNC_ATTEMPT_WINDOW_MS) {
-        autoSyncAttemptLimitRef.current.count++;
-        if (autoSyncAttemptLimitRef.current.count > SYNC_CONFIG.AUTO_SYNC_ATTEMPT_LIMIT) {
-          logger.warn("triggerSaveToDrive: Auto-sync rate limit reached", 'DriveSyncRateLimit');
-          if (!SYNC_CONFIG.BACKGROUND_SYNC) {
-            setIsDriveLoading(false);
-            setSyncState('error');
-            setDriveSyncError('driveErrorRateLimit');
-          }
-          return;
-        }
-      } else {
-        autoSyncAttemptLimitRef.current.lastWindowStart = now;
-        autoSyncAttemptLimitRef.current.count = 1;
-      }
-  
-      if (currentUser?.accessToken) {
-        let retries = 0;
-        let success = false;
-        
-        if (!SYNC_CONFIG.BACKGROUND_SYNC) {
-          setIsDriveLoading(true);
-          setSyncState('syncing');
-          setCurrentSyncActivityMessage(tForProvider('syncStatusInProgress'));
-        }
-        setDriveSyncError(null);
-        logger.info(`${SYNC_CONFIG.BACKGROUND_SYNC ? 'Background' : 'Debounced'} sync: Attempting to save to Google Drive...`, 'DriveSync', { quizCount: quizzesToSave.length });
-
-        while(retries < SYNC_CONFIG.MAX_RETRIES && !success) {
-            try {
-              await saveQuizDataToDrive(currentUser.accessToken, quizzesToSave);
-              setLastDriveSync(new Date());
-              localStorage.setItem(LOCALSTORAGE_DRIVE_SYNC_KEY, new Date().toISOString());
-              logger.info(`${SYNC_CONFIG.BACKGROUND_SYNC ? 'Background' : 'Debounced'} sync: Successfully saved to Google Drive.`, 'DriveSync');
-              setSyncState('success');
-              success = true;
-              
-              if (!SYNC_CONFIG.BACKGROUND_SYNC || !SYNC_CONFIG.QUIET_SUCCESS) {
-                setCurrentSyncActivityMessage(tForProvider('autoSyncCompleteMessage'));
-              } else {
-                setCurrentSyncActivityMessage(null); 
-              }
-              break; 
-            } catch (error: any) {
-              retries++;
-              const errorKey = error.message as keyof typeof translations.en;
-              const isSpecificError = translations.en[errorKey];
-              const currentErrorToSet = isSpecificError ? errorKey : 'driveErrorSaving';
-
-              logger.error(`${SYNC_CONFIG.BACKGROUND_SYNC ? 'Background' : 'Debounced'} sync: Failed attempt ${retries}/${SYNC_CONFIG.MAX_RETRIES}.`, 'DriveSync', { errorMsg: error.message }, error);
-
-              if (retries >= SYNC_CONFIG.MAX_RETRIES) {
-                logger.error(`${SYNC_CONFIG.BACKGROUND_SYNC ? 'Background' : 'Debounced'} sync: Max retries reached. Failed to save.`, 'DriveSync', { errorMsg: error.message });
-                if (!SYNC_CONFIG.QUIET_ERRORS || !SYNC_CONFIG.BACKGROUND_SYNC) {
-                  setSyncState('error');
-                  setDriveSyncError(currentErrorToSet);
-                }
-              } else {
-                if (currentErrorToSet === 'driveErrorUnauthorized' || currentErrorToSet === 'driveErrorForbidden') {
-                   if (!SYNC_CONFIG.QUIET_ERRORS || !SYNC_CONFIG.BACKGROUND_SYNC) {
-                     setSyncState('error');
-                     setDriveSyncError(currentErrorToSet);
-                   }
-                   break; 
-                }
-                if (!SYNC_CONFIG.BACKGROUND_SYNC || !SYNC_CONFIG.QUIET_ERRORS) {
-                  setCurrentSyncActivityMessage(tForProvider('retryingSync', { attempt: retries, maxAttempts: SYNC_CONFIG.MAX_RETRIES }));
-                }
-                await new Promise(r => setTimeout(r, SYNC_CONFIG.RETRY_DELAY_MS * Math.pow(2, retries -1) )); 
-              }
-            }
-        } 
-  
-        if (!SYNC_CONFIG.BACKGROUND_SYNC || (!success && !SYNC_CONFIG.QUIET_ERRORS) ) {
-          setTimeout(() => {
-            if (syncState === 'success' || syncState === 'error') { 
-              setCurrentSyncActivityMessage(null);
-            }
-          }, SYNC_CONFIG.MESSAGE_DISPLAY_DURATION_MS);
-        }
-        if (!SYNC_CONFIG.BACKGROUND_SYNC) {
-          setIsDriveLoading(false); 
-        }
-
-      }
-    }, SYNC_CONFIG.BACKGROUND_SYNC ? SYNC_CONFIG.DEBOUNCE_BACKGROUND_SYNC_MS : SYNC_CONFIG.DEBOUNCE_FOREGROUND_SYNC_MS);
-  }, [currentUser?.accessToken, setDriveSyncError, tForProvider, syncState, isDriveSyncEnabled, driveSyncMode]);
-
-
-  useEffect(() => {
-    if (appInitialized && !isLoading && currentUser?.accessToken && allQuizzes.length >= 0) {
-        triggerSaveToDrive(allQuizzes);
-    }
-  }, [allQuizzes, appInitialized, isLoading, currentUser?.accessToken, triggerSaveToDrive]);
-  
   useEffect(() => {
     if (appInitialized) { 
       if (currentUser) {
+        // User is logged in
       } else {
-        localStorage.removeItem(LOCALSTORAGE_DRIVE_SYNC_KEY); 
-        setLastDriveSync(null);
-        setSyncState('idle');
-        setCurrentSyncActivityMessage(null);
+        // User is logged out - no cleanup needed for Drive sync
       }
     }
   }, [currentUser, appInitialized]);
@@ -713,9 +484,6 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
         };
         
         setCurrentUser(userWithTokenAndDefaults, tokenInfo); 
-        setDriveSyncError(null); 
-        setSyncState('idle'); 
-        setCurrentSyncActivityMessage(null);
 
         // Check if migration is needed and perform it
         try {
@@ -738,26 +506,28 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
       logger.error('Login failed', 'AuthContext', {}, error as Error)
       throw error
     }
-  }, [setCurrentUser, setDriveSyncError]); 
+  }, [setCurrentUser]); 
 
   const handleLogout = useCallback(async () => { 
     logger.info('Logout initiated', 'AuthContext');
     googleLogout();
-    if (saveToDriveTimeoutRef.current) {
-      clearTimeout(saveToDriveTimeoutRef.current); 
+    
+    // Sign out from Supabase as well
+    try {
+      await authService.signOut();
+    } catch (error) {
+      logger.warn('Error signing out from Supabase', 'AuthContext', {}, error as Error);
     }
+    
     setCurrentUser(null); 
     setActiveQuiz(null); 
     setQuizResult(null);
     setAllQuizzes([]); 
     await quizStorage.saveQuizzes([]); 
     localStorage.removeItem(LOCALSTORAGE_QUIZ_RESULT_KEY);
-    setDriveSyncError(null);
-    setCurrentSyncActivityMessage(null);
-    setSyncState('idle');
     navigate('/'); 
     logger.info('Logout complete', 'AuthContext');
-  }, [navigate, setCurrentUser, setDriveSyncError]); 
+  }, [navigate, setCurrentUser]); 
   
   const updateUserProfile = useCallback(async (updatedProfileData: Partial<UserProfile>): Promise<boolean> => {
     if (!currentUser) {
@@ -790,86 +560,11 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
   }, [currentUser, setCurrentUserInternal, showSuccessNotification, showErrorNotification, tForProvider]);
 
 
-  const syncWithGoogleDrive = useCallback(async () => {
-    if (!isDriveSyncEnabled) {
-      logger.info('Manual sync skipped: Drive sync is disabled', 'DriveSync');
-      showErrorNotification('Drive sync is currently disabled in settings');
-      return;
-    }
-
-    const nowMs = Date.now();
-    if (nowMs - manualSyncAttemptLimitRef.current.lastWindowStart < SYNC_CONFIG.MANUAL_SYNC_ATTEMPT_WINDOW_MS) { 
-        manualSyncAttemptLimitRef.current.count++;
-        if (manualSyncAttemptLimitRef.current.count > SYNC_CONFIG.MANUAL_SYNC_ATTEMPT_LIMIT) { 
-            logger.warn("syncWithGoogleDrive: Too many manual sync attempts in a short period. Aborting.", 'DriveSyncRateLimit');
-            setDriveSyncError('driveErrorRateLimit');
-            setIsLoading(false); setIsDriveLoading(false); setSyncState('error');
-            return;
-        }
-    } else {
-        manualSyncAttemptLimitRef.current.lastWindowStart = nowMs;
-        manualSyncAttemptLimitRef.current.count = 1;
-    }
-
-    if (!currentUser?.accessToken) {
-      setDriveSyncError('driveErrorNoToken');
-      logger.warn('Manual sync: No access token.', 'DriveSync');
-      return;
-    }
-    
-    setIsLoading(true); 
-    setIsDriveLoading(true);
-    setDriveSyncError(null); 
-    setSyncState('syncing');
-    setCurrentSyncActivityMessage(tForProvider('syncStatusInProgress')); 
-    logger.info("Manual sync: Initiated.", 'DriveSync');
-    
-    try {
-      const driveQuizzesPromise = loadQuizDataFromDrive(currentUser.accessToken);
-      const localQuizzesPromise = quizStorage.getAllQuizzes();
-      
-      const [driveQuizzes, localQuizzes] = await Promise.all([driveQuizzesPromise, localQuizzesPromise]);
-      
-      let quizzesToSaveToDrive: Quiz[];
-
-      if (driveQuizzes !== null) { 
-        logger.info("Manual sync: Data found on Drive. Merging with local data.", 'DriveSync', { driveCount: driveQuizzes.length, localCount: localQuizzes.length });
-        quizzesToSaveToDrive = mergeQuizzes(localQuizzes, driveQuizzes);
-      } else { 
-        logger.info("Manual sync: No data file on Drive. Using current local data.", 'DriveSync', { localCount: localQuizzes.length });
-        quizzesToSaveToDrive = localQuizzes; 
-      }
-      
-      setAllQuizzes(quizzesToSaveToDrive); 
-      await quizStorage.saveQuizzes(quizzesToSaveToDrive);
-      
-      logger.info("Manual sync: Saving merged/current state to Google Drive...", 'DriveSync', { quizCount: quizzesToSaveToDrive.length});
-      
-      await saveQuizDataToDrive(currentUser.accessToken, quizzesToSaveToDrive);
-      setLastDriveSync(new Date());
-      localStorage.setItem(LOCALSTORAGE_DRIVE_SYNC_KEY, new Date().toISOString());
-      logger.info("Manual sync: Successfully synced with Google Drive.", 'DriveSync');
-      setSyncState('success');
-      setCurrentSyncActivityMessage(tForProvider('syncCompleteMessage')); 
-    } catch (error: any) {
-      logger.error("Manual sync: Failed to sync with Google Drive:", 'DriveSync', { errorMsg: error.message }, error);
-      const potentialKey = error.message as keyof typeof translations.en;
-      const knownError = translations.en[potentialKey] ? potentialKey : 'driveErrorGeneric';
-      setDriveSyncError(knownError);
-    } finally {
-      setIsDriveLoading(false);
-      setIsLoading(false);
-      setTimeout(() => { 
-         if (syncState === 'success' || syncState === 'error') setCurrentSyncActivityMessage(null);
-      }, SYNC_CONFIG.MESSAGE_DISPLAY_DURATION_MS);
-    }
-  }, [currentUser?.accessToken, setDriveSyncError, tForProvider, syncState, isDriveSyncEnabled, showErrorNotification]);
-
   const quizzesForContext = useMemo(() => {
     return allQuizzes; 
   }, [allQuizzes]);
   
-  const combinedIsLoading = Boolean(isLoading || (appInitialized && currentUser && !lastDriveSync && isDriveLoading));
+  const combinedIsLoading = Boolean(isLoading);
 
   const contextValue: AppContextType = useMemo(() => ({
     currentView: (location.pathname.substring(1) || 'home') as any, 
@@ -890,25 +585,12 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     logout: handleLogout, 
     updateUserProfile,
     isLoading: combinedIsLoading,
-    isDriveLoading,
-    driveSyncError,
-    lastDriveSync,
-    syncWithGoogleDrive,
-    setDriveSyncError,
-    syncState,
-    currentSyncActivityMessage,
-    isDriveSyncEnabled,
-    setDriveSyncEnabled,
-    driveSyncMode,
-    setDriveSyncMode,
     showSuccessNotification,
     showErrorNotification,
   }), [
     location.pathname, setCurrentView, language, setLanguage, quizzesForContext, 
     addQuiz, deleteQuiz, updateQuiz, getQuizByIdFromAll, activeQuiz, setActiveQuiz, quizResult, 
     setQuizResultWithPersistence, currentUser, login, handleLogout, updateUserProfile, combinedIsLoading,
-    isDriveLoading, driveSyncError, lastDriveSync, syncWithGoogleDrive, setDriveSyncError, 
-    syncState, currentSyncActivityMessage, isDriveSyncEnabled, setDriveSyncEnabled, driveSyncMode, setDriveSyncMode,
     showSuccessNotification, showErrorNotification,
   ]);
 
@@ -1112,8 +794,7 @@ RouteLoadingFallback.displayName = "RouteLoadingFallback";
 const AppLayout: React.FC = () => {
   const { 
     language, setLanguage, currentUser, 
-    isLoading: globalIsLoading, isDriveLoading, driveSyncError, 
-    lastDriveSync, setDriveSyncError, syncState, currentSyncActivityMessage
+    isLoading: globalIsLoading
   } = useAppContext(); 
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -1127,128 +808,10 @@ const AppLayout: React.FC = () => {
   if (globalIsLoading && !appInitialized) { 
     return (
       <div className="fixed inset-0 bg-[var(--color-bg-body)] flex items-center justify-center z-[200]">
-        <LoadingSpinner text={currentUser?.accessToken && isDriveLoading && !lastDriveSync && syncState === 'syncing' ? (currentSyncActivityMessage || t('initialSyncMessage')) : t('loading')} size="xl" />
+        <LoadingSpinner text={t('loading')} size="xl" />
       </div>
     );
   }
-
-  const SyncStatusIndicator: React.FC = () => {
-    const { language: currentLang } = useTranslation(); 
-    const { logout, syncWithGoogleDrive, driveSyncError, showSuccessNotification } = useAppContext(); 
-
-    let icon: ReactNode = null;
-    let text: string = "";
-    let tooltipText: string = "";
-    let containerColorClass: string = "";
-    let dotColorClass: string = "";
-    let showIndicator: boolean = false;
-    let isErrorClickable = false;
-
-    const getFriendlyErrorMessage = (errorKey: string | null): string => {
-      if (!errorKey) return t('driveErrorGeneric'); 
-      
-      const knownErrorKey = errorKey as keyof typeof translations.en; 
-      if (translations.en[knownErrorKey] && knownErrorKey.endsWith('Friendly')) {
-          return t(knownErrorKey);
-      }
-      if (translations.en[knownErrorKey]) { 
-          const friendlyVersionKey = `${knownErrorKey}Friendly` as keyof typeof translations.en;
-          if (translations.en[friendlyVersionKey]) return t(friendlyVersionKey);
-          
-          if (errorKey === 'driveErrorUnauthorized') return t('driveErrorUnauthorizedFriendly');
-          if (errorKey === 'driveErrorNetwork') return t('driveErrorNetworkFriendly');
-          if (errorKey === 'driveErrorRateLimit') return t('driveErrorRateLimitFriendly');
-          return t('syncErrorGenericFriendly'); 
-      }
-      return t('syncErrorGenericFriendly'); 
-    };
-
-    const handleErrorClick = () => {
-      if (driveSyncError === 'driveErrorUnauthorized' || driveSyncError === 'driveErrorForbidden') {
-        showSuccessNotification(t('sessionExpiredNotification'), 5000);
-        logout(); 
-      } else {
-        syncWithGoogleDrive(); 
-      }
-    };
-
-    switch (syncState) {
-        case 'syncing':
-            showIndicator = true;
-            icon = <RefreshIcon className="w-3 h-3 mr-1.5 animate-spin" />;
-            text = currentSyncActivityMessage || t('syncStatusInProgressShort'); 
-            containerColorClass = "bg-[var(--color-primary-accent)]/10 text-[var(--color-primary-accent)] border-[var(--color-primary-accent)]/20";
-            dotColorClass = "bg-[var(--color-primary-accent)]";
-            tooltipText = currentSyncActivityMessage || t('syncStatusInProgress');
-            break;
-        case 'success':
-            showIndicator = true;
-            icon = <CheckCircleIcon className="w-3 h-3 mr-1.5" />;
-            containerColorClass = "bg-[var(--color-success-accent)]/10 text-[var(--color-success-accent)] border-[var(--color-success-accent)]/20";
-            dotColorClass = "bg-[var(--color-success-accent)]";
-             if (currentSyncActivityMessage && (!SYNC_CONFIG.QUIET_SUCCESS || !SYNC_CONFIG.BACKGROUND_SYNC)) { 
-                text = currentSyncActivityMessage;
-                tooltipText = currentSyncActivityMessage;
-            } else if (lastDriveSync) {
-                 text = t('syncStatusLastShort', { dateTime: lastDriveSync.toLocaleTimeString(currentLang, { hour: '2-digit', minute: '2-digit'}) });
-                 tooltipText = t('syncStatusLast', { dateTime: lastDriveSync.toLocaleString(currentLang, { dateStyle: 'medium', timeStyle: 'short' }) });
-            } else {
-                text = t('syncStatusSuccessShort');
-                tooltipText = t('syncStatusSuccess');
-            }
-            break;
-        case 'error':
-            showIndicator = true;
-            isErrorClickable = true;
-            icon = <XCircleIcon className="w-3 h-3 mr-1.5" />;
-            containerColorClass = "bg-[var(--color-danger-accent)]/10 text-[var(--color-danger-accent)] border-[var(--color-danger-accent)]/20 cursor-pointer hover:!bg-[var(--color-danger-accent)]/20";
-            dotColorClass = "bg-[var(--color-danger-accent)]";
-            tooltipText = getFriendlyErrorMessage(driveSyncError);
-            text = t('syncStatusErrorShort'); 
-            break;
-        case 'idle':
-        default:
-            if (currentUser && lastDriveSync) {
-                 showIndicator = true;
-                 icon = <CheckCircleIcon className="w-3 h-3 mr-1.5" />;
-                 containerColorClass = "bg-[var(--color-success-accent)]/10 text-[var(--color-success-accent)] border-[var(--color-success-accent)]/20"; 
-                 dotColorClass = "bg-[var(--color-success-accent)]";
-                 text = t('syncStatusLastShort', { dateTime: lastDriveSync.toLocaleTimeString(currentLang, { hour: '2-digit', minute: '2-digit'}) });
-                 tooltipText = t('syncStatusLast', { dateTime: lastDriveSync.toLocaleString(currentLang, { dateStyle: 'medium', timeStyle: 'short' }) });
-            } else if (currentUser) { 
-                showIndicator = true;
-                icon = <InformationCircleIcon className="w-3 h-3 mr-1.5" />;
-                containerColorClass = "bg-[var(--color-bg-surface-2)] text-[var(--color-text-muted)] border-[var(--color-border-default)]"; 
-                dotColorClass = "bg-[var(--color-text-muted)]";
-                text = t('syncStatusNeverShort');
-                tooltipText = t('syncStatusNever');
-            } else { 
-                return null; 
-            }
-            break;
-    }
-    if (!currentUser) return null;
-
-    const indicatorContent = (
-      <div 
-        className={`text-xs font-medium flex items-center px-3 py-1.5 rounded-full border sync-indicator-base ${containerColorClass} ${showIndicator ? 'sync-indicator-visible' : 'sync-indicator-hidden'} ${isErrorClickable ? 'cursor-pointer' : ''}`}
-        onClick={isErrorClickable ? handleErrorClick : undefined}
-        tabIndex={isErrorClickable ? 0 : -1}
-        role={isErrorClickable ? "button" : undefined}
-        onKeyDown={isErrorClickable ? (e) => { if (e.key === 'Enter' || e.key === ' ') handleErrorClick(); } : undefined}
-      >
-        <div className={`w-1.5 h-1.5 rounded-full mr-2 ${dotColorClass} ${syncState === 'syncing' ? '' : 'animate-pulse'}`}></div>
-        {icon}
-        <span>{text}</span>
-      </div>
-    );
-    
-    return (
-        <Tooltip content={tooltipText} placement="bottom-end" disabled={!tooltipText}>
-          {indicatorContent}
-        </Tooltip>
-    );
-  };
 
   const MobileProfileSheet: React.FC = () => {
     const sheetId = useId(); 
@@ -1378,8 +941,6 @@ const AppLayout: React.FC = () => {
                 <NavLink to="/dashboard" icon={<ChartBarIcon className="w-4 h-4"/>}>{t('navDashboard')}</NavLink>
                 <NavLink to="/create" icon={<PlusCircleIcon className="w-4 h-4"/>}>{t('navCreateQuiz')}</NavLink>
               </nav>
-              
-              {currentUser && <SyncStatusIndicator />}
 
               {!currentUser && ( <ThemeToggle compact={true} /> )}
 
@@ -1531,18 +1092,6 @@ const AppLayout: React.FC = () => {
         </AnimatedApiKeyWarning>
       )}
 
-      {driveSyncError && syncState === 'error' && !SYNC_CONFIG.QUIET_ERRORS && ( 
-         <AnimatedApiKeyWarning>
-            <div role="alert" className="fixed bottom-20 md:bottom-4 right-4 w-auto max-w-[calc(100%-2rem)] md:max-w-md bg-[var(--color-danger-accent)] text-[var(--color-primary-accent-text)] p-3 sm:p-3.5 text-xs sm:text-sm shadow-2xl z-[200] flex items-center gap-2.5 border border-[var(--color-danger-accent)]/50 rounded-xl">
-                <InformationCircleIcon className="w-4 h-4 sm:w-5 sm:h-5 text-[var(--color-primary-accent-text)] flex-shrink-0" />
-                <strong className="font-semibold">{t('error')}:</strong> 
-                <span className="text-[var(--color-primary-accent-text)]/90">{driveSyncError}</span>
-                 <Button variant="ghost" size="xs" onClick={() => setDriveSyncError(null)} className="!p-1 !text-[var(--color-primary-accent-text)]/90 hover:!text-white hover:!bg-black/20 -mr-1">
-                    <XCircleIcon className="w-4 h-4"/>
-                </Button>
-            </div>
-        </AnimatedApiKeyWarning>
-      )}
       {currentUser && isMobileProfileOpen && <MobileProfileSheet /> } 
     </div>
   );

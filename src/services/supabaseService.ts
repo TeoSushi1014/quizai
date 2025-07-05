@@ -284,9 +284,25 @@ export class SupabaseService {
         questionCount: quiz.questions?.length 
       });
 
+      // First, verify we have an authenticated session
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.user) {
+        logger.error('No authenticated session found for quiz creation', 'SupabaseService', { 
+          quizId: quiz.id,
+          userId 
+        });
+        throw new Error('Authentication required: No active Supabase session');
+      }
+      
+      logger.info('Authenticated session confirmed for quiz creation', 'SupabaseService', { 
+        sessionUserId: session.user.id,
+        requestedUserId: userId 
+      });
+
       const quizForDb = {
         id: quiz.id,
-        user_id: userId,
+        user_id: session.user.id, // Use the authenticated user's ID from session
         title: quiz.title,
         questions: quiz.questions,
         source_content: quiz.sourceContentSnippet || null,
@@ -313,7 +329,8 @@ export class SupabaseService {
           error: error.message,
           code: error.code,
           details: error.details,
-          hint: error.hint
+          hint: error.hint,
+          sessionUserId: session.user.id
         });
         
         // Handle duplicate key constraint violation
@@ -343,6 +360,18 @@ export class SupabaseService {
           
           // Return the existing quiz mapped to our format
           return this.mapDatabaseQuizToQuiz(existingQuiz);
+        }
+        
+        // Handle RLS policy violations with more specific error
+        if (error.code === '42501') {
+          logger.error('RLS policy violation during quiz creation', 'SupabaseService', { 
+            quizId: quiz.id,
+            sessionUserId: session.user.id,
+            requestedUserId: userId,
+            error: error.message,
+            hint: 'Check if user owns this quiz and RLS policies allow creation'
+          });
+          throw new Error(`Permission denied: Unable to create quiz. RLS policy violation: ${error.message}`);
         }
         
         throw error;

@@ -23,6 +23,8 @@ import('./services/supabaseService').then(({ supabaseService }) => {
   console.log('QuizAI Debug utilities available at window.QuizAIDebug');
 });
 
+
+
 const rootElement = document.getElementById('root');
 if (!rootElement) {
   throw new Error("Could not find root element to mount to");
