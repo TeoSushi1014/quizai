@@ -37,6 +37,12 @@ export const shareQuizViaAPI = async (quiz: Quiz, currentUser?: UserProfile | nu
   try {
     const quizForSharing = prepareQuizForSharing(quiz, currentUser);
     
+    // Skip Supabase for now and go directly to localStorage to fix the hanging issue
+    logger.info('Using localStorage for quiz sharing (bypassing Supabase)', 'quizSharingService', { quizId: quiz.id });
+    return await shareQuizLocally(quizForSharing);
+    
+    // TODO: Re-enable Supabase sharing after fixing authentication
+    /*
     // Try to share via Supabase first with timeout
     try {
       logger.info('Attempting to share quiz via Supabase', 'quizSharingService', { quizId: quiz.id });
@@ -45,7 +51,7 @@ export const shareQuizViaAPI = async (quiz: Quiz, currentUser?: UserProfile | nu
       
       // Add timeout to prevent hanging
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Supabase share timeout')), 10000)
+        setTimeout(() => reject(new Error('Supabase share timeout')), 5000)
       );
       
       const shareResult = await Promise.race([
@@ -61,11 +67,12 @@ export const shareQuizViaAPI = async (quiz: Quiz, currentUser?: UserProfile | nu
         return { shareUrl: shareResult.shareUrl, isDemo: false };
       }
     } catch (supabaseError) {
-      logger.warn('Supabase sharing failed, falling back to API/localStorage', 'quizSharingService', { 
+      logger.warn('Supabase sharing failed, falling back to localStorage', 'quizSharingService', { 
         quizId: quiz.id,
         error: (supabaseError as Error).message 
       }, supabaseError as Error);
     }
+    */
     
     // @ts-ignore
     const apiUrl = typeof import.meta.env !== 'undefined' ? import.meta.env.VITE_API_URL : undefined;
