@@ -645,7 +645,33 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
   }, [currentUser]);
 
   const getQuizByIdFromAll = useCallback((id: string): Quiz | null => {
-    return allQuizzes.find(q => q.id === id) || null;
+    // First, try to find in user's own quizzes
+    const userQuiz = allQuizzes.find(q => q.id === id);
+    if (userQuiz) {
+      return userQuiz;
+    }
+    
+    // If not found in user's quizzes, try to find in shared quiz cache
+    try {
+      const sharedQuizzes = JSON.parse(localStorage.getItem('quizai_shared_quizzes_v2') || '{}');
+      const sharedQuiz = sharedQuizzes[id];
+      if (sharedQuiz) {
+        logger.info('Found quiz in shared quiz cache', 'AppContext', { quizId: id });
+        return sharedQuiz;
+      }
+      
+      // Also check legacy shared quiz storage
+      const legacySharedQuizzes = JSON.parse(localStorage.getItem('quizai_shared_quizzes') || '{}');
+      const legacySharedQuiz = legacySharedQuizzes[id];
+      if (legacySharedQuiz) {
+        logger.info('Found quiz in legacy shared quiz cache', 'AppContext', { quizId: id });
+        return legacySharedQuiz;
+      }
+    } catch (error) {
+      logger.error('Error checking shared quiz cache', 'AppContext', { quizId: id }, error as Error);
+    }
+    
+    return null;
   }, [allQuizzes]);
 
   const setQuizResultWithPersistence = useCallback((result: QuizResult | null) => {

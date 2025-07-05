@@ -10,7 +10,9 @@
     "preview": "vite preview",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d dist",
-    "deploy:github": "echo 'Use GitHub Actions for deployment. Push to main branch to trigger deployment.'"
+    "deploy:github": "echo 'GitHub Actions will handle deployment. Push to main branch to trigger deployment.'",
+    "clean": "rm -rf dist",
+    "build:analyze": "npm run build && npx vite-bundle-analyzer dist/assets"
   },
   "dependencies": {
     "@google/genai": "^1.0.1",

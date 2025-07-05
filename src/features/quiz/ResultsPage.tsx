@@ -6,7 +6,7 @@ import { Quiz, Question } from '../../types';
 import { Button, Card, Accordion, ProgressBar, LoadingSpinner } from '../../components/ui';
 import MathText from '../../components/MathText';
 import AccordionQuestionTitle from './components/AccordionQuestionTitle';
-import { XCircleIcon, DocumentTextIcon, ArrowUturnLeftIcon, PlusCircleIcon, HomeIcon } from '../../constants';
+import { XCircleIcon, ArrowUturnLeftIcon, PlusCircleIcon, HomeIcon } from '../../constants';
 import useShouldReduceMotion from '../../hooks/useShouldReduceMotion';
 
 
@@ -190,19 +190,40 @@ const ResultsPage: React.FC = () => {
       return;
     }
 
-    const quizToDisplay = getQuizByIdFromAll(quizResult.quizId);
+    const loadQuizData = async () => {
+      // First try to get quiz from user's quizzes and shared quiz cache
+      let quizToDisplay = getQuizByIdFromAll(quizResult.quizId);
 
-    if (quizToDisplay) {
-      setCurrentDisplayQuiz(quizToDisplay);
-      setActiveQuiz(quizToDisplay); // Set the active quiz in context if needed elsewhere
-      setIsLoadingQuizData(false);
-    } else {
-      console.error(`ResultsPage: Quiz ${quizResult.quizId} not found in fully loaded quizzes list.`);
-      setErrorState(t('resultsErrorNotFound', { quizId: quizResult.quizId }));
-      setCurrentDisplayQuiz(null);
-      setIsLoadingQuizData(false);
-    }
-  }, [quizResult, getQuizByIdFromAll, setActiveQuiz, paramQuizId, appContextIsLoading, t]);
+      // If not found, try to fetch from shared quiz service
+      if (!quizToDisplay) {
+        console.log('Quiz not found in local data, attempting to fetch shared quiz...');
+        try {
+          // Import the service dynamically to avoid circular dependencies
+          const { getSharedQuiz } = await import('../../services/quizSharingService');
+          const sharedQuizData = await getSharedQuiz(quizResult.quizId);
+          if (sharedQuizData) {
+            quizToDisplay = sharedQuizData;
+            console.log('Successfully fetched shared quiz data');
+          }
+        } catch (error) {
+          console.error('Failed to fetch shared quiz:', error);
+        }
+      }
+
+      if (quizToDisplay) {
+        setCurrentDisplayQuiz(quizToDisplay);
+        setActiveQuiz(quizToDisplay); // Set the active quiz in context if needed elsewhere
+        setIsLoadingQuizData(false);
+      } else {
+        console.error(`ResultsPage: Quiz ${quizResult.quizId} not found in fully loaded quizzes list.`);
+        setErrorState(t('resultsErrorNotFound', { quizId: quizResult.quizId }));
+        setCurrentDisplayQuiz(null);
+        setIsLoadingQuizData(false);
+      }
+    };
+
+    loadQuizData();
+  }, [quizResult, getQuizByIdFromAll, setActiveQuiz, paramQuizId, appContextIsLoading, t, setQuizResult]);
 
 
   if (isLoadingQuizData) {
