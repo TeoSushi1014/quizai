@@ -1,6 +1,8 @@
 import { Quiz, UserProfile } from '../types';
 import { logger } from './logService';
 import { validateQuizId } from '../utils/quizValidationUtils';
+import { supabaseService } from './supabaseService';
+import { supabase } from './supabaseClient';
 
 interface QuizForSharing extends Quiz {
   creator?: { name: string, email?: string };
@@ -33,11 +35,8 @@ export const shareQuizViaAPI = async (quiz: Quiz, currentUser?: UserProfile | nu
   if (!currentUser) {
     throw new Error('User must be logged in to share quizzes');
   }
-
-  const supabaseService = await import('./supabaseService').then(m => m.supabaseService);
   
   // Try to get current Supabase session first
-  const { supabase } = await import('./supabaseClient');
   const { data: { user: supabaseUser }, error: sessionError } = await supabase.auth.getUser();
   
   let effectiveUserId: string;
@@ -129,8 +128,6 @@ export const getSharedQuiz = async (quizId: string, currentUser?: UserProfile | 
   logger.info('Fetching shared quiz from Supabase', 'quizSharingService', { quizId });
   console.log('📡 DEBUG: Calling supabaseService.getPublicQuizById with:', quizId);
   
-  const supabaseService = await import('./supabaseService').then(m => m.supabaseService);
-  
   // Try to get from public shared quizzes first
   const publicQuiz = await supabaseService.getPublicQuizById(quizId);
   if (publicQuiz) {
@@ -154,7 +151,6 @@ export const getSharedQuiz = async (quizId: string, currentUser?: UserProfile | 
     });
     
     // Try to get current Supabase session first
-    const { supabase } = await import('./supabaseClient');
     const { data: { user: supabaseUser }, error: sessionError } = await supabase.auth.getUser();
     
     let effectiveUserId: string | null = null;

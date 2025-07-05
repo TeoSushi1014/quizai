@@ -32,6 +32,7 @@ const QuizPracticePage = lazy(() => import('./features/quiz/QuizPracticePage'));
 const SyncSettingsPage = lazy(() => import('./features/settings/SyncSettingsPage'));
 const ProfilePage = lazy(() => import('./features/user/ProfilePage'));
 const SharedQuizPage = lazy(() => import('./features/quiz/SharedQuizPage')); 
+const QuizSharingDebug = lazy(() => import('./debug/QuizSharingDebug').then(m => ({ default: m.QuizSharingDebug }))); 
 
 import { quizStorage } from './services/storageService'; 
 
@@ -1289,6 +1290,7 @@ const AppLayout: React.FC = () => {
             <Route path="/settings" element={currentUser ? <SyncSettingsPage /> : <Navigate to="/signin" state={{ from: location }} replace />} />
             <Route path="/profile" element={currentUser ? <ProfilePage /> : <Navigate to="/signin" state={{ from: location }} replace />} />
             <Route path="/shared/:quizId" element={<SharedQuizPage />} /> 
+            <Route path="/debug/quiz-sharing" element={<QuizSharingDebug />} />
             <Route path="*" element={<HomePage />} /> 
           </Routes>
         </Suspense>
