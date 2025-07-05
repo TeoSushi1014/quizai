@@ -153,6 +153,64 @@ export class SupabaseService {
     }
   }
 
+  // Generate a unique quiz ID that doesn't exist in the database
+  async generateUniqueQuizId(): Promise<string> {
+    let attempts = 0;
+    const maxAttempts = 5;
+    
+    while (attempts < maxAttempts) {
+      // Import the generateQuizId function dynamically to avoid circular dependencies
+      const { generateQuizId } = await import('../utils/uuidUtils');
+      const newId = generateQuizId();
+      
+      try {
+        // Check if this ID already exists in the database
+        const { data, error } = await supabase
+          .from('quizzes')
+          .select('id')
+          .eq('id', newId)
+          .maybeSingle();
+        
+        if (error && error.code !== 'PGRST116') {
+          logger.warn('Error checking quiz ID uniqueness', 'SupabaseService', { 
+            newId, 
+            attempt: attempts + 1,
+            error: error.message 
+          });
+          // If there's an error checking, just use the generated ID
+          return newId;
+        }
+        
+        if (!data) {
+          // ID doesn't exist, it's unique
+          logger.info('Generated unique quiz ID', 'SupabaseService', { newId, attempts: attempts + 1 });
+          return newId;
+        }
+        
+        // ID exists, try again
+        logger.info('Quiz ID collision detected, generating new ID', 'SupabaseService', { 
+          existingId: newId, 
+          attempt: attempts + 1 
+        });
+        attempts++;
+        
+      } catch (error) {
+        logger.error('Error checking quiz ID uniqueness', 'SupabaseService', { newId, attempt: attempts + 1 }, error as Error);
+        // If there's an error, just return the generated ID
+        return newId;
+      }
+    }
+    
+    // If we've exhausted all attempts, just return a new ID and hope for the best
+    const { generateQuizId } = await import('../utils/uuidUtils');
+    const fallbackId = generateQuizId();
+    logger.warn('Could not verify quiz ID uniqueness after max attempts, using fallback', 'SupabaseService', { 
+      fallbackId, 
+      maxAttempts 
+    });
+    return fallbackId;
+  }
+
   async createQuiz(quiz: Quiz, userId: string): Promise<Quiz | null> {
     try {
       logger.info('Starting quiz creation in Supabase', 'SupabaseService', { 
@@ -193,6 +251,36 @@ export class SupabaseService {
           details: error.details,
           hint: error.hint
         });
+        
+        // Handle duplicate key constraint violation
+        if (error.code === '23505' && error.message.includes('quizzes_pkey')) {
+          logger.info('SupabaseService: Quiz with this ID already exists, attempting to fetch existing quiz', 'SupabaseService', { quizId: quiz.id })
+          
+          // Try to fetch the existing quiz
+          const { data: existingQuiz, error: fetchError } = await supabase
+            .from('quizzes')
+            .select('*')
+            .eq('id', quiz.id)
+            .single()
+          
+          if (fetchError) {
+            logger.error('SupabaseService: Failed to fetch existing quiz after duplicate key error', 'SupabaseService', { 
+              quizId: quiz.id,
+              fetchError: fetchError.message 
+            });
+            throw error; // Throw original error if we can't fetch existing quiz
+          }
+          
+          logger.info('SupabaseService: Found existing quiz with same ID', 'SupabaseService', { 
+            quizId: existingQuiz.id,
+            existingTitle: existingQuiz.title,
+            newTitle: quiz.title
+          });
+          
+          // Return the existing quiz mapped to our format
+          return this.mapDatabaseQuizToQuiz(existingQuiz);
+        }
+        
         throw error;
       }
       
@@ -430,14 +518,69 @@ export class SupabaseService {
     }
   }
 
+  // Check if user has permission to share quizzes (for debugging RLS issues)
+  async checkUserSharePermissions(userId: string): Promise<{ canShare: boolean; reason?: string }> {
+    try {
+      // First check if the user can read from shared_quizzes table
+      const { error: readError } = await supabase
+        .from('shared_quizzes')
+        .select('count')
+        .limit(1);
+      
+      if (readError) {
+        logger.warn('User cannot read from shared_quizzes table', 'SupabaseService', { 
+          userId, 
+          error: readError.message,
+          code: readError.code 
+        });
+        return { canShare: false, reason: `Cannot read shared_quizzes: ${readError.message}` };
+      }
+      
+      // Try a test insert with a dummy quiz ID to see if RLS allows inserts
+      const testQuizId = 'test-permissions-check';
+      const testToken = 'test-token';
+      
+      const { error: insertError } = await supabase
+        .from('shared_quizzes')
+        .insert({
+          quiz_id: testQuizId,
+          share_token: testToken,
+          is_public: false,
+          expires_at: null
+        });
+      
+      // Clean up the test insert (ignore cleanup errors)
+      await supabase
+        .from('shared_quizzes')
+        .delete()
+        .eq('quiz_id', testQuizId)
+        .eq('share_token', testToken);
+      
+      if (insertError) {
+        logger.warn('User cannot insert into shared_quizzes table', 'SupabaseService', { 
+          userId, 
+          error: insertError.message,
+          code: insertError.code 
+        });
+        return { canShare: false, reason: `Cannot insert into shared_quizzes: ${insertError.message}` };
+      }
+      
+      return { canShare: true };
+      
+    } catch (error) {
+      logger.error('Error checking user share permissions', 'SupabaseService', { userId }, error as Error);
+      return { canShare: false, reason: `Permission check failed: ${(error as Error).message}` };
+    }
+  }
+
   async shareQuiz(quizId: string, isPublic: boolean = true, expiresAt?: string): Promise<{ shareToken: string; shareUrl: string } | null> {
     try {
       logger.info('Starting shareQuiz process', 'SupabaseService', { quizId, isPublic });
       
-      // First check if the quiz exists in the database
+      // First check if the quiz exists in the database and verify ownership
       const { data: existingQuiz, error: quizCheckError } = await supabase
         .from('quizzes')
-        .select('id')
+        .select('id, user_id')
         .eq('id', quizId)
         .maybeSingle();
 
@@ -456,21 +599,62 @@ export class SupabaseService {
         return null;
       }
 
-      logger.info('Quiz exists in database, proceeding with share', 'SupabaseService', { quizId });
+      logger.info('Quiz exists in database, proceeding with share', 'SupabaseService', { 
+        quizId, 
+        quizUserId: existingQuiz.user_id 
+      });
+
+      // Check if quiz is already shared
+      const { data: existingShare, error: shareCheckError } = await supabase
+        .from('shared_quizzes')
+        .select('share_token')
+        .eq('quiz_id', quizId)
+        .maybeSingle();
+
+      if (shareCheckError && shareCheckError.code !== 'PGRST116') {
+        // Check user permissions if we get an error reading shared_quizzes
+        const permissionCheck = await this.checkUserSharePermissions(existingQuiz.user_id);
+        if (!permissionCheck.canShare) {
+          logger.error('User lacks permission to share quizzes', 'SupabaseService', { 
+            quizId,
+            userId: existingQuiz.user_id,
+            reason: permissionCheck.reason
+          });
+          return null;
+        }
+        
+        logger.error('Error checking existing share', 'SupabaseService', { 
+          quizId, 
+          error: shareCheckError.message,
+          code: shareCheckError.code 
+        });
+        return null;
+      }
+
+      if (existingShare) {
+        const shareUrl = `${window.location.origin}${window.location.pathname}#/shared/${quizId}`;
+        logger.info('Quiz is already shared, returning existing share info', 'SupabaseService', { 
+          quizId, 
+          shareToken: existingShare.share_token 
+        });
+        return { shareToken: existingShare.share_token, shareUrl };
+      }
 
       // Generate a unique share token
       const shareToken = `share_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       
       logger.info('Generated share token', 'SupabaseService', { quizId, shareToken });
       
-      // Create a shared quiz entry
+      // Create a shared quiz entry using upsert to handle duplicates
       const { error: shareError } = await supabase
         .from('shared_quizzes')
-        .insert({
+        .upsert({
           quiz_id: quizId,
           share_token: shareToken,
           is_public: isPublic,
           expires_at: expiresAt || null
+        }, {
+          onConflict: 'quiz_id'
         });
 
       if (shareError) {
@@ -481,6 +665,16 @@ export class SupabaseService {
           details: shareError.details,
           hint: shareError.hint 
         });
+        
+        // If it's an RLS policy violation, provide more helpful information
+        if (shareError.code === '42501') {
+          logger.error('RLS policy violation: User may not have permission to share this quiz', 'SupabaseService', { 
+            quizId,
+            quizUserId: existingQuiz.user_id,
+            errorHint: 'Check if the current user owns this quiz and RLS policies allow sharing'
+          });
+        }
+        
         return null;
       }
 
@@ -518,14 +712,14 @@ export class SupabaseService {
         return null;
       }
 
-      // Check if it's already shared
+      // Check if it's already shared - use same logic as shareQuiz
       const { data: existingShare, error: shareCheckError } = await supabase
         .from('shared_quizzes')
         .select('share_token')
         .eq('quiz_id', quizId)
         .maybeSingle();
 
-      if (shareCheckError) {
+      if (shareCheckError && shareCheckError.code !== 'PGRST116') {
         logger.error('Error checking existing share', 'SupabaseService', { quizId, error: shareCheckError.message });
         return null;
       }
@@ -536,7 +730,7 @@ export class SupabaseService {
         return { shareToken: existingShare.share_token, shareUrl };
       }
 
-      // Create a new share entry
+      // Create a new share entry using the existing shareQuiz method
       return await this.shareQuiz(quizId);
       
     } catch (error) {

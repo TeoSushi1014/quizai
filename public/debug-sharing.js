@@ -4,6 +4,33 @@
 window.debugQuizSharing = async function() {
   console.log('🔍 Starting Quiz Sharing Debug...');
   
+  // Get current user from app context
+  const appContext = window.appContext || window.App?.useAppContext?.();
+  if (!appContext?.currentUser) {
+    console.error('❌ No current user found. Please login first.');
+    return;
+  }
+
+  console.log('👤 Current user:', appContext.currentUser);
+  
+  // First check user permissions
+  try {
+    console.log('🔐 Checking user share permissions...');
+    const { supabaseService } = await import('./src/services/supabaseService.js');
+    const permissionCheck = await supabaseService.checkUserSharePermissions(appContext.currentUser.id);
+    
+    console.log('📋 Permission check result:', permissionCheck);
+    
+    if (!permissionCheck.canShare) {
+      console.error('❌ User cannot share quizzes:', permissionCheck.reason);
+      return;
+    }
+    
+    console.log('✅ User has permission to share quizzes');
+  } catch (permError) {
+    console.error('❌ Error checking permissions:', permError);
+  }
+  
   // Create a test quiz
   const testQuiz = {
     id: 'debug-quiz-' + Date.now(),
@@ -27,15 +54,7 @@ window.debugQuizSharing = async function() {
     }
   };
 
-  // Get current user from app context
-  const appContext = window.appContext || window.App?.useAppContext?.();
-  if (!appContext?.currentUser) {
-    console.error('❌ No current user found. Please login first.');
-    return;
-  }
-
-  console.log('👤 Current user:', appContext.currentUser);
-  console.log('📝 Test quiz:', testQuiz);
+  console.log(' Test quiz:', testQuiz);
 
   try {
     // Import sharing service
@@ -55,7 +74,39 @@ window.debugQuizSharing = async function() {
   } catch (error) {
     console.error('❌ Error sharing quiz:', error);
     console.error('Stack:', error.stack);
+    
+    // Additional debugging info
+    console.log('🔍 Additional debugging info:');
+    console.log('- User ID:', appContext.currentUser.id);
+    console.log('- Quiz ID:', testQuiz.id);
+    console.log('- Quiz questions count:', testQuiz.questions.length);
   }
 };
 
-console.log('🎯 Debug function loaded! Run: debugQuizSharing()');
+// Function to check if a specific quiz ID exists
+window.debugCheckQuizExists = async function(quizId) {
+  if (!quizId) {
+    console.error('❌ Please provide a quiz ID');
+    return;
+  }
+  
+  try {
+    console.log('🔍 Checking if quiz exists:', quizId);
+    const { supabaseService } = await import('./src/services/supabaseService.js');
+    
+    // Try to get quiz via public method
+    const publicQuiz = await supabaseService.getPublicQuizById(quizId);
+    if (publicQuiz) {
+      console.log('✅ Found as public quiz:', publicQuiz);
+      return;
+    }
+    
+    console.log('❌ Quiz not found as public quiz');
+  } catch (error) {
+    console.error('❌ Error checking quiz:', error);
+  }
+};
+
+console.log('🎯 Debug functions loaded!');
+console.log('  Run: debugQuizSharing() - Test quiz sharing flow');
+console.log('  Run: debugCheckQuizExists("quiz-id") - Check if quiz exists');

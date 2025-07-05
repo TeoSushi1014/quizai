@@ -48,15 +48,26 @@ export const shareQuizViaAPI = async (quiz: Quiz, currentUser?: UserProfile | nu
     }
     
     // Always try to create/update quiz to ensure it exists
-    logger.info('Force creating/updating quiz in Supabase', 'quizSharingService', { quizId: quiz.id });
+    logger.info('Ensuring quiz exists in Supabase database', 'quizSharingService', { quizId: quiz.id });
     
-    // Try to create the quiz - if it exists, this might fail but that's ok
-    let quizCreationResult = await supabaseService.createQuiz(quiz, currentUser.id);
+    // First check if quiz already exists
+    const existingUserQuizzes = await supabaseService.getUserQuizzes(currentUser.id);
+    const existingQuiz = existingUserQuizzes.find(q => q.id === quiz.id);
     
-    // If creation failed, try to update existing quiz
-    if (!quizCreationResult) {
-      logger.info('Quiz creation failed, attempting to update existing quiz', 'quizSharingService', { quizId: quiz.id });
-      quizCreationResult = await supabaseService.updateQuiz(quiz);
+    let quizOperationResult = null;
+    
+    if (existingQuiz) {
+      logger.info('Quiz already exists in Supabase, updating it', 'quizSharingService', { quizId: quiz.id });
+      quizOperationResult = await supabaseService.updateQuiz(quiz);
+    } else {
+      logger.info('Quiz does not exist in Supabase, creating it', 'quizSharingService', { quizId: quiz.id });
+      quizOperationResult = await supabaseService.createQuiz(quiz, currentUser.id);
+      
+      // If creation failed (possibly due to concurrent creation), try to update
+      if (!quizOperationResult) {
+        logger.info('Quiz creation failed, attempting to update in case it was created concurrently', 'quizSharingService', { quizId: quiz.id });
+        quizOperationResult = await supabaseService.updateQuiz(quiz);
+      }
     }
     
     // Verify quiz exists now
