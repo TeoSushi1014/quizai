@@ -19,7 +19,7 @@ export class AuthService {
         throw new Error('No email provided by Google OAuth')
       }
 
-      // Strategy: Try to establish Supabase authentication for existing users first
+      // Strategy: Use Google OAuth with Supabase for proper authentication
       let supabaseUser = null;
       
       try {
@@ -36,70 +36,168 @@ export class AuthService {
             logger.info('AuthService: Signed out existing session for different user', 'AuthService');
           }
           
-          // Try to sign in the user with Supabase using a consistent password approach
-          // This is needed for users who already exist in the database
-          logger.info('AuthService: Attempting Supabase authentication for existing user', 'AuthService', { email });
-          
-          // Generate a consistent password for this user (same approach as before but refined)
-          const userPassword = `QuizAI_User_${email.split('@')[0]}_${email.split('@')[1].split('.')[0]}_2025`;
-          
-          try {
-            // First, try to sign in with the generated password
-            const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-              email: email,
-              password: userPassword
-            });
+          // Use Supabase's Google OAuth integration if we have an access token
+          if (googleUser.access_token) {
+            logger.info('AuthService: Attempting Supabase Google OAuth authentication', 'AuthService', { email });
             
-            if (signInError) {
-              if (signInError.message.includes('Invalid login credentials') || signInError.message.includes('Invalid email or password')) {
-                // User exists but with different credentials, try to create them with the new password
-                logger.info('AuthService: User exists but credentials mismatch, attempting to create/update auth', 'AuthService', { email });
-                
-                const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-                  email: email,
-                  password: userPassword,
-                  options: {
-                    emailRedirectTo: undefined, // Disable email confirmation
-                    data: {
-                      name: googleUser.name,
-                      avatar_url: googleUser.picture,
-                      google_id: googleUser.sub || googleUser.id,
-                      provider: 'google'
-                    }
-                  }
-                });
-                
-                if (signUpError) {
-                  if (signUpError.message.includes('User already registered')) {
-                    // This is fine - user exists in auth but we couldn't sign in
-                    // Let's try one more approach: password reset or fallback to Google-only
-                    logger.info('AuthService: User already exists in auth, falling back to Google-only mode', 'AuthService', { email });
-                    throw new Error('User exists but authentication failed - using Google-only mode');
-                  } else {
-                    logger.error('AuthService: Sign up failed', 'AuthService', { error: signUpError.message });
-                    throw new Error(`Sign up failed: ${signUpError.message}`);
-                  }
-                }
-                
-                supabaseUser = signUpData.user;
-                logger.info('AuthService: Successfully created new Supabase auth user', 'AuthService', { 
-                  userId: supabaseUser?.id,
-                  hasSession: !!signUpData.session 
-                });
-              } else {
-                logger.error('AuthService: Unexpected sign in error', 'AuthService', { error: signInError.message });
-                throw new Error(`Authentication failed: ${signInError.message}`);
-              }
-            } else {
-              supabaseUser = signInData.user;
-              logger.info('AuthService: Successfully signed in existing Supabase user', 'AuthService', { 
-                userId: supabaseUser?.id,
-                hasSession: !!signInData.session 
+            try {
+              const { data: oauthData, error: oauthError } = await supabase.auth.signInWithIdToken({
+                provider: 'google',
+                token: googleUser.access_token,
+                access_token: googleUser.access_token
               });
+              
+              if (oauthError) {
+                logger.warn('AuthService: Google OAuth token authentication failed, trying alternative approaches', 'AuthService', { error: oauthError.message });
+                throw new Error(`OAuth failed: ${oauthError.message}`);
+              }
+              
+              if (oauthData.user) {
+                supabaseUser = oauthData.user;
+                logger.info('AuthService: Successfully authenticated with Google OAuth token', 'AuthService', { 
+                  userId: supabaseUser.id,
+                  hasSession: !!oauthData.session 
+                });
+              }
+            } catch (oauthError) {
+              logger.warn('AuthService: Google OAuth method failed, attempting manual user linking approach', 'AuthService', { error: (oauthError as Error).message });
+              
+              // For existing users, we need a different approach
+              // Try to find the existing user in the database first
+              try {
+                const existingDbUser = await supabaseService.getUserByEmail(email);
+                
+                if (existingDbUser && existingDbUser.supabaseId) {
+                  logger.info('AuthService: Found existing database user with Supabase ID, attempting direct auth link', 'AuthService', { 
+                    dbUserId: existingDbUser.id,
+                    supabaseId: existingDbUser.supabaseId,
+                    email: email
+                  });
+                  
+                  // The user exists in our database with a specific Supabase ID
+                  // We need to create a Supabase auth user that matches this ID
+                  const targetSupabaseId = existingDbUser.supabaseId;
+                  
+                  // Try password-based authentication with the target ID approach
+                  const userPassword = `QuizAI_User_${email.split('@')[0]}_${email.split('@')[1].split('.')[0]}_2025`;
+                  
+                  try {
+                    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+                      email: email,
+                      password: userPassword
+                    });
+                    
+                    if (signInError) {
+                      if (signInError.message.includes('Invalid login credentials')) {
+                        logger.info('AuthService: No existing auth user, creating one for existing database user', 'AuthService', { email, targetSupabaseId });
+                        
+                        // Create auth user that should match the existing database user
+                        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+                          email: email,
+                          password: userPassword,
+                          options: {
+                            emailRedirectTo: undefined,
+                            data: {
+                              name: googleUser.name,
+                              avatar_url: googleUser.picture,
+                              google_id: googleUser.sub || googleUser.id,
+                              provider: 'google',
+                              target_user_id: targetSupabaseId // Hint for linking
+                            }
+                          }
+                        });
+                        
+                        if (signUpError && !signUpError.message.includes('User already registered')) {
+                          logger.error('AuthService: Failed to create auth user for existing database user', 'AuthService', { error: signUpError.message });
+                          throw new Error(`Auth user creation failed: ${signUpError.message}`);
+                        }
+                        
+                        if (signUpError?.message.includes('User already registered')) {
+                          logger.info('AuthService: Auth user already exists, trying sign in again', 'AuthService', { email });
+                          const { data: retrySignIn, error: retryError } = await supabase.auth.signInWithPassword({
+                            email: email,
+                            password: userPassword
+                          });
+                          
+                          if (retryError) {
+                            logger.error('AuthService: Retry sign-in failed for existing user', 'AuthService', { error: retryError.message });
+                            throw new Error('Failed to authenticate existing user');
+                          }
+                          
+                          supabaseUser = retrySignIn.user;
+                        } else {
+                          supabaseUser = signUpData?.user;
+                        }
+                        
+                        logger.info('AuthService: Successfully created/linked auth user for existing database user', 'AuthService', { 
+                          authUserId: supabaseUser?.id,
+                          targetDbUserId: targetSupabaseId
+                        });
+                      } else {
+                        throw new Error(`Unexpected sign-in error: ${signInError.message}`);
+                      }
+                    } else {
+                      supabaseUser = signInData.user;
+                      logger.info('AuthService: Successfully signed in existing auth user', 'AuthService', { 
+                        userId: supabaseUser?.id 
+                      });
+                    }
+                  } catch (linkingError) {
+                    logger.error('AuthService: Failed to link authentication with existing database user', 'AuthService', { error: (linkingError as Error).message });
+                    throw linkingError;
+                  }
+                } else {
+                  logger.info('AuthService: No existing database user found, proceeding with new user creation', 'AuthService', { email });
+                  throw new Error('No existing database user found - create new user');
+                }
+              } catch (dbCheckError) {
+                logger.warn('AuthService: Could not check for existing database user, falling back to standard auth', 'AuthService', { error: (dbCheckError as Error).message });
+                
+                // Fallback to standard password authentication for new users
+                const userPassword = `QuizAI_User_${email.split('@')[0]}_${email.split('@')[1].split('.')[0]}_2025`;
+                
+                try {
+                  const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+                    email: email,
+                    password: userPassword
+                  });
+                  
+                  if (signInError) {
+                    if (signInError.message.includes('Invalid login credentials')) {
+                      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+                        email: email,
+                        password: userPassword,
+                        options: {
+                          emailRedirectTo: undefined,
+                          data: {
+                            name: googleUser.name,
+                            avatar_url: googleUser.picture,
+                            google_id: googleUser.sub || googleUser.id,
+                            provider: 'google'
+                          }
+                        }
+                      });
+                      
+                      if (signUpError && !signUpError.message.includes('User already registered')) {
+                        throw new Error(`Standard signup failed: ${signUpError.message}`);
+                      }
+                      
+                      supabaseUser = signUpData?.user;
+                    } else {
+                      throw new Error(`Standard authentication failed: ${signInError.message}`);
+                    }
+                  } else {
+                    supabaseUser = signInData.user;
+                  }
+                } catch (standardError) {
+                  logger.error('AuthService: Standard password authentication failed', 'AuthService', { error: (standardError as Error).message });
+                  throw standardError;
+                }
+              }
             }
-          } catch (innerAuthError) {
-            logger.error('AuthService: Inner authentication attempt failed', 'AuthService', { error: (innerAuthError as Error).message });
-            throw innerAuthError;
+          } else {
+            logger.warn('AuthService: No access token available, cannot perform OAuth authentication', 'AuthService', { email });
+            throw new Error('No access token available for authentication');
           }
         }
         
@@ -166,21 +264,29 @@ export class AuthService {
               existingUser = updatedUser
             }
             
+            // CRITICAL: Set both Google ID and Supabase ID for proper functionality
             existingUser.accessToken = googleUser.access_token
-            logger.info('AuthService: Existing user updated and signed in', 'AuthService', { userId: existingUser.id })
+            existingUser.supabaseId = authenticatedUserId  // This is crucial for quiz sharing!
+            
+            logger.info('AuthService: Existing user updated and signed in with Supabase session', 'AuthService', { 
+              userId: existingUser.id,
+              supabaseId: existingUser.supabaseId 
+            })
             return existingUser
           }
 
           const newUserProfile: UserProfile = {
-            id: authenticatedUserId,
+            id: authenticatedUserId, // Use Supabase ID as primary ID for new users
+            supabaseId: authenticatedUserId, // Also set supabaseId explicitly
             email: email,
             name: googleUser.name || googleUser.given_name || googleUser.family_name,
             imageUrl: googleUser.picture,
             accessToken: googleUser.access_token
           }
 
-          logger.info('AuthService: Creating new user profile from Google data', 'AuthService', { 
+          logger.info('AuthService: Creating new user profile from Google data with Supabase integration', 'AuthService', { 
             userId: newUserProfile.id,
+            supabaseId: newUserProfile.supabaseId,
             email: newUserProfile.email,
             hasName: !!newUserProfile.name 
           })
@@ -189,19 +295,29 @@ export class AuthService {
           
           if (!existingUser) {
             logger.error('AuthService: Failed to create user in Supabase', 'AuthService', { userId: newUserProfile.id })
-            logger.info('AuthService: Falling back to Google user profile', 'AuthService')
+            logger.info('AuthService: Falling back to Google user profile with Supabase session info', 'AuthService')
+            // Even if DB creation fails, return profile with Supabase session info
+            newUserProfile.supabaseId = authenticatedUserId
             return newUserProfile
           }
           
-          logger.info('AuthService: New user created successfully', 'AuthService', { userId: existingUser.id })
+          logger.info('AuthService: New user created successfully with Supabase integration', 'AuthService', { 
+            userId: existingUser.id,
+            supabaseId: existingUser.supabaseId || authenticatedUserId
+          })
 
           if (existingUser) {
             existingUser.accessToken = newUserProfile.accessToken
-            logger.info('User signed in successfully with Supabase', 'AuthService', { userId: existingUser.id })
+            existingUser.supabaseId = authenticatedUserId // Ensure supabaseId is always set
+            logger.info('User signed in successfully with Supabase', 'AuthService', { 
+              userId: existingUser.id,
+              supabaseId: existingUser.supabaseId 
+            })
             return existingUser
           }
 
-          logger.warn('AuthService: Supabase operations completed but no user returned, using Google profile', 'AuthService')
+          logger.warn('AuthService: Supabase operations completed but no user returned, using Google profile with session', 'AuthService')
+          newUserProfile.supabaseId = authenticatedUserId // Ensure supabaseId is set even in fallback
           return newUserProfile
         } catch (profileError) {
           logger.error('AuthService: Profile operations failed, falling back to Google-only', 'AuthService', { error: (profileError as Error).message });
@@ -209,11 +325,17 @@ export class AuthService {
           // Even if profile operations fail, return a Google-only profile
           const fallbackProfile: UserProfile = {
             id: googleUser.sub || googleUser.id || `google_${Date.now()}`,
+            supabaseId: authenticatedUserId, // Still include Supabase session info if available
             email: googleUser.email,
             name: googleUser.name || googleUser.given_name || googleUser.family_name,
             imageUrl: googleUser.picture,
             accessToken: googleUser.access_token
           };
+          
+          logger.info('AuthService: Using fallback profile with Supabase session', 'AuthService', { 
+            userId: fallbackProfile.id,
+            supabaseId: fallbackProfile.supabaseId
+          });
           
           return fallbackProfile;
         }
@@ -279,6 +401,8 @@ export class AuthService {
     canReadUsers: boolean; 
     canReadQuizzes: boolean;
     userExists: boolean;
+    userDetails?: any;
+    sessionDetails?: any;
     error?: string 
   }> {
     try {
@@ -287,6 +411,13 @@ export class AuthService {
       // Test 1: Check session
       const { data: { session } } = await supabase.auth.getSession();
       const hasSession = !!session?.user;
+      
+      const sessionDetails = session ? {
+        userId: session.user?.id,
+        email: session.user?.email,
+        provider: session.user?.app_metadata?.provider,
+        lastSignIn: session.user?.last_sign_in_at
+      } : null;
       
       logger.info('Session check result', 'AuthService', { 
         hasSession, 
@@ -311,10 +442,17 @@ export class AuthService {
       // Test 3: Can read users table
       let canReadUsers = false;
       let userExists = false;
+      let userDetails = null;
       try {
         const userData = await supabaseService.getUserByEmail(email);
         canReadUsers = true; // If we get here without error, we can read users
         userExists = !!userData;
+        userDetails = userData ? {
+          id: userData.id,
+          email: userData.email,
+          name: userData.name,
+          supabaseId: userData.supabaseId
+        } : null;
         
         logger.info('Users table read test passed', 'AuthService', { userExists, userId: userData?.id });
       } catch (error) {
@@ -341,7 +479,9 @@ export class AuthService {
         hasSession,
         canReadUsers,
         canReadQuizzes,
-        userExists
+        userExists,
+        userDetails,
+        sessionDetails
       };
 
       logger.info('Supabase connectivity test completed', 'AuthService', result);
