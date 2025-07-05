@@ -37,12 +37,21 @@ export const shareQuizViaAPI = async (quiz: Quiz, currentUser?: UserProfile | nu
   try {
     const quizForSharing = prepareQuizForSharing(quiz, currentUser);
     
-    // Try to share via Supabase first
+    // Try to share via Supabase first with timeout
     try {
       logger.info('Attempting to share quiz via Supabase', 'quizSharingService', { quizId: quiz.id });
       
       const supabaseService = await import('./supabaseService').then(m => m.supabaseService);
-      const shareResult = await supabaseService.shareQuiz(quiz.id);
+      
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Supabase share timeout')), 10000)
+      );
+      
+      const shareResult = await Promise.race([
+        supabaseService.shareQuiz(quiz.id),
+        timeoutPromise
+      ]) as { shareToken: string; shareUrl: string } | null;
       
       if (shareResult) {
         logger.info('Quiz shared via Supabase successfully', 'quizSharingService', { 
@@ -53,7 +62,8 @@ export const shareQuizViaAPI = async (quiz: Quiz, currentUser?: UserProfile | nu
       }
     } catch (supabaseError) {
       logger.warn('Supabase sharing failed, falling back to API/localStorage', 'quizSharingService', { 
-        quizId: quiz.id 
+        quizId: quiz.id,
+        error: (supabaseError as Error).message 
       }, supabaseError as Error);
     }
     

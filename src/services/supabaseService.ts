@@ -401,6 +401,26 @@ export class SupabaseService {
 
   async shareQuiz(quizId: string, isPublic: boolean = true, expiresAt?: string): Promise<{ shareToken: string; shareUrl: string } | null> {
     try {
+      // First check if the quiz exists in the database
+      const { data: existingQuiz, error: quizCheckError } = await supabase
+        .from('quizzes')
+        .select('id')
+        .eq('id', quizId)
+        .maybeSingle();
+
+      if (quizCheckError) {
+        logger.error('Error checking if quiz exists', 'SupabaseService', { 
+          quizId, 
+          error: quizCheckError.message 
+        });
+        return null;
+      }
+
+      if (!existingQuiz) {
+        logger.warn('Quiz not found in database, cannot share via Supabase', 'SupabaseService', { quizId });
+        return null;
+      }
+
       // Generate a unique share token
       const shareToken = `share_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       
