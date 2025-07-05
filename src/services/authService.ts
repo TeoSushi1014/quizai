@@ -70,7 +70,8 @@ export class AuthService {
           email: googleUser.email,
           name: googleUser.name || googleUser.given_name || googleUser.family_name || 'User',
           imageUrl: googleUser.picture,
-          accessToken: googleUser.access_token || googleUser.credential
+          accessToken: googleUser.access_token,
+          idToken: googleUser.credential || googleUser.idToken
         };
         
         logger.info('AuthService: Using emergency fallback profile', 'AuthService', { 

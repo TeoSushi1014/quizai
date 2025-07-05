@@ -129,8 +129,7 @@ const SignInPage: React.FC = () => {
           name: userInfo.name,
           email: userInfo.email,
           imageUrl: userInfo.picture,
-          accessToken: credentialResponse.credential, // Use credential as token
-          idToken: credentialResponse.credential, // This is the ID token we need
+          idToken: credentialResponse.credential, // This is the ID token we need for Supabase
         };
         
         logger.info("User profile created from ID token. Calling login context function.", 'SignInPage', { 

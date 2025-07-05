@@ -175,7 +175,8 @@ export class FullIntegrationStrategy implements AuthStrategy {
         });
         
         const finalUser = updatedUser || existingUser;
-        finalUser.accessToken = googleUser.access_token || googleUser.credential;
+        finalUser.accessToken = googleUser.access_token;
+        finalUser.idToken = googleUser.credential || googleUser.idToken;
         finalUser.supabaseId = supabaseUser.id;
         
         logger.info('Existing user updated successfully', 'AuthStrategy', {
@@ -192,7 +193,8 @@ export class FullIntegrationStrategy implements AuthStrategy {
           email: email,
           name: googleUser.name || googleUser.given_name || googleUser.family_name,
           imageUrl: googleUser.picture,
-          accessToken: googleUser.access_token || googleUser.credential
+          accessToken: googleUser.access_token,
+          idToken: googleUser.credential || googleUser.idToken
         };
 
         const createdUser = await this.supabaseService.createUser(newUserProfile);
@@ -219,7 +221,8 @@ export class FullIntegrationStrategy implements AuthStrategy {
         email: googleUser.email,
         name: googleUser.name || googleUser.given_name || googleUser.family_name,
         imageUrl: googleUser.picture,
-        accessToken: googleUser.access_token || googleUser.credential
+        accessToken: googleUser.access_token,
+        idToken: googleUser.credential || googleUser.idToken
       };
     }
   }
@@ -246,7 +249,8 @@ export class GoogleOnlyStrategy implements AuthStrategy {
         email: googleUser.email,
         name: googleUser.name || googleUser.given_name || googleUser.family_name,
         imageUrl: googleUser.picture,
-        accessToken: googleUser.access_token || googleUser.credential
+        accessToken: googleUser.access_token,
+        idToken: googleUser.credential || googleUser.idToken
       };
 
       logger.info('Google-only profile created successfully', 'AuthStrategy', {
