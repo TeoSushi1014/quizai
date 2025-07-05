@@ -824,7 +824,9 @@ export class SupabaseService {
         .eq('id', quizId)
         .limit(1);
 
-      const quizData = quizDataArray && quizDataArray.length > 0 ? quizDataArray[0] : null;      if (quizError) {
+      const quizData = quizDataArray && quizDataArray.length > 0 ? quizDataArray[0] : null;
+      
+      if (quizError) {
         logger.error('Error fetching quiz from Supabase', 'SupabaseService', { 
           quizId, 
           error: quizError.message,
