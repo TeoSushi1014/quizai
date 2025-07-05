@@ -35,6 +35,28 @@ export const shareQuizViaAPI = async (quiz: Quiz, currentUser?: UserProfile | nu
       throw new Error('User must be logged in to share quizzes');
     }
     
+    // Store the original quiz data in localStorage as fallback
+    try {
+      const existingFallbackQuizzes = localStorage.getItem('quizAI_fallbackSharedQuizzes');
+      const fallbackQuizzes = existingFallbackQuizzes ? JSON.parse(existingFallbackQuizzes) : {};
+      fallbackQuizzes[quiz.id] = {
+        ...quiz,
+        creator: { name: currentUser.name || 'Unknown', email: currentUser.email || undefined },
+        isShared: true,
+        sharedTimestamp: new Date().toISOString()
+      };
+      localStorage.setItem('quizAI_fallbackSharedQuizzes', JSON.stringify(fallbackQuizzes));
+      logger.info('Stored quiz in fallback storage for sharing', 'quizSharingService', { 
+        quizId: quiz.id, 
+        title: quiz.title 
+      });
+    } catch (storageError) {
+      logger.warn('Failed to store quiz in fallback storage', 'quizSharingService', { 
+        quizId: quiz.id,
+        error: (storageError as Error).message 
+      });
+    }
+    
     // Use supabaseId if available, otherwise fall back to Google ID for backwards compatibility
     const effectiveUserId = currentUser.supabaseId || currentUser.id;
     
@@ -58,13 +80,29 @@ export const shareQuizViaAPI = async (quiz: Quiz, currentUser?: UserProfile | nu
         });
         
         // Return demo share URL when Supabase is unavailable
-        const demoShareUrl = `${window.location.origin}/shared/${quiz.id}`;
+        const demoShareUrl = `${window.location.origin}/quizai/#/shared/${quiz.id}`;
         logger.info('Generated demo share URL due to Supabase unavailability', 'quizSharingService', { 
           quizId: quiz.id,
-          shareUrl: demoShareUrl 
+          shareUrl: demoShareUrl,
+          reason: 'supabase_unavailable'
         });
         return { shareUrl: demoShareUrl, isDemo: true };
       }
+    } else {
+      logger.info('User has no supabaseId, generating demo share URL', 'quizSharingService', { 
+        quizId: quiz.id,
+        userId: currentUser.id,
+        hasSupabaseId: false 
+      });
+      
+      // When user has no Supabase ID, generate demo share URL
+      const demoShareUrl = `${window.location.origin}/quizai/#/shared/${quiz.id}`;
+      logger.info('Generated demo share URL for Google-only user', 'quizSharingService', { 
+        quizId: quiz.id,
+        shareUrl: demoShareUrl,
+        reason: 'google_only_user'
+      });
+      return { shareUrl: demoShareUrl, isDemo: true };
     }
     
     // Always try to create/update quiz to ensure it exists
@@ -105,7 +143,7 @@ export const shareQuizViaAPI = async (quiz: Quiz, currentUser?: UserProfile | nu
       });
       
       // Return demo share URL when quiz operations fail
-      const demoShareUrl = `${window.location.origin}/shared/${quiz.id}`;
+      const demoShareUrl = `${window.location.origin}/quizai/#/shared/${quiz.id}`;
       logger.info('Generated demo share URL due to quiz operation failure', 'quizSharingService', { 
         quizId: quiz.id,
         shareUrl: demoShareUrl 
@@ -137,7 +175,7 @@ export const shareQuizViaAPI = async (quiz: Quiz, currentUser?: UserProfile | nu
       });
       
       // Return demo share URL when sharing fails
-      const demoShareUrl = `${window.location.origin}/shared/${quiz.id}`;
+      const demoShareUrl = `${window.location.origin}/quizai/#/shared/${quiz.id}`;
       logger.info('Generated demo share URL due to sharing operation failure', 'quizSharingService', { 
         quizId: quiz.id,
         shareUrl: demoShareUrl 
@@ -149,7 +187,7 @@ export const shareQuizViaAPI = async (quiz: Quiz, currentUser?: UserProfile | nu
     logger.error('Failed to share quiz - attempting final fallback', 'quizSharingService', { quizId: quiz.id }, error as Error);
     
     // Final fallback - return demo URL
-    const demoShareUrl = `${window.location.origin}/shared/${quiz.id}`;
+    const demoShareUrl = `${window.location.origin}/quizai/#/shared/${quiz.id}`;
     logger.info('Generated final fallback demo share URL', 'quizSharingService', { 
       quizId: quiz.id,
       shareUrl: demoShareUrl 
@@ -165,7 +203,28 @@ export const getSharedQuiz = async (quizId: string, currentUser?: UserProfile | 
       return null;
     }
 
-    logger.info('Fetching shared quiz from Supabase', 'quizSharingService', { quizId });
+    logger.info('Fetching shared quiz', 'quizSharingService', { quizId });
+    
+    // First check fallback storage for original quiz data
+    try {
+      const fallbackQuizzes = localStorage.getItem('quizAI_fallbackSharedQuizzes');
+      if (fallbackQuizzes) {
+        const fallbackData = JSON.parse(fallbackQuizzes);
+        const fallbackQuiz = fallbackData[quizId];
+        if (fallbackQuiz) {
+          logger.info('Found quiz in fallback storage with original title', 'quizSharingService', { 
+            quizId, 
+            title: fallbackQuiz.title 
+          });
+          return fallbackQuiz;
+        }
+      }
+    } catch (fallbackError) {
+      logger.warn('Failed to access fallback storage', 'quizSharingService', { 
+        quizId,
+        error: (fallbackError as Error).message 
+      });
+    }
     
     const supabaseService = await import('./supabaseService').then(m => m.supabaseService);
     
@@ -174,6 +233,13 @@ export const getSharedQuiz = async (quizId: string, currentUser?: UserProfile | 
       const publicQuiz = await supabaseService.getPublicQuizById(quizId);
       if (publicQuiz) {
         logger.info('Quiz found as public quiz in Supabase', 'quizSharingService', { quizId });
+        
+        // Ensure the quiz has a proper title
+        if (!publicQuiz.title || publicQuiz.title.trim() === '') {
+          publicQuiz.title = 'Shared Quiz';
+          logger.info('Updated empty quiz title with fallback', 'quizSharingService', { quizId });
+        }
+        
         return publicQuiz;
       }
     } catch (publicError) {
@@ -192,6 +258,13 @@ export const getSharedQuiz = async (quizId: string, currentUser?: UserProfile | 
         
         if (foundQuiz) {
           logger.info('Quiz found in user Supabase quizzes', 'quizSharingService', { quizId });
+          
+          // Ensure the quiz has a proper title
+          if (!foundQuiz.title || foundQuiz.title.trim() === '') {
+            foundQuiz.title = 'Shared Quiz';
+            logger.info('Updated empty user quiz title with fallback', 'quizSharingService', { quizId });
+          }
+          
           return {
             ...foundQuiz,
             creator: { name: currentUser.name || 'Unknown', email: currentUser.email || undefined },
@@ -208,18 +281,66 @@ export const getSharedQuiz = async (quizId: string, currentUser?: UserProfile | 
         // Don't throw here, continue to fallback
       }
     } else if (currentUser && !currentUser.supabaseId) {
-      logger.info('User has no supabaseId, skipping authenticated quiz check', 'quizSharingService', { 
+      logger.info('User has no supabaseId, checking local storage for original quiz', 'quizSharingService', { 
         quizId, 
         userId: currentUser.id,
         hasSupabaseId: false 
       });
+      
+      // Try to get original quiz from localStorage/app context
+      try {
+        // Try to access global quiz storage if available
+        const getQuizByIdFromAll = (window as any).QuizAIDebug?.getQuizByIdFromAll;
+        
+        if (getQuizByIdFromAll) {
+          const localQuiz = getQuizByIdFromAll(quizId);
+          if (localQuiz) {
+            logger.info('Found original quiz in local storage, using its data', 'quizSharingService', { 
+              quizId, 
+              title: localQuiz.title 
+            });
+            
+            return {
+              ...localQuiz,
+              creator: { name: currentUser.name || 'Unknown', email: currentUser.email || undefined },
+              isShared: true,
+              sharedTimestamp: new Date().toISOString()
+            };
+          }
+        } else {
+          // Fallback: try localStorage directly
+          const savedQuizzes = localStorage.getItem('quizAI_savedQuizzes');
+          if (savedQuizzes) {
+            const quizzes = JSON.parse(savedQuizzes);
+            const localQuiz = quizzes.find((q: any) => q.id === quizId);
+            if (localQuiz) {
+              logger.info('Found original quiz in localStorage, using its data', 'quizSharingService', { 
+                quizId, 
+                title: localQuiz.title 
+              });
+              
+              return {
+                ...localQuiz,
+                creator: { name: currentUser.name || 'Unknown', email: currentUser.email || undefined },
+                isShared: true,
+                sharedTimestamp: new Date().toISOString()
+              };
+            }
+          }
+        }
+      } catch (localError) {
+        logger.warn('Could not access local quiz data', 'quizSharingService', { 
+          quizId,
+          error: (localError as Error).message 
+        });
+      }
     }
 
-    logger.warn('Quiz not found in Supabase', 'quizSharingService', { quizId });
+    logger.warn('Quiz not found in Supabase or local storage', 'quizSharingService', { quizId });
     
-    // If it's the demo quiz ID, generate a demo quiz as fallback
+    // As a last resort, if it's one of the known demo quiz IDs, generate a demo quiz as fallback
     if (quizId === '7546c2f6-02cb-426e-bbf0-cc324496e4ee' || quizId === 'dc65eb4d-ae5f-4932-8c82-cc6c156616d6') {
-      logger.info('Generating demo quiz as fallback for shared quiz page', 'quizSharingService', { quizId });
+      logger.info('Generating demo quiz as final fallback for shared quiz page', 'quizSharingService', { quizId });
       return generateDemoQuiz(quizId);
     }
     
@@ -232,11 +353,32 @@ export const getSharedQuiz = async (quizId: string, currentUser?: UserProfile | 
 };
 
 // Helper function to generate a demo quiz for testing
-const generateDemoQuiz = (quizId: string): QuizForSharing => {
+const generateDemoQuiz = (quizId: string, originalTitle?: string): QuizForSharing => {
   const now = new Date().toISOString();
+  
+  // Use original title if provided, otherwise fallback to quiz ID specific titles
+  let title = originalTitle;
+  
+  if (!title) {
+    // Determine appropriate title based on quiz ID or provide a generic one
+    title = 'Shared Quiz: General Knowledge Test';
+    
+    if (quizId === '7546c2f6-02cb-426e-bbf0-cc324496e4ee') {
+      title = 'Technology & Programming Knowledge Quiz';
+    } else if (quizId === 'dc65eb4d-ae5f-4932-8c82-cc6c156616d6') {
+      title = 'Demo Shared Quiz: Mixed Topics';
+    }
+  }
+  
+  logger.info('Generating demo quiz', 'quizSharingService', { 
+    quizId, 
+    title,
+    usingOriginalTitle: !!originalTitle
+  });
+  
   return {
     id: quizId,
-    title: 'Demo Shared Quiz: Technology & General Knowledge Test',
+    title: title,
     createdAt: now,
     lastModified: now,
     questions: [

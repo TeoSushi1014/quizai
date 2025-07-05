@@ -724,10 +724,18 @@ export class SupabaseService {
         if (isDemoQuiz) {
           logger.info('Creating demo quiz data for testing shared quiz functionality', 'SupabaseService', { quizId });
           
+          // Determine appropriate title based on quiz ID
+          let title = 'Shared Quiz: General Knowledge Test';
+          if (quizId === '7546c2f6-02cb-426e-bbf0-cc324496e4ee') {
+            title = 'Technology & Programming Knowledge Quiz';
+          } else if (quizId === 'dc65eb4d-ae5f-4932-8c82-cc6c156616d6') {
+            title = 'Demo Shared Quiz: Mixed Topics';
+          }
+          
           // Return a demo quiz for testing purposes with complete information
           const demoQuiz = {
             id: quizId,
-            title: 'Demo Shared Quiz: Technology & General Knowledge Test',
+            title: title,
             questions: [
               {
                 id: 'q1',
@@ -1020,7 +1028,7 @@ export class SupabaseService {
       }
 
       if (existingShare) {
-        const shareUrl = `${window.location.origin}${window.location.pathname}#/shared/${quizId}`;
+        const shareUrl = `${window.location.origin}/quizai/#/shared/${quizId}`;
         logger.info('Quiz is already shared, returning existing share info', 'SupabaseService', { 
           quizId, 
           shareToken: existingShare.share_token 
@@ -1068,7 +1076,7 @@ export class SupabaseService {
         return null;
       }
 
-      const shareUrl = `${window.location.origin}${window.location.pathname}#/shared/${quizId}`;
+      const shareUrl = `${window.location.origin}/quizai/#/shared/${quizId}`;
       
       logger.info('Quiz shared successfully', 'SupabaseService', { 
         quizId, 
@@ -1133,7 +1141,7 @@ export class SupabaseService {
       }
 
       if (existingShare) {
-        const shareUrl = `${window.location.origin}${window.location.pathname}#/shared/${quizId}`;
+        const shareUrl = `${window.location.origin}/quizai/#/shared/${quizId}`;
         logger.info('Quiz is already shareable', 'SupabaseService', { quizId, shareToken: existingShare.share_token });
         return { shareToken: existingShare.share_token, shareUrl };
       }

@@ -122,8 +122,43 @@ export class AuthService {
         });
         
       } catch (authError) {
-        logger.error('AuthService: Failed to establish Supabase session', 'AuthService', { error: (authError as Error).message });
-        throw new Error('Authentication failed: Unable to establish Supabase session required for database operations');
+        logger.error('AuthService: Failed to establish Supabase session', 'AuthService', { 
+          email: email,
+          error: (authError as Error).message,
+          errorDetails: (authError as any).status || 'Unknown'
+        });
+        
+        // If Supabase authentication fails with specific errors, fall back to Google-only mode
+        const errorMessage = (authError as Error).message;
+        if (errorMessage.includes('400') || errorMessage.includes('Bad Request') || 
+            errorMessage.includes('Invalid request') || errorMessage.includes('Authentication failed')) {
+          
+          logger.info('AuthService: Supabase authentication failed, falling back to Google-only mode', 'AuthService', { 
+            email: email,
+            errorType: 'SupabaseAuthFailure'
+          });
+          
+          // Return a Google-only profile without Supabase integration
+          const fallbackProfile: UserProfile = {
+            id: googleUser.sub || googleUser.id || `google_${Date.now()}`,
+            email: googleUser.email,
+            name: googleUser.name || googleUser.given_name || googleUser.family_name,
+            imageUrl: googleUser.picture,
+            accessToken: googleUser.access_token,
+            // No supabaseId - indicates fallback mode
+          };
+          
+          logger.info('AuthService: Created fallback Google profile due to Supabase auth failure', 'AuthService', { 
+            userId: fallbackProfile.id,
+            email: fallbackProfile.email,
+            hasSupabaseId: false
+          });
+          
+          return fallbackProfile;
+        }
+        
+        // For other errors, throw to prevent silent failures
+        throw new Error(`Authentication failed: ${errorMessage}`);
       }
 
       // If we still don't have a Supabase user, we cannot proceed with database operations due to RLS
