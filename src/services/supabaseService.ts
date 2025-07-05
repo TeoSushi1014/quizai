@@ -111,6 +111,8 @@ export class SupabaseService {
 
   async updateUser(id: string, updates: Partial<UserProfile>): Promise<UserProfile | null> {
     try {
+      logger.info('Starting user update', 'SupabaseService', { userId: id, updates });
+
       const updateData: any = {}
       if (updates.name !== undefined) updateData.name = updates.name
       if (updates.bio !== undefined) updateData.bio = updates.bio
@@ -119,6 +121,32 @@ export class SupabaseService {
       if (updates.completionCount !== undefined) updateData.completion_count = updates.completionCount
       if (updates.averageScore !== undefined) updateData.average_score = updates.averageScore
 
+      // Check if user exists first
+      const { data: existingUser, error: checkError } = await supabase
+        .from('users')
+        .select('id, email')
+        .eq('id', id)
+        .maybeSingle();
+
+      if (checkError) {
+        logger.error('Error checking existing user', 'SupabaseService', { 
+          userId: id, 
+          error: checkError.message,
+          code: checkError.code 
+        });
+        return null;
+      }
+
+      if (!existingUser) {
+        logger.warn('User not found for update', 'SupabaseService', { userId: id });
+        return null;
+      }
+
+      logger.info('User exists, proceeding with update', 'SupabaseService', { 
+        userId: id, 
+        updateData 
+      });
+
       const { data, error } = await supabase
         .from('users')
         .update(updateData)
@@ -126,9 +154,22 @@ export class SupabaseService {
         .select()
         .single()
 
-      if (error) throw error
+      if (error) {
+        logger.error('Supabase user update failed', 'SupabaseService', { 
+          userId: id,
+          updateData,
+          error: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint
+        });
+        throw error;
+      }
       
-      logger.info('User updated in Supabase', 'SupabaseService', { userId: id })
+      logger.info('User updated in Supabase successfully', 'SupabaseService', { 
+        userId: id,
+        updatedData: data 
+      });
       return this.mapDatabaseUserToProfile(data)
     } catch (error) {
       logger.error('Failed to update user', 'SupabaseService', { id, updates }, error as Error)
@@ -820,6 +861,29 @@ export class SupabaseService {
       
       console.log('✅ User authenticated:', { id: user.id, email: user.email });
       
+      // Check if user exists in database
+      const { data: dbUser, error: userError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', user.id);
+      
+      if (userError) {
+        console.error('❌ Cannot read user from database:', userError.message);
+        return;
+      }
+      
+      console.log(`✅ User in database:`, dbUser);
+      
+      // Check for duplicates
+      const { data: duplicates, error: dupError } = await supabase
+        .from('users')
+        .select('id, email, created_at')
+        .eq('email', user.email);
+      
+      if (!dupError && duplicates && duplicates.length > 1) {
+        console.warn('⚠️ Duplicate users found:', duplicates);
+      }
+      
       // Check quiz ownership
       const { data: userQuizzes, error: quizError } = await supabase
         .from('quizzes')
@@ -843,6 +907,55 @@ export class SupabaseService {
       
     } catch (error) {
       console.error('❌ Debug failed:', error);
+    }
+  }
+
+  // Debug specific user issues
+  async debugUserIssues(userId: string): Promise<void> {
+    try {
+      console.log('🔍 Debugging User Issues for:', userId);
+      
+      // Check user existence and duplicates
+      const { data: users, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', userId);
+      
+      if (error) {
+        console.error('❌ Error fetching user:', error);
+        return;
+      }
+      
+      console.log(`Found ${users.length} users with ID ${userId}:`, users);
+      
+      if (users.length === 0) {
+        console.warn('⚠️ No user found with this ID');
+        return;
+      }
+      
+      if (users.length > 1) {
+        console.error('❌ Multiple users found with same ID! This should not happen.');
+        return;
+      }
+      
+      // Test update permissions
+      const testUpdate = { name: users[0].name || 'Test' };
+      console.log('🧪 Testing update with:', testUpdate);
+      
+      const { error: updateError } = await supabase
+        .from('users')
+        .update(testUpdate)
+        .eq('id', userId)
+        .select();
+      
+      if (updateError) {
+        console.error('❌ Update test failed:', updateError);
+      } else {
+        console.log('✅ Update test passed');
+      }
+      
+    } catch (error) {
+      console.error('❌ Debug user issues failed:', error);
     }
   }
 
