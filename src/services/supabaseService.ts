@@ -573,7 +573,15 @@ export class SupabaseService {
         .from('quiz_results')
         .insert([resultForDb])
 
-      if (error) throw error
+      if (error) {
+        logger.error('Database error saving quiz result', 'SupabaseService', { 
+          quizId: result.quizId, 
+          supabaseUserId,
+          error: error.message,
+          code: error.code
+        });
+        return false; // Return false instead of throwing
+      }
       
       logger.info('Quiz result saved to Supabase successfully', 'SupabaseService', { 
         quizId: result.quizId, 
@@ -611,7 +619,14 @@ export class SupabaseService {
         .eq('user_id', supabaseUserId)
         .order('created_at', { ascending: false })
 
-      if (error) throw error
+      if (error) {
+        logger.error('Error fetching quiz results from database', 'SupabaseService', { 
+          userId: supabaseUserId,
+          error: error.message,
+          code: error.code 
+        });
+        return []; // Return empty array instead of throwing
+      }
       
       return data.map(this.mapDatabaseResultToQuizResult)
     } catch (error) {
