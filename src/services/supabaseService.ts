@@ -645,9 +645,9 @@ export class SupabaseService {
     }
   }
 
-  async getPublicQuizById(quizId: string): Promise<Quiz | null> {
+  async getPublicQuizById(shareId: string): Promise<Quiz | null> {
     try {
-      logger.info('Attempting to fetch public quiz by quiz ID from Supabase', 'SupabaseService', { quizId });
+      logger.info('Attempting to fetch public quiz by share identifier from Supabase', 'SupabaseService', { shareId });
       
       const { error: testError } = await supabase
         .from('shared_quizzes')
@@ -664,27 +664,67 @@ export class SupabaseService {
         return null; // Fallback to localStorage
       }
       
-      // Find the shared quiz entry using the quiz_id (the parameter is actually the quiz ID, not share ID)
-      const { data: sharedDataArray, error: sharedError } = await supabase
-        .from('shared_quizzes')
-        .select('id, quiz_id, share_token, is_public, expires_at, created_at')
-        .eq('quiz_id', quizId)
-        .eq('is_public', true)
-        .limit(1);
+      // First, try to find the shared quiz entry by quiz_id (if shareId is a valid quiz ID)
+      let sharedData = null;
+      let quizId = null;
+      
+      // Import the UUID validation function
+      const { isValidUUID } = await import('../utils/uuidUtils');
+      
+      if (isValidUUID(shareId)) {
+        // shareId looks like a quiz ID, search by quiz_id
+        logger.info('Share identifier appears to be a quiz ID, searching by quiz_id', 'SupabaseService', { shareId });
+        const { data: sharedDataArray, error: sharedError } = await supabase
+          .from('shared_quizzes')
+          .select('id, quiz_id, share_token, is_public, expires_at, created_at')
+          .eq('quiz_id', shareId)
+          .eq('is_public', true)
+          .limit(1);
 
-      const sharedData = sharedDataArray && sharedDataArray.length > 0 ? sharedDataArray[0] : null;
+        sharedData = sharedDataArray && sharedDataArray.length > 0 ? sharedDataArray[0] : null;
+        
+        if (sharedError) {
+          logger.warn('Error checking if quiz is shared by quiz_id', 'SupabaseService', { 
+            shareId, 
+            error: sharedError.message,
+            code: sharedError.code 
+          });
+        }
+        
+        if (sharedData) {
+          quizId = shareId; // The shareId IS the quiz ID
+        }
+      }
+      
+      // If not found by quiz_id, try searching by share_token
+      if (!sharedData) {
+        logger.info('Quiz not found by quiz_id, trying share_token', 'SupabaseService', { shareId });
+        const { data: sharedDataArray, error: sharedError } = await supabase
+          .from('shared_quizzes')
+          .select('id, quiz_id, share_token, is_public, expires_at, created_at')
+          .eq('share_token', shareId)
+          .eq('is_public', true)
+          .limit(1);
 
-      if (sharedError) {
-        logger.warn('Error checking if quiz is shared', 'SupabaseService', { 
-          quizId, 
-          error: sharedError.message,
-          code: sharedError.code 
-        });
-        return null;
+        sharedData = sharedDataArray && sharedDataArray.length > 0 ? sharedDataArray[0] : null;
+        
+        if (sharedError) {
+          logger.warn('Error checking if quiz is shared by share_token', 'SupabaseService', { 
+            shareId, 
+            error: sharedError.message,
+            code: sharedError.code 
+          });
+          return null;
+        }
+        
+        if (sharedData) {
+          quizId = sharedData.quiz_id; // Get the actual quiz ID from the share record
+        }
       }
 
-      if (!sharedData) {
-        logger.info('Quiz is not publicly shared or quiz not found', 'SupabaseService', { quizId });
+      // If neither quiz_id nor share_token worked, return null
+      if (!sharedData || !quizId) {
+        logger.info('Quiz is not publicly shared or quiz not found', 'SupabaseService', { shareId });
         return null;
       }
 
@@ -785,7 +825,7 @@ export class SupabaseService {
       };
       
     } catch (error) {
-      logger.warn('Supabase service unavailable, falling back to localStorage', 'SupabaseService', { quizId }, error as Error);
+      logger.warn('Supabase service unavailable, falling back to localStorage', 'SupabaseService', { shareId }, error as Error);
       return null; // This will trigger localStorage fallback
     }
   }
