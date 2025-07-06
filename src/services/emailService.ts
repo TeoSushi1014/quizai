@@ -44,6 +44,10 @@ export class EmailService {
       to_email: contactData.userEmail,   // {{to_email}} - email người nhận
       user_name: contactData.userName,   // {{user_name}} - backup
       user_email: contactData.userEmail, // {{user_email}} - backup
+      // Thêm fields có thể cần cho EmailJS auto-reply
+      to: contactData.userEmail,         // {{to}} - recipient email
+      name: contactData.userName,        // {{name}} - recipient name
+      email: contactData.userEmail,      // {{email}} - recipient email (backup)
       message_id: messageId,
       timestamp: new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }),
       // Admin info
@@ -116,22 +120,28 @@ export class EmailService {
         logger.info('Auto-reply email sent successfully to user', 'EmailService');
         autoReplySent = true;
       } catch (autoReplyError) {
-        logger.error('Failed to send auto-reply email to user', 'EmailService', {}, autoReplyError as Error);
+        logger.error('Failed to send auto-reply email to user', 'EmailService', {
+          willContinueAnyway: true,
+          messageStillSaved: true,
+          adminEmailStatus: emailSent ? 'sent' : 'failed'
+        }, autoReplyError as Error);
         autoReplySent = false;
+        // KHÔNG throw error ở đây để không block success notification
       }
       
-      // Log kết quả
+      // Log kết quả chi tiết
       if (emailSent && autoReplySent) {
-        logger.info('Contact message sent completely (database + admin email + auto-reply)', 'EmailService');
+        logger.info('✅ Contact message sent completely (database + admin email + auto-reply)', 'EmailService');
       } else if (emailSent) {
-        logger.info('Contact message sent (database + admin email, auto-reply failed)', 'EmailService');
+        logger.info('✅ Contact message sent (database + admin email, auto-reply failed)', 'EmailService');
       } else if (autoReplySent) {
-        logger.info('Contact message sent (database + auto-reply, admin email failed)', 'EmailService');
+        logger.info('✅ Contact message sent (database + auto-reply, admin email failed)', 'EmailService');
       } else {
-        logger.info('Contact message saved to database but both emails failed', 'EmailService');
+        logger.info('✅ Contact message saved to database but both emails failed', 'EmailService');
       }
       
-      return true; // Database success is enough for user notification
+      // LUÔN return true nếu database thành công - user sẽ thấy notification
+      return true;
     } catch (error) {
       logger.error('Error sending contact message', 'EmailService', {}, error as Error);
       
@@ -219,8 +229,18 @@ export class EmailService {
         to: contactData.userEmail,
         userName: contactData.userName,
         templateId: this.EMAILJS_AUTO_REPLY_TEMPLATE_ID,
-        params: { ...templateParams, message_id: templateParams.message_id }
+        params: { 
+          to: templateParams.to,
+          to_email: templateParams.to_email,
+          name: templateParams.name,
+          message_id: templateParams.message_id 
+        }
       });
+
+      // Validate recipient email trước khi gửi
+      if (!contactData.userEmail || !contactData.userEmail.includes('@')) {
+        throw new Error(`Invalid recipient email: ${contactData.userEmail}`);
+      }
 
       // Send auto-reply email using EmailJS
       const response = await emailjs.send(
@@ -246,7 +266,8 @@ export class EmailService {
         errorMessage: err.message,
         errorStatus: err.status,
         errorText: err.text,
-        recipient: contactData.userEmail
+        recipient: contactData.userEmail,
+        templateId: this.EMAILJS_AUTO_REPLY_TEMPLATE_ID
       }, error as Error);
       
       throw error;
