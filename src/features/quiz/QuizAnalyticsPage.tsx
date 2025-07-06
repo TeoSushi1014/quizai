@@ -237,7 +237,7 @@ const QuizAnalyticsPage: React.FC = () => {
                         {result.score}%
                       </span>
                       <div className="text-sm text-[var(--color-text-muted)]">
-                        {result.score.toFixed(0)}/{result.total_questions}
+                        {Math.round((result.score / 100) * result.total_questions)}/{result.total_questions}
                       </div>
                     </td>
                     <td className="py-3 px-2">
