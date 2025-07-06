@@ -141,6 +141,7 @@ export class EmailService {
       }
       
       // LUÔN return true nếu database thành công - user sẽ thấy notification
+      console.log('✅ EmailService returning success=true to show notification');
       return true;
     } catch (error) {
       logger.error('Error sending contact message', 'EmailService', {}, error as Error);
