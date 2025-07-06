@@ -33,6 +33,7 @@ const QuizPracticePage = lazy(() => import('./features/quiz/QuizPracticePage'));
 const SyncSettingsPage = lazy(() => import('./features/settings/SyncSettingsPage'));
 const ProfilePage = lazy(() => import('./features/user/ProfilePage'));
 const SharedQuizPage = lazy(() => import('./features/quiz/SharedQuizPage')); 
+const QuizHistoryPage = lazy(() => import('./features/quiz/QuizHistoryPage')); 
 
 import { quizStorage } from './services/storageService'; 
 
@@ -1243,6 +1244,7 @@ const AppLayout: React.FC = () => {
                  <NavLink to="/" end icon={<HomeIcon className="w-4 h-4"/>}>{t('navHome')}</NavLink>
                 <NavLink to="/dashboard" icon={<ChartBarIcon className="w-4 h-4"/>}>{t('navDashboard')}</NavLink>
                 <NavLink to="/create" icon={<PlusCircleIcon className="w-4 h-4"/>}>{t('navCreateQuiz')}</NavLink>
+                {currentUser && <NavLink to="/history" icon={<ChartBarIcon className="w-4 h-4"/>}>History</NavLink>}
               </nav>
 
               {!currentUser && ( <ThemeToggle compact={true} /> )}
@@ -1341,6 +1343,7 @@ const AppLayout: React.FC = () => {
             <Route path="/results/:quizId" element={<ResultsPage />} />
             <Route path="/settings" element={currentUser ? <SyncSettingsPage /> : <Navigate to="/signin" state={{ from: location }} replace />} />
             <Route path="/profile" element={currentUser ? <ProfilePage /> : <Navigate to="/signin" state={{ from: location }} replace />} />
+            <Route path="/history" element={currentUser ? <QuizHistoryPage /> : <Navigate to="/signin" state={{ from: location }} replace />} />
             <Route path="/shared/:quizId" element={<SharedQuizPage />} /> 
             <Route path="*" element={<HomePage />} /> 
           </Routes>

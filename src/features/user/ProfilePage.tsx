@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { useAppContext, useTranslation } from '../../App';
 import { Card, Button, Input, LoadingSpinner, Textarea } from '../../components/ui';
 import { UserAvatar } from '../../components/UserAvatar';
@@ -12,6 +13,7 @@ import { TranslationKey } from '../../i18n';
 const ProfilePage: React.FC = () => {
   const { t } = useTranslation();
   const { currentUser, updateUserProfile, isLoading: contextIsLoading } = useAppContext();
+  const navigate = useNavigate();
 
   const [name, setName] = useState(currentUser?.name || '');
   const [bio, setBio] = useState(currentUser?.bio || '');
@@ -217,6 +219,16 @@ const ProfilePage: React.FC = () => {
                   </p>
                 </motion.div>
               ))}
+            </div>
+            
+            <div className="mt-6 text-center">
+              <Button
+                variant="outline"
+                onClick={() => navigate('/history')}
+                className="px-6 py-2"
+              >
+                📊 View Quiz History
+              </Button>
             </div>
           </Card>
         </motion.div>
