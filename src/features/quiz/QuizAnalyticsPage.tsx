@@ -59,11 +59,31 @@ const QuizAnalyticsPage: React.FC = () => {
       // If this is someone else's quiz, show only current user's attempts
       const isOwner = quizData.userId === currentUser.id;
       
+      logger.info('Loading quiz history with ownership check', 'QuizAnalyticsPage', {
+        quizId,
+        isOwner,
+        quizOwnerId: quizData.userId,
+        currentUserId: currentUser.id,
+        userIdFilter: isOwner ? undefined : currentUser.id
+      });
+      
       const quizHistory = await quizResultsService.getQuizHistory({ 
         quizId,
         userId: isOwner ? undefined : currentUser.id, // Show all if owner, only self if not owner
         limit: 50 
       });
+      
+      logger.info('Quiz history results', 'QuizAnalyticsPage', {
+        quizId,
+        resultsCount: quizHistory.length,
+        results: quizHistory.map(r => ({
+          id: r.id,
+          userId: r.user_id,
+          userName: r.user_name,
+          score: r.score
+        }))
+      });
+      
       setResults(quizHistory);
       
       logger.info('Quiz analytics loaded successfully', 'QuizAnalyticsPage', {
@@ -196,6 +216,19 @@ const QuizAnalyticsPage: React.FC = () => {
       {/* Detailed Results */}
       <Card className="p-6">
         <h3 className="text-xl font-semibold mb-6">Detailed Results</h3>
+        
+        {/* Debug Info */}
+        {quiz && (
+          <div className="mb-4 p-4 bg-gray-100 dark:bg-gray-800 rounded text-sm">
+            <p><strong>Debug Info:</strong></p>
+            <p>Quiz ID: {quiz.id}</p>
+            <p>Quiz Owner: {quiz.userId}</p>
+            <p>Current User: {currentUser?.id}</p>
+            <p>Is Owner: {quiz.userId === currentUser?.id ? 'Yes' : 'No'}</p>
+            <p>Results Count: {results.length}</p>
+            <p>Filter Applied: {quiz.userId === currentUser?.id ? 'None (show all)' : 'Current user only'}</p>
+          </div>
+        )}
         
         {results.length === 0 ? (
           <div className="text-center py-8">

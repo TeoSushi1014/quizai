@@ -106,7 +106,12 @@ export class QuizResultsService {
 
       // Filter by user if provided
       if (params.userId) {
+        logger.info('Filtering quiz history by userId', 'QuizResultsService', { 
+          userId: params.userId 
+        });
         query = query.eq('user_id', params.userId);
+      } else {
+        logger.info('Getting all quiz history (no user filter)', 'QuizResultsService');
       }
 
       // Apply pagination
