@@ -3,7 +3,7 @@ import { HashRouter, Routes, Route, useNavigate, useLocation, NavLink as RouterN
 import { GoogleOAuthProvider, googleLogout, TokenResponse } from '@react-oauth/google';
 import { useSwipeable } from 'react-swipeable';
 import { Quiz, AppContextType, Language, QuizResult, UserProfile } from './types';
-import { APP_NAME, KeyIcon, LogoutIcon, HomeIcon, PlusCircleIcon, ChartBarIcon, SettingsIconMobileNav, ChevronDownIcon, UserCircleIcon, PlusIcon } from './constants'; 
+import { APP_NAME, KeyIcon, LogoutIcon, HomeIcon, PlusCircleIcon, ChartBarIcon, HistoryIcon, SettingsIconMobileNav, ChevronDownIcon, UserCircleIcon, PlusIcon } from './constants'; 
 import { Button, LoadingSpinner, Tooltip, NotificationDisplay } from './components/ui';
 import { UserAvatar } from './components/UserAvatar'; 
 import ErrorBoundary from './components/ErrorBoundary'; 
@@ -33,7 +33,9 @@ const QuizPracticePage = lazy(() => import('./features/quiz/QuizPracticePage'));
 const SyncSettingsPage = lazy(() => import('./features/settings/SyncSettingsPage'));
 const ProfilePage = lazy(() => import('./features/user/ProfilePage'));
 const SharedQuizPage = lazy(() => import('./features/quiz/SharedQuizPage')); 
-const QuizHistoryPage = lazy(() => import('./features/quiz/QuizHistoryPage')); 
+const QuizHistoryPage = lazy(() => import('./features/quiz/QuizHistoryPage'));
+const MyQuizzesPage = lazy(() => import('./features/quiz/MyQuizzesPage'));
+const QuizAnalyticsPage = lazy(() => import('./features/quiz/QuizAnalyticsPage')); 
 
 import { quizStorage } from './services/storageService'; 
 
@@ -1244,7 +1246,8 @@ const AppLayout: React.FC = () => {
                  <NavLink to="/" end icon={<HomeIcon className="w-4 h-4"/>}>{t('navHome')}</NavLink>
                 <NavLink to="/dashboard" icon={<ChartBarIcon className="w-4 h-4"/>}>{t('navDashboard')}</NavLink>
                 <NavLink to="/create" icon={<PlusCircleIcon className="w-4 h-4"/>}>{t('navCreateQuiz')}</NavLink>
-                {currentUser && <NavLink to="/history" icon={<ChartBarIcon className="w-4 h-4"/>}>History</NavLink>}
+                {currentUser && <NavLink to="/my-quizzes" icon={<ChartBarIcon className="w-4 h-4"/>}>My Quizzes</NavLink>}
+                {currentUser && <NavLink to="/history" icon={<HistoryIcon className="w-4 h-4"/>}>History</NavLink>}
               </nav>
 
               {!currentUser && ( <ThemeToggle compact={true} /> )}
@@ -1344,6 +1347,8 @@ const AppLayout: React.FC = () => {
             <Route path="/settings" element={currentUser ? <SyncSettingsPage /> : <Navigate to="/signin" state={{ from: location }} replace />} />
             <Route path="/profile" element={currentUser ? <ProfilePage /> : <Navigate to="/signin" state={{ from: location }} replace />} />
             <Route path="/history" element={currentUser ? <QuizHistoryPage /> : <Navigate to="/signin" state={{ from: location }} replace />} />
+            <Route path="/my-quizzes" element={currentUser ? <MyQuizzesPage /> : <Navigate to="/signin" state={{ from: location }} replace />} />
+            <Route path="/quiz-analytics/:quizId" element={currentUser ? <QuizAnalyticsPage /> : <Navigate to="/signin" state={{ from: location }} replace />} />
             <Route path="/shared/:quizId" element={<SharedQuizPage />} /> 
             <Route path="*" element={<HomePage />} /> 
           </Routes>

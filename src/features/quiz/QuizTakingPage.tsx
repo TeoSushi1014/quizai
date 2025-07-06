@@ -18,7 +18,8 @@ const QuizTakingPage: React.FC = () => {
   const [userAnswers, setUserAnswers] = useState<Record<string, string>>({}); 
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);
-  const [showTimesUpModalState, setShowTimesUpModalState] = useState(false); 
+  const [showTimesUpModalState, setShowTimesUpModalState] = useState(false);
+  const [startTime] = useState<number>(Date.now()); // Track start time 
 
   const handleTimeUp = useCallback(() => {
     setShowTimesUpModalState(true);
@@ -97,7 +98,7 @@ const QuizTakingPage: React.FC = () => {
       answers: finalUserAnswersArray,
       totalCorrect: correctCount,
       totalQuestions: totalQuestions,
-      timeTaken: attemptSettings.timeLimit > 0 ? (attemptSettings.timeLimit * 60) - (timeLeft || 0) : undefined,
+      timeTaken: Math.round((Date.now() - startTime) / 1000), // Calculate actual time taken in seconds
       sourceMode: 'take',
       createdAt: new Date().toISOString(),
     };

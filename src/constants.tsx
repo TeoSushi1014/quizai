@@ -46,6 +46,11 @@ export const ChartBarIcon: React.FC<IconProps> = ({ className = "w-6 h-6" }) => 
 );
 ChartBarIcon.displayName = "ChartBarIcon";
 
+export const HistoryIcon: React.FC<IconProps> = ({ className = "w-6 h-6" }) => (
+  <img src="https://img.icons8.com/?size=256&id=QDgOnr6UAOmg&format=png" alt="History" className={className} />
+);
+HistoryIcon.displayName = "HistoryIcon";
+
 export const DeleteIcon: React.FC<IconProps> = ({ className = "w-5 h-5" }) => (
   <img src="https://img.icons8.com/?size=256&id=OZuepOQd0omj&format=png" alt="Delete" className={className} />
 );
