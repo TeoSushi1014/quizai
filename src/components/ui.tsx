@@ -793,29 +793,29 @@ export const NotificationDisplay: React.FC<NotificationDisplayProps> = ({ notifi
 
   const { type, message } = notification;
 
-  // Sử dụng design system của QuizAI với CSS variables và style tương tự Button/Alert
+  // Sử dụng design system của QuizAI với background đậm và rõ ràng
   let variantStyle = '';
   let IconComponent: React.FC<any> | null = InformationCircleIcon;
 
   switch (type) {
     case 'error':
-      variantStyle = 'bg-[var(--color-danger-accent)]/15 border-[var(--color-danger-accent)]/40 text-[var(--color-danger-accent)] shadow-lg shadow-[var(--color-danger-accent)]/20';
+      variantStyle = 'bg-[var(--color-danger-accent)] border-[var(--color-danger-accent)] text-white shadow-lg shadow-[var(--color-danger-accent)]/30';
       IconComponent = ErrorIcon;
       break;
     case 'success':
-      variantStyle = 'bg-[var(--color-success-accent)]/15 border-[var(--color-success-accent)]/40 text-[var(--color-success-accent)] shadow-lg shadow-[var(--color-success-accent)]/20';
+      variantStyle = 'bg-[var(--color-success-accent)] border-[var(--color-success-accent)] text-white shadow-lg shadow-[var(--color-success-accent)]/30';
       IconComponent = CheckCircleIcon;
       break;
     case 'info':
-      variantStyle = 'bg-[var(--color-primary-accent)]/15 border-[var(--color-primary-accent)]/40 text-[var(--color-primary-accent)] shadow-lg shadow-[var(--color-primary-accent)]/20';
+      variantStyle = 'bg-[var(--color-primary-accent)] border-[var(--color-primary-accent)] text-white shadow-lg shadow-[var(--color-primary-accent)]/30';
       IconComponent = InformationCircleIcon;
       break;
     case 'warning':
-      variantStyle = 'bg-amber-500/15 border-amber-500/40 text-amber-600 dark:text-amber-400 shadow-lg shadow-amber-500/20';
+      variantStyle = 'bg-amber-500 border-amber-500 text-white shadow-lg shadow-amber-500/30';
       IconComponent = InformationCircleIcon;
       break;
     default:
-      variantStyle = 'bg-[var(--color-bg-surface-3)] border-[var(--color-border-strong)] text-[var(--color-text-primary)] shadow-md';
+      variantStyle = 'bg-[var(--color-bg-surface-3)] border-[var(--color-border-strong)] text-[var(--color-text-primary)] shadow-lg';
       break;
   }
 
@@ -845,13 +845,12 @@ export const NotificationDisplay: React.FC<NotificationDisplayProps> = ({ notifi
         <div className="ml-3 flex-shrink-0">
           <button
             onClick={onClose}
-            className={`p-1.5 rounded-md hover:bg-black/10 dark:hover:bg-white/10 
-                       focus:outline-none focus-visible:ring-2 focus-visible:ring-current/30 
+            className={`p-1.5 rounded-md hover:bg-white/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 
                        transition-colors var(--duration-fast) var(--ease-ios)
                        hover:scale-110 active:scale-95`}
             aria-label={t('close')}
           >
-            <CloseIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+            <CloseIcon className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
           </button>
         </div>
       </div>
