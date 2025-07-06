@@ -851,6 +851,26 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
           if (messages) {
             console.table(messages);
           }
+        },
+        testEmailService: async () => {
+          const { emailService } = await import('./services/emailService');
+          console.log('Testing email service...');
+          
+          const testMessage = {
+            userEmail: 'test@example.com',
+            userName: 'Test User',
+            message: 'This is a test message from QuizAI debug console.',
+            userId: currentUser?.id
+          };
+          
+          try {
+            const result = await emailService.sendContactMessage(testMessage);
+            console.log('Email service test result:', result);
+            return result;
+          } catch (error) {
+            console.error('Email service test failed:', error);
+            return false;
+          }
         }
       };
     }

@@ -1,5 +1,6 @@
 import { supabase } from './supabaseClient'
 import { logger } from './logService'
+import emailjs from '@emailjs/browser'
 
 export interface ContactMessage {
   userEmail: string;
@@ -9,6 +10,12 @@ export interface ContactMessage {
 }
 
 export class EmailService {
+  private readonly ADMIN_EMAIL = 'teosushi1014@gmail.com';
+  
+  // EmailJS configuration - Cập nhật với thông tin thật từ EmailJS dashboard
+  private readonly EMAILJS_SERVICE_ID = 'service_ca3qx8o'; // Service ID từ screenshot
+  private readonly EMAILJS_TEMPLATE_ID = 'template_yk3zaol'; // Contact Us template từ EmailJS dashboard
+  private readonly EMAILJS_PUBLIC_KEY = '3PkkqTaNztt7DEKdi'; // Public Key từ EmailJS Account → General
   async sendContactMessage(contactData: ContactMessage): Promise<boolean> {
     try {
       logger.info('Sending contact message', 'EmailService', { 
@@ -52,6 +59,15 @@ export class EmailService {
         messageId: data.id 
       });
       
+      // Gửi email notification đến admin sau khi lưu database thành công
+      try {
+        await this.sendEmailNotificationToAdmin(contactData, data.id);
+        logger.info('Email notification sent successfully', 'EmailService');
+      } catch (emailError) {
+        logger.error('Failed to send email notification', 'EmailService', {}, emailError as Error);
+        // Không return false vì message đã được lưu thành công
+      }
+      
       return true;
     } catch (error) {
       logger.error('Error sending contact message', 'EmailService', {}, error as Error);
@@ -60,6 +76,86 @@ export class EmailService {
       logger.info('Using localStorage fallback for contact message', 'EmailService');
       return this.saveToLocalStorage(contactData);
     }
+  }
+
+  private async sendEmailNotificationToAdmin(contactData: ContactMessage, messageId: string): Promise<void> {
+    try {
+      // Prepare email template parameters
+      const templateParams = {
+        to_email: this.ADMIN_EMAIL,
+        from_name: contactData.userName,
+        from_email: contactData.userEmail,
+        message: contactData.message,
+        message_id: messageId,
+        timestamp: new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }),
+        app_url: window.location.origin
+      };
+
+      // Send email using EmailJS - Template đã được cấu hình
+      const response = await emailjs.send(
+        this.EMAILJS_SERVICE_ID,
+        this.EMAILJS_TEMPLATE_ID,
+        templateParams,
+        this.EMAILJS_PUBLIC_KEY
+      );
+
+      logger.info('EmailJS response received', 'EmailService', { 
+        status: response.status, 
+        text: response.text 
+      });
+
+      if (response.status !== 200) {
+        throw new Error(`EmailJS failed with status: ${response.status}`);
+      }
+
+    } catch (error) {
+      logger.error('Error in sendEmailNotificationToAdmin', 'EmailService', {}, error as Error);
+      
+      // Fallback to mailto
+      const templateParams = {
+        to_email: this.ADMIN_EMAIL,
+        from_name: contactData.userName,
+        from_email: contactData.userEmail,
+        message: contactData.message,
+        message_id: messageId,
+        timestamp: new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }),
+        app_url: window.location.origin
+      };
+      
+      this.sendMailtoFallback(templateParams);
+      throw error;
+    }
+  }
+
+  private sendMailtoFallback(templateParams: any): void {
+    const subject = `[QuizAI] New Contact Message from ${templateParams.from_name}`;
+    const body = `
+New contact message received from QuizAI:
+
+From: ${templateParams.from_name} (${templateParams.from_email})
+Message ID: ${templateParams.message_id}
+Timestamp: ${templateParams.timestamp}
+
+Message:
+${templateParams.message}
+
+---
+View all messages: ${templateParams.app_url}/admin/contact-messages
+QuizAI Admin Panel: ${templateParams.app_url}
+    `.trim();
+
+    const mailtoUrl = `mailto:${templateParams.to_email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    
+    // Log the mailto URL for debugging
+    logger.info('Mailto fallback prepared', 'EmailService', { 
+      subject,
+      messagePreview: templateParams.message.substring(0, 50) + '...',
+      mailtoUrl: mailtoUrl.substring(0, 100) + '...'
+    });
+
+    // Note: We don't actually open mailto here as it would be disruptive
+    // Instead, we log it for debugging and admin can manually check
+    console.log('📧 Email notification (mailto fallback):', { subject, body });
   }
 
   private saveToLocalStorage(contactData: ContactMessage): boolean {
