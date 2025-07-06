@@ -50,12 +50,24 @@ export class SecureConfigService {
             .select('key_value')
             .eq('key_name', keyName)
             .eq('owner_email', userEmail)
-            .single()
+            .maybeSingle() // Use maybeSingle to avoid errors when no rows found
           
           data = userResult.data
           error = userResult.error
+          
+          // Log specific errors to help debug 406 issues
+          if (error) {
+            logger.warn(`Personal API key query failed for ${keyName}`, 'SecureConfigService', {
+              error: error.message,
+              code: error.code,
+              details: error.details,
+              hint: error.hint
+            })
+          }
         } catch (userError) {
-          logger.info(`No personal API key found for ${keyName}, trying default`, 'SecureConfigService')
+          logger.info(`No personal API key found for ${keyName}, trying default`, 'SecureConfigService', {
+            error: (userError as Error).message
+          })
         }
       } else {
         logger.info(`No user email available, skipping personal API key lookup for ${keyName}`, 'SecureConfigService')
@@ -69,10 +81,19 @@ export class SecureConfigService {
             .select('key_value')
             .eq('key_name', keyName)
             .eq('owner_email', 'default@system')
-            .single()
+            .maybeSingle() // Use maybeSingle to avoid errors when no rows found
           
           data = defaultResult.data
           error = defaultResult.error
+          
+          if (error) {
+            logger.warn(`Default API key query failed for ${keyName}`, 'SecureConfigService', {
+              error: error.message,
+              code: error.code,
+              details: error.details,
+              hint: error.hint
+            })
+          }
         } catch (defaultError) {
           logger.warn(`Failed to fetch default API key for ${keyName}`, 'SecureConfigService', { error: defaultError })
           error = defaultError
@@ -98,7 +119,7 @@ export class SecureConfigService {
       let envKey = null
       try {
         if (keyName === 'GEMINI_API_KEY') {
-          envKey = import.meta.env.VITE_GEMINI_API_KEY || (window as any).__ENV__?.VITE_GEMINI_API_KEY
+          envKey = (import.meta.env as any).VITE_GEMINI_API_KEY || (window as any).__ENV__?.VITE_GEMINI_API_KEY
         } else if (keyName === 'VITE_RECAPTCHA_SITE_KEY') {
           envKey = (import.meta.env as any).VITE_RECAPTCHA_SITE_KEY
         } else if (keyName === 'VITE_RECAPTCHA_ASSESSMENT_API_KEY') {

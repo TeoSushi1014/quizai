@@ -22,17 +22,33 @@ export class SupabaseService {
         error: error.message,
         hint: 'Check if user is authenticated and RLS policies allow this operation'
       });
-    } else if (error.code === 'PGRST301') {
+    } else if (error.code === 'PGRST301' || error.code === '406') {
       logger.error(`Request not acceptable (406) during ${operation}`, 'SupabaseService', { 
         ...context,
         error: error.message,
-        hint: 'This may indicate RLS policy issues or malformed query'
+        code: error.code,
+        details: error.details,
+        hint: 'This may indicate RLS policy issues, malformed query, or missing headers'
+      });
+    } else if (error.code === '23505') {
+      logger.error(`Duplicate key constraint violation during ${operation}`, 'SupabaseService', { 
+        ...context,
+        error: error.message,
+        hint: 'A record with this key already exists'
+      });
+    } else if (error.code === '23503') {
+      logger.error(`Foreign key constraint violation during ${operation}`, 'SupabaseService', { 
+        ...context,
+        error: error.message,
+        hint: 'Referenced record does not exist'
       });
     } else {
       logger.error(`Database error during ${operation}`, 'SupabaseService', { 
         ...context,
         error: error.message,
-        code: error.code
+        code: error.code,
+        details: error.details,
+        hint: error.hint
       });
     }
   }
@@ -177,7 +193,7 @@ export class SupabaseService {
         .from('users')
         .select('*')
         .eq('email', email)
-        .single()
+        .maybeSingle() // Use maybeSingle to avoid errors when no rows found
 
       if (error) {
         if (error.code === 'PGRST116') {
@@ -185,14 +201,13 @@ export class SupabaseService {
           return null
         }
         
-        logger.error('SupabaseService: Error fetching user by email', 'SupabaseService', { 
-          email,
-          error: error.message,
-          code: error.code,
-          hint: error.hint
-        });
-        
+        this.handleDatabaseError(error, 'getUserByEmail', { email });
         throw error
+      }
+      
+      if (!data) {
+        logger.info('SupabaseService: No user found with email', 'SupabaseService', { email });
+        return null;
       }
       
       return this.mapDatabaseUserToProfile(data)

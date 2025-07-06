@@ -31,33 +31,50 @@ export class QuizResultsService {
    */
   async saveQuizResult(result: QuizResult): Promise<string | null> {
     try {
+      // Check authentication first
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
+        logger.warn('User not authenticated, cannot save quiz result', 'QuizResultsService', {
+          quizId: result.quizId
+        });
+        return null;
+      }
+
       logger.info('Saving quiz result to database', 'QuizResultsService', {
         quizId: result.quizId,
         score: result.score,
         totalQuestions: result.totalQuestions,
-        userId: result.userId
+        userId: result.userId,
+        sessionUserId: session.user.id
       });
+
+      // Prepare the data with proper types
+      const insertData = {
+        user_id: session.user.id, // Use session user ID for consistency
+        quiz_id: result.quizId,
+        score: Number(result.score), // Ensure it's a number
+        total_questions: Number(result.totalQuestions), // Ensure it's a number
+        answers: result.answers || [], // Ensure it's an array
+        time_taken: result.timeTaken ? Number(result.timeTaken) : null,
+        created_at: new Date().toISOString()
+      };
 
       const { data, error } = await supabase
         .from('quiz_results')
-        .insert([
-          {
-            user_id: result.userId || null,
-            quiz_id: result.quizId,
-            score: result.score,
-            total_questions: result.totalQuestions,
-            answers: result.answers,
-            time_taken: result.timeTaken || null,
-            created_at: new Date().toISOString()
-          }
-        ])
-        .select()
+        .insert([insertData])
+        .select('id')
         .single();
 
       if (error) {
         logger.error('Failed to save quiz result', 'QuizResultsService', {
           error: error.message,
-          code: error.code
+          code: error.code,
+          details: error.details,
+          hint: error.hint,
+          insertData: {
+            ...insertData,
+            answers: `${insertData.answers.length} answers`
+          }
         });
         return null;
       }
@@ -69,7 +86,10 @@ export class QuizResultsService {
 
       return data.id;
     } catch (error) {
-      logger.error('Error saving quiz result', 'QuizResultsService', {}, error as Error);
+      logger.error('Error saving quiz result', 'QuizResultsService', {
+        quizId: result.quizId,
+        error: (error as Error).message
+      }, error as Error);
       return null;
     }
   }
@@ -85,6 +105,13 @@ export class QuizResultsService {
         limit: params.limit
       });
 
+      // Check authentication for RLS compliance
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
+        logger.warn('User not authenticated, returning empty quiz history', 'QuizResultsService');
+        return [];
+      }
+
       let query = supabase
         .from('quiz_results')
         .select(`
@@ -96,7 +123,7 @@ export class QuizResultsService {
           answers,
           time_taken,
           created_at,
-          users:user_id (
+          users!inner(
             name,
             email
           )
@@ -127,19 +154,21 @@ export class QuizResultsService {
       if (error) {
         logger.error('Failed to fetch quiz history', 'QuizResultsService', {
           error: error.message,
-          code: error.code
+          code: error.code,
+          details: error.details,
+          hint: error.hint
         });
         return [];
       }
 
       // Transform data để include user info
-      const results: QuizResultRecord[] = data.map((record: any) => ({
+      const results: QuizResultRecord[] = (data || []).map((record: any) => ({
         id: record.id,
         user_id: record.user_id,
         quiz_id: record.quiz_id,
         score: record.score,
         total_questions: record.total_questions,
-        answers: record.answers,
+        answers: record.answers || [],
         time_taken: record.time_taken,
         created_at: record.created_at,
         user_name: record.users?.name || 'Anonymous User',
@@ -153,7 +182,10 @@ export class QuizResultsService {
 
       return results;
     } catch (error) {
-      logger.error('Error fetching quiz history', 'QuizResultsService', {}, error as Error);
+      logger.error('Error fetching quiz history', 'QuizResultsService', {
+        quizId: params.quizId,
+        error: (error as Error).message
+      }, error as Error);
       return [];
     }
   }

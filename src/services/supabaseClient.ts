@@ -33,7 +33,18 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   // Add timeout for better error handling in production
   global: {
     headers: {
-      'x-client-info': isProduction ? 'quizai-prod' : 'quizai-dev'
+      'x-client-info': isProduction ? 'quizai-prod' : 'quizai-dev',
+      'Accept': 'application/json',
+      'Content-Type': 'application/json'
+    }
+  },
+  // Add retry configuration for better reliability
+  db: {
+    schema: 'public'
+  },
+  realtime: {
+    params: {
+      eventsPerSecond: 10
     }
   }
 })
