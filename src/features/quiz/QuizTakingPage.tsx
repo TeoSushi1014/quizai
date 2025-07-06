@@ -6,7 +6,7 @@ import { Button, Card, LoadingSpinner, ProgressBar, Modal } from '../../componen
 import MathText from '../../components/MathText';
 import { ChevronLeftIcon, ChevronRightIcon } from '../../constants';
 import { useQuizFlow } from './hooks/useQuizFlow';
-import { supabaseService } from '../../services/supabaseService';
+import { quizResultsService } from '../../services/quizResultsService';
 import { logger } from '../../services/logService';
 
 const QuizTakingPage: React.FC = () => {
@@ -92,6 +92,7 @@ const QuizTakingPage: React.FC = () => {
     
     const result: QuizResult = {
       quizId: localActiveQuiz.id,
+      userId: currentUser?.id,  // Add userId to result
       score: parseFloat(score.toFixed(2)),
       answers: finalUserAnswersArray,
       totalCorrect: correctCount,
@@ -105,14 +106,15 @@ const QuizTakingPage: React.FC = () => {
     // Save to database if user is logged in
     if (currentUser) {
       try {
-        const saved = await supabaseService.saveQuizResult(result, currentUser.id, currentUser);
-        if (saved) {
-          logger.info('Quiz result saved to database successfully', 'QuizTakingPage');
+        // Use new quiz results service
+        const resultId = await quizResultsService.saveQuizResult(result);
+        if (resultId) {
+          logger.info('Quiz result saved to database successfully', 'QuizTakingPage', { resultId });
         } else {
-          logger.info('Quiz result not saved to database (user not authenticated with Supabase, using local storage only)', 'QuizTakingPage');
+          logger.warn('Failed to save quiz result to database', 'QuizTakingPage');
         }
       } catch (error) {
-        console.error('Failed to save quiz result to database:', error);
+        logger.error('Error saving quiz result to database', 'QuizTakingPage', {}, error as Error);
         // Continue anyway - result is still saved locally
       }
     } else {

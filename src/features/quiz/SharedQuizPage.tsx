@@ -9,6 +9,7 @@ import { getSharedQuiz } from '../../services/quizSharingService';
 import { logger } from '../../services/logService';
 import { validateQuizId } from '../../utils/quizValidationUtils';
 import { generateUUID } from '../../utils/uuidUtils';
+import QuizHistory from './components/QuizHistory';
 
 const SharedQuizPage: React.FC = () => {
   const { quizId } = useParams<{ quizId?: string }>();
@@ -363,6 +364,18 @@ window.QuizAIDebug.cleanupOrphanedQuiz("${quizId}")`;
         </Button>
       </div>
     </Card>
+
+    {/* Quiz History Section */}
+    {sharedQuiz && (
+      <div className="mt-6">
+        <QuizHistory 
+          quizId={sharedQuiz.id}
+          isOwner={currentUser?.id === sharedQuiz.userId}
+          currentUserId={currentUser?.id}
+        />
+      </div>
+    )}
+    
     </div>
   );
 };
