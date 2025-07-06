@@ -787,43 +787,35 @@ interface NotificationDisplayProps {
 }
 
 export const NotificationDisplay: React.FC<NotificationDisplayProps> = ({ notification, onClose }) => {
-  const { t } = useTranslation(); // Added for aria-label
+  const { t } = useTranslation();
+  
   if (!notification) return null;
 
   const { type, message } = notification;
 
-  let bgColorVar = 'var(--color-bg-surface-3)';
-  let borderColorVar = 'var(--color-border-strong)';
-  let textColorVar = 'var(--color-text-primary)'; 
-  let IconComponent: React.FC<any> | null = InformationCircleIcon; 
+  // Sử dụng design system của QuizAI với CSS variables và style tương tự Button/Alert
+  let variantStyle = '';
+  let IconComponent: React.FC<any> | null = InformationCircleIcon;
 
   switch (type) {
     case 'error':
-      bgColorVar = 'var(--color-danger-accent)';
-      borderColorVar = 'var(--color-danger-accent)';
-      textColorVar = 'var(--color-primary-accent-text)';
-      IconComponent = ErrorIcon; // Use ErrorIcon (which is XCircleIcon)
+      variantStyle = 'bg-[var(--color-danger-accent)]/15 border-[var(--color-danger-accent)]/40 text-[var(--color-danger-accent)] shadow-lg shadow-[var(--color-danger-accent)]/20';
+      IconComponent = ErrorIcon;
       break;
     case 'success':
-      bgColorVar = 'var(--color-success-accent)';
-      borderColorVar = 'var(--color-success-accent)';
-      textColorVar = 'var(--color-primary-accent-text)';
+      variantStyle = 'bg-[var(--color-success-accent)]/15 border-[var(--color-success-accent)]/40 text-[var(--color-success-accent)] shadow-lg shadow-[var(--color-success-accent)]/20';
       IconComponent = CheckCircleIcon;
       break;
     case 'info':
-      bgColorVar = 'var(--color-primary-accent)'; // Use primary accent for info
-      borderColorVar = 'var(--color-primary-accent)';
-      textColorVar = 'var(--color-primary-accent-text)'; // Assuming light text on primary accent
+      variantStyle = 'bg-[var(--color-primary-accent)]/15 border-[var(--color-primary-accent)]/40 text-[var(--color-primary-accent)] shadow-lg shadow-[var(--color-primary-accent)]/20';
       IconComponent = InformationCircleIcon;
       break;
     case 'warning':
-      bgColorVar = 'var(--color-warning-accent)';
-      borderColorVar = 'var(--color-warning-accent)';
-      textColorVar = 'var(--color-primary-accent-text)'; // Assuming light text on warning accent
-      IconComponent = InformationCircleIcon; // Could be a specific WarningIcon if available
+      variantStyle = 'bg-amber-500/15 border-amber-500/40 text-amber-600 dark:text-amber-400 shadow-lg shadow-amber-500/20';
+      IconComponent = InformationCircleIcon;
       break;
     default:
-      // Defaults are already set, but explicit break is good practice
+      variantStyle = 'bg-[var(--color-bg-surface-3)] border-[var(--color-border-strong)] text-[var(--color-text-primary)] shadow-md';
       break;
   }
 
@@ -835,32 +827,31 @@ export const NotificationDisplay: React.FC<NotificationDisplayProps> = ({ notifi
       aria-live="assertive"
       aria-atomic="true"
       aria-labelledby={`${notificationId}-message`}
-      className="fixed top-5 right-5 sm:top-6 sm:right-6 z-[200] w-auto max-w-[calc(100%-2.5rem)] sm:max-w-md animate-fadeIn"
-      style={{
-        backgroundColor: bgColorVar,
-        borderColor: borderColorVar,
-        color: textColorVar,
-      }}
+      className={`fixed top-5 right-5 sm:top-6 sm:right-6 z-[200] w-auto max-w-[calc(100%-2.5rem)] sm:max-w-md
+                  animate-slideInRight transition-all var(--duration-fast) var(--ease-ios)
+                  transform hover:scale-[1.02] will-change-transform`}
     >
-      <div className="flex items-start p-3.5 sm:p-4 border rounded-xl shadow-2xl">
+      <div className={`flex items-start p-4 border-2 rounded-xl backdrop-blur-sm ${variantStyle}`}>
         {IconComponent && (
           <div className="flex-shrink-0 mr-3 mt-0.5">
             <IconComponent className="w-5 h-5 sm:w-6 sm:h-6" />
           </div>
         )}
         <div className="flex-grow">
-          <p id={`${notificationId}-message`} className="text-sm sm:text-base font-medium leading-snug">
+          <p id={`${notificationId}-message`} className="text-sm sm:text-base font-semibold leading-snug">
             {message}
           </p>
         </div>
         <div className="ml-3 flex-shrink-0">
           <button
             onClick={onClose}
-            className={`p-1 rounded-md hover:bg-black/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70 transition-colors var(--duration-fast) var(--ease-ios)`}
-            style={{ color: textColorVar }}
+            className={`p-1.5 rounded-md hover:bg-black/10 dark:hover:bg-white/10 
+                       focus:outline-none focus-visible:ring-2 focus-visible:ring-current/30 
+                       transition-colors var(--duration-fast) var(--ease-ios)
+                       hover:scale-110 active:scale-95`}
             aria-label={t('close')}
           >
-            <CloseIcon className="w-5 h-5" />
+            <CloseIcon className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
         </div>
       </div>

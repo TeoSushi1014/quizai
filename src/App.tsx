@@ -95,7 +95,12 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
   const authInProgressRef = useRef(false);
   
   const tForProvider = useMemo(() => getTranslator(language), [language]);
-  const { showSuccess: showSuccessNotification, showError: showErrorNotification } = useNotification();
+  const { 
+    showSuccess: showSuccessNotification, 
+    showError: showErrorNotification,
+    notification,
+    clearNotification
+  } = useNotification();
 
 
   const setCurrentUser = useCallback((user: UserProfile | null, tokenInfo?: { token: string; expires_in: number }) => {
@@ -786,11 +791,13 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     isLoading: combinedIsLoading,
     showSuccessNotification,
     showErrorNotification,
+    notification,
+    clearNotification,
   }), [
     location.pathname, setCurrentView, language, setLanguage, quizzesForContext, 
     addQuiz, deleteQuiz, updateQuiz, getQuizByIdFromAll, activeQuiz, setActiveQuiz, quizResult, 
     setQuizResultWithPersistence, currentUser, login, handleLogout, updateUserProfile, combinedIsLoading,
-    showSuccessNotification, showErrorNotification,
+    showSuccessNotification, showErrorNotification, notification, clearNotification,
   ]);
 
   useEffect(() => {
@@ -1089,9 +1096,9 @@ RouteLoadingFallback.displayName = "RouteLoadingFallback";
 const AppLayout: React.FC = () => {
   const { 
     language, setLanguage, currentUser, 
-    isLoading: globalIsLoading
+    isLoading: globalIsLoading,
+    notification, clearNotification
   } = useAppContext(); 
-  const { notification, clearNotification } = useNotification();
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();

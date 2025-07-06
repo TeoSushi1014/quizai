@@ -286,6 +286,22 @@ html.light .card-glass {
   will-change: opacity;
 }
 
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.animate-slideInRight {
+  animation: slideInRight var(--duration-normal) var(--ease-ios) forwards;
+  will-change: transform, opacity;
+}
+
 @keyframes slideInUp {
   from {
     transform: translateY(100%);

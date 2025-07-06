@@ -98,4 +98,8 @@ export interface AppContextType {
 
   showSuccessNotification: (message: string, duration?: number, key?: string) => void;
   showErrorNotification: (message: string, duration?: number, key?: string) => void;
+  
+  // Notification state for UI rendering
+  notification: import('./hooks/useNotification').NotificationState | null;
+  clearNotification: () => void;
 }
