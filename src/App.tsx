@@ -4,7 +4,7 @@ import { GoogleOAuthProvider, googleLogout, TokenResponse } from '@react-oauth/g
 import { useSwipeable } from 'react-swipeable';
 import { Quiz, AppContextType, Language, QuizResult, UserProfile } from './types';
 import { APP_NAME, KeyIcon, LogoutIcon, HomeIcon, PlusCircleIcon, ChartBarIcon, SettingsIconMobileNav, ChevronDownIcon, UserCircleIcon, PlusIcon } from './constants'; 
-import { Button, LoadingSpinner, Tooltip } from './components/ui';
+import { Button, LoadingSpinner, Tooltip, NotificationDisplay } from './components/ui';
 import { UserAvatar } from './components/UserAvatar'; 
 import ErrorBoundary from './components/ErrorBoundary'; 
 import { getTranslator, translations } from './i18n';
@@ -1091,6 +1091,7 @@ const AppLayout: React.FC = () => {
     language, setLanguage, currentUser, 
     isLoading: globalIsLoading
   } = useAppContext(); 
+  const { notification, clearNotification } = useNotification();
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
@@ -1388,6 +1389,14 @@ const AppLayout: React.FC = () => {
       )}
 
       {currentUser && isMobileProfileOpen && <MobileProfileSheet /> } 
+
+      {/* Toast Notification Display */}
+      {notification && (
+        <NotificationDisplay 
+          notification={notification} 
+          onClose={clearNotification} 
+        />
+      )}
     </div>
   );
 };

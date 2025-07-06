@@ -56,10 +56,6 @@ const FeedbackSection: React.FC = () => {
 
     setIsSending(true);
     
-    // Test notification ngay từ đầu
-    console.log('🧪 Testing notification system...');
-    showSuccessNotification('Test notification - bạn thấy được không?', 3000);
-    
     try {
       const success = await emailService.sendContactMessage({
         userEmail: currentUser.email || '',
@@ -69,15 +65,11 @@ const FeedbackSection: React.FC = () => {
       });
 
       if (success) {
-        console.log('🎉 Feedback sent successfully, showing notification...');
         const successMessage = t('feedbackSentSuccess');
-        console.log('📢 Success message:', successMessage);
         showSuccessNotification(successMessage, 5000);
         setFeedbackText(''); // Clear the form
       } else {
-        console.log('❌ Feedback failed, showing error notification...');
         const errorMessage = t('feedbackSentError');
-        console.log('📢 Error message:', errorMessage);
         showErrorNotification(errorMessage, 5000);
       }
     } catch (error) {
