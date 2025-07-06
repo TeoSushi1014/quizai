@@ -64,8 +64,12 @@ export class EmailService {
         await this.sendEmailNotificationToAdmin(contactData, data.id);
         logger.info('Email notification sent successfully', 'EmailService');
       } catch (emailError) {
-        logger.error('Failed to send email notification', 'EmailService', {}, emailError as Error);
+        logger.error('Failed to send email notification', 'EmailService', {
+          willUseFallback: true,
+          messageStillSaved: true
+        }, emailError as Error);
         // Không return false vì message đã được lưu thành công
+        // User vẫn sẽ thấy thông báo thành công
       }
       
       return true;
@@ -88,8 +92,20 @@ export class EmailService {
         message: contactData.message,
         message_id: messageId,
         timestamp: new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }),
-        app_url: window.location.origin
+        app_url: window.location.origin,
+        // Add common template variables that might be expected
+        user_name: contactData.userName,
+        user_email: contactData.userEmail,
+        subject: `New Contact Message from ${contactData.userName}`
       };
+
+      // Log template params for debugging
+      logger.info('Sending email with template params', 'EmailService', {
+        templateParams: { 
+          ...templateParams, 
+          message: templateParams.message.substring(0, 50) + '...' 
+        }
+      });
 
       // Send email using EmailJS - Template đã được cấu hình
       const response = await emailjs.send(
@@ -105,11 +121,18 @@ export class EmailService {
       });
 
       if (response.status !== 200) {
-        throw new Error(`EmailJS failed with status: ${response.status}`);
+        throw new Error(`EmailJS failed with status: ${response.status}, text: ${response.text}`);
       }
 
     } catch (error) {
-      logger.error('Error in sendEmailNotificationToAdmin', 'EmailService', {}, error as Error);
+      // Log detailed error information
+      const err = error as any;
+      logger.error('Error in sendEmailNotificationToAdmin', 'EmailService', {
+        errorMessage: err.message,
+        errorStatus: err.status,
+        errorText: err.text,
+        errorResponse: err.response
+      }, error as Error);
       
       // Fallback to mailto
       const templateParams = {
