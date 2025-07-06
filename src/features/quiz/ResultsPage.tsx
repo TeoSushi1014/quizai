@@ -172,7 +172,7 @@ const ResultsPage: React.FC = () => {
             return;
           }
         } catch (e) {
-          console.error('Failed to parse localStorage quiz result:', e);
+          logger.error('Failed to parse localStorage quiz result', 'ResultsPage', {}, e as Error);
         }
       }
       
@@ -206,7 +206,7 @@ const ResultsPage: React.FC = () => {
             logger.info('Successfully fetched shared quiz data', 'ResultsPage');
           }
         } catch (error) {
-          console.error('Failed to fetch shared quiz:', error);
+          logger.error('Failed to fetch shared quiz', 'ResultsPage', {}, error as Error);
         }
       }
 

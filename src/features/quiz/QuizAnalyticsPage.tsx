@@ -217,19 +217,6 @@ const QuizAnalyticsPage: React.FC = () => {
       <Card className="p-6">
         <h3 className="text-xl font-semibold mb-6">Detailed Results</h3>
         
-        {/* Debug Info */}
-        {quiz && (
-          <div className="mb-4 p-4 bg-gray-100 dark:bg-gray-800 rounded text-sm">
-            <p><strong>Debug Info:</strong></p>
-            <p>Quiz ID: {quiz.id}</p>
-            <p>Quiz Owner: {quiz.userId}</p>
-            <p>Current User: {currentUser?.id}</p>
-            <p>Is Owner: {quiz.userId === currentUser?.id ? 'Yes' : 'No'}</p>
-            <p>Results Count: {results.length}</p>
-            <p>Filter Applied: {quiz.userId === currentUser?.id ? 'None (show all)' : 'Current user only'}</p>
-          </div>
-        )}
-        
         {results.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-[var(--color-text-muted)]">

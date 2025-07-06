@@ -141,7 +141,6 @@ export class EmailService {
       }
       
       // LUÔN return true nếu database thành công - user sẽ thấy notification
-      console.log('✅ EmailService returning success=true to show notification');
       return true;
     } catch (error) {
       logger.error('Error sending contact message', 'EmailService', {}, error as Error);
@@ -167,12 +166,6 @@ export class EmailService {
         serviceId: this.EMAILJS_SERVICE_ID
       });
 
-      console.log('🚀 EmailJS sending with params:', {
-        serviceId: this.EMAILJS_SERVICE_ID,
-        templateId: this.EMAILJS_TEMPLATE_ID,
-        params: { ...templateParams, message: templateParams.message.substring(0, 30) + '...' }
-      });
-
       // Send email using EmailJS - Template đã được cấu hình
       const response = await emailjs.send(
         this.EMAILJS_SERVICE_ID,
@@ -184,11 +177,6 @@ export class EmailService {
       logger.info('EmailJS response received', 'EmailService', { 
         status: response.status, 
         text: response.text 
-      });
-
-      console.log('✅ EmailJS success response:', {
-        status: response.status,
-        text: response.text
       });
 
       if (response.status !== 200) {
@@ -226,18 +214,6 @@ export class EmailService {
       // Prepare auto-reply template parameters
       const templateParams = this.getAutoReplyTemplateParams(contactData, messageId);
 
-      console.log('🤖 Sending auto-reply to user:', {
-        to: contactData.userEmail,
-        userName: contactData.userName,
-        templateId: this.EMAILJS_AUTO_REPLY_TEMPLATE_ID,
-        params: { 
-          to: templateParams.to,
-          to_email: templateParams.to_email,
-          name: templateParams.name,
-          message_id: templateParams.message_id 
-        }
-      });
-
       // Validate recipient email trước khi gửi
       if (!contactData.userEmail || !contactData.userEmail.includes('@')) {
         throw new Error(`Invalid recipient email: ${contactData.userEmail}`);
@@ -250,12 +226,6 @@ export class EmailService {
         templateParams,
         this.EMAILJS_PUBLIC_KEY
       );
-
-      console.log('✅ Auto-reply sent successfully:', {
-        status: response.status,
-        text: response.text,
-        recipient: contactData.userEmail
-      });
 
       if (response.status !== 200) {
         throw new Error(`Auto-reply EmailJS failed with status: ${response.status}, text: ${response.text}`);
@@ -303,7 +273,6 @@ QuizAI Admin Panel: ${templateParams.app_url}
 
     // Note: We don't actually open mailto here as it would be disruptive
     // Instead, we log it for debugging and admin can manually check
-    console.log('📧 Email notification (mailto fallback):', { subject, body });
   }
 
   private saveToLocalStorage(contactData: ContactMessage): boolean {

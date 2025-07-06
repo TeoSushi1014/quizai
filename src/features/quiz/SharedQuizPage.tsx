@@ -21,19 +21,16 @@ const SharedQuizPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [copySuccess, setCopySuccess] = useState(false);
-  const [debugInfo, setDebugInfo] = useState<string>('');
   const [isSaving, setIsSaving] = useState(false);
   
   useEffect(() => {
     const loadSharedQuiz = async () => {
       setLoading(true);
       setError(null);
-      setDebugInfo('');
 
       if (!quizId) {
         logger.warn('SharedQuizPage: No quizId in params.', 'SharedQuizPage');
         setError(t('sharedQuizNotFound'));
-        setDebugInfo('No quiz ID provided in URL');
         setLoading(false);
         return;
       }
@@ -42,7 +39,6 @@ const SharedQuizPage: React.FC = () => {
       if (!validateQuizId(quizId) && quizId.length < 30) {
         logger.warn('SharedQuizPage: Invalid quiz ID format and too short to be a corrupted ID.', 'SharedQuizPage', { quizId });
         setError(t('sharedQuizNotFound'));
-        setDebugInfo(`Invalid quiz ID format: ${quizId}`);
         setLoading(false);
         return;
       }
@@ -50,7 +46,6 @@ const SharedQuizPage: React.FC = () => {
       // Log potential corruption for debugging
       if (!validateQuizId(quizId)) {
         logger.info('SharedQuizPage: Detected potentially corrupted quiz ID, proceeding to sharing service for recovery', 'SharedQuizPage', { quizId });
-        setDebugInfo(`Potentially corrupted quiz ID detected: ${quizId}. Attempting recovery...`);
       }
       
       try {
@@ -60,7 +55,6 @@ const SharedQuizPage: React.FC = () => {
             if (userOwnedQuiz) {
                 logger.info('SharedQuizPage: Displaying quiz owned by current user.', 'SharedQuizPage', { quizId });
                 setSharedQuiz(userOwnedQuiz);
-                setDebugInfo('Quiz found in user\'s collection');
                 setLoading(false);
                 return;
             }
@@ -71,29 +65,13 @@ const SharedQuizPage: React.FC = () => {
         if (fetchedQuizData) {
           logger.info('SharedQuizPage: Quiz data fetched successfully.', 'SharedQuizPage', { quizId });
           setSharedQuiz(fetchedQuizData as Quiz);
-          setDebugInfo('Quiz found via sharing mechanism');
         } else {
           logger.warn('SharedQuizPage: Quiz not found via getSharedQuiz.', 'SharedQuizPage', { quizId });
-          
-          const debugMessage = `Quiz ${quizId} not found. This could be because:
-• The quiz was deleted by its creator
-• The quiz share link has expired  
-• There's a data consistency issue in the database
-• The quiz was never properly shared
-
-🔧 For detailed diagnosis, open browser console (F12) and run:
-window.QuizAIDebug.debugQuizSharing("${quizId}")
-
-🛠️ If the quiz exists but has data issues, try:
-window.QuizAIDebug.cleanupOrphanedQuiz("${quizId}")`;
-          setDebugInfo(debugMessage);
-          
           setError(t('sharedQuizNotFound'));
         }
       } catch (err) {
         logger.error('Error loading shared quiz:', 'SharedQuizPage', { quizId }, err as Error);
         setError(t('sharedQuizLoadError'));
-        setDebugInfo(`Error: ${(err as Error).message}`);
       } finally {
         setLoading(false);
       }
@@ -186,22 +164,6 @@ window.QuizAIDebug.cleanupOrphanedQuiz("${quizId}")`;
           <XCircleIcon className="w-16 h-16 text-[var(--color-danger-accent)] mx-auto mb-6" />
           <h2 className="text-2xl font-semibold text-[var(--color-text-primary)] mb-3">{t('sharedQuizError')}</h2>
           <p className="text-[var(--color-text-secondary)] mb-4">{error || t('sharedQuizNotFound')}</p>
-          
-          {/* Debug Information */}
-          {debugInfo && (
-            <div className="bg-[var(--color-bg-surface-2)] p-4 rounded-lg mb-6 text-left">
-              <div className="flex items-center mb-2">
-                <span className="text-sm font-semibold text-[var(--color-text-primary)]">Debug Information</span>
-              </div>
-              <p className="text-xs text-[var(--color-text-muted)] font-mono break-all">{debugInfo}</p>
-              {quizId && (
-                <p className="text-xs text-[var(--color-text-muted)] font-mono mt-2">
-                  Quiz ID: {quizId}<br/>
-                  Valid Format: {validateQuizId(quizId) ? 'Yes' : 'No'}
-                </p>
-              )}
-            </div>
-          )}
           
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Button variant="primary" onClick={() => navigate('/')} size="lg" className="py-3 px-8 rounded-xl">

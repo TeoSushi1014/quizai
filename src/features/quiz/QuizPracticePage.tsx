@@ -149,7 +149,6 @@ const QuizPracticePage: React.FC = () => {
           logger.info('Practice result not saved to database (user not authenticated with Supabase, using local storage only)', 'QuizPracticePage');
         }
       } catch (error) {
-        console.error('Failed to save practice result to database:', error);
         // Continue anyway - result is still saved locally
       }
     } else {
@@ -303,9 +302,7 @@ const QuizPracticePage: React.FC = () => {
         <LoadingSpinner text={t('quizPracticeEnding') || "Processing..."} size="lg" />
       </div>
     );
-  }
-
-  if (loading || !localActiveQuiz) return <LoadingSpinner text={t('quizTakingLoading')} className="mt-24" size="xl"/>;
+  }    if (loading || !localActiveQuiz) return <LoadingSpinner text={t('quizTakingLoading')} className="mt-24" size="xl"/>;
 
   if (!currentQuestion) {
     if (localActiveQuiz && totalQuestions > 0 && currentQuestionIndex >= totalQuestions) {
@@ -321,7 +318,6 @@ const QuizPracticePage: React.FC = () => {
     if (loading) {
         return <LoadingSpinner text={t('quizTakingLoading')} className="mt-24" size="xl"/>;
     }
-    console.error("QuizPracticePage: currentQuestion is undefined, but not due to finishing. Quiz data might be missing or an error occurred.");
     return (
       <div className="flex flex-col items-center justify-center p-8 min-h-[400px]">
         <LoadingSpinner text={t('error') + " - " + (t('quizTakingLoading') || "Processing...")} size="lg" />
