@@ -14,19 +14,18 @@ export class EmailService {
   
   // EmailJS configuration - Cập nhật với thông tin thật từ EmailJS dashboard
   private readonly EMAILJS_SERVICE_ID = 'service_ca3qx8o'; // Service ID từ screenshot
-  private readonly EMAILJS_TEMPLATE_ID = 'template_ttrrye'; // Template ID từ URL dashboard: /admin/template/ttrrye
+  private readonly EMAILJS_TEMPLATE_ID = 'template_yk32a0i'; // Template ID CHÍNH XÁC từ EmailJS test
   private readonly EMAILJS_PUBLIC_KEY = '3PkkqTaNztt7DEKdi'; // Public Key từ EmailJS Account → General
   
-  // Temporary debug method để test với simple template variables
+  // Template parameters method để match với EmailJS template format  
   private getSimpleTemplateParams(contactData: ContactMessage, messageId: string) {
     return {
-      // Basic EmailJS template variables (most common)
-      to_name: 'Admin',
-      from_name: contactData.userName,
-      from_email: contactData.userEmail, 
-      message: contactData.message,
-      reply_to: contactData.userEmail,
-      // Additional info
+      // Template variables phải match với EmailJS template
+      name: contactData.userName,        // {{name}} trong template
+      email: contactData.userEmail,      // {{email}} nếu có
+      message: contactData.message,      // {{message}} trong template
+      title: `New Contact Message from ${contactData.userName}`,
+      // Additional info cho admin
       message_id: messageId,
       timestamp: new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })
     };
