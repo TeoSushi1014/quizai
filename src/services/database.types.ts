@@ -7,6 +7,8 @@ export interface Database {
           key_name: string
           key_value: string
           owner_email: string
+          description: string | null
+          is_system_key: boolean
           created_at: string
           updated_at: string
         }
@@ -15,6 +17,8 @@ export interface Database {
           key_name: string
           key_value: string
           owner_email: string
+          description?: string | null
+          is_system_key?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -23,6 +27,8 @@ export interface Database {
           key_name?: string
           key_value?: string
           owner_email?: string
+          description?: string | null
+          is_system_key?: boolean
           created_at?: string
           updated_at?: string
         }
