@@ -16,6 +16,7 @@ import { supabaseService } from './services/supabaseService';
 import { supabase } from './services/supabaseClient';
 import { logger } from './services/logService';
 import { migrateLocalDataToSupabase, checkMigrationNeeded } from './utils/migrationUtils';
+import { secureConfig } from './services/secureConfigService';
 import './styles/markdown.css';
 import 'github-markdown-css/github-markdown.css';
 import './styles/markdown-custom.css';
@@ -53,7 +54,6 @@ export const useTranslation = () => {
   };
 };
 
-const GOOGLE_CLIENT_ID = "486123633428-14f8o50husb82sho688e0qvc962ucr4n.apps.googleusercontent.com";
 const LOCALSTORAGE_USER_KEY = 'quizai_currentUser_v2';
 const LOCALSTORAGE_LANGUAGE_KEY = 'appLanguage';
 const LOCALSTORAGE_QUIZ_RESULT_KEY = 'quizResult';
@@ -1359,8 +1359,81 @@ const AppContent: React.FC = () => {
 AppContent.displayName = "AppContent";
 
 const App: React.FC = () => {
+  const [googleClientId, setGoogleClientId] = useState<string>('');
+  const [isLoadingConfig, setIsLoadingConfig] = useState(true);
+  const [configError, setConfigError] = useState<string>('');
+
+  useEffect(() => {
+    const loadGoogleClientId = async () => {
+      try {
+        const clientId = await secureConfig.getApiKey('GOOGLE_CLIENT_ID');
+        if (clientId) {
+          setGoogleClientId(clientId);
+          logger.info('Google Client ID loaded from database', 'App');
+        } else {
+          setConfigError('Missing Google Client ID configuration');
+          logger.error('No Google Client ID found in database', 'App');
+        }
+      } catch (error) {
+        setConfigError('Failed to load Google Client ID');
+        logger.error('Error loading Google Client ID', 'App', {}, error as Error);
+      } finally {
+        setIsLoadingConfig(false);
+      }
+    };
+
+    loadGoogleClientId();
+  }, []);
+
+  // Show loading state while fetching configuration
+  if (isLoadingConfig) {
+    return (
+      <div style={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        height: '100vh',
+        backgroundColor: 'var(--color-bg-body)',
+        color: 'var(--color-text-primary)',
+        fontSize: '16px',
+        textAlign: 'center',
+        padding: '20px'
+      }}>
+        <div>
+          <LoadingSpinner size="lg" />
+          <p style={{ marginTop: '20px' }}>Loading configuration...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state if configuration failed to load
+  if (configError || !googleClientId) {
+    return (
+      <div style={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        height: '100vh',
+        backgroundColor: 'var(--color-bg-body)',
+        color: 'var(--color-text-primary)',
+        fontSize: '16px',
+        textAlign: 'center',
+        padding: '20px'
+      }}>
+        <div>
+          <h2>Configuration Error</h2>
+          <p>{configError || 'Missing Google Client ID configuration'}</p>
+          <p style={{ fontSize: '14px', marginTop: '10px', opacity: 0.7 }}>
+            Please ensure your API keys are properly configured in the database.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+    <GoogleOAuthProvider clientId={googleClientId}>
       <HashRouter>
         <AppProvider>
           <AppContent />
