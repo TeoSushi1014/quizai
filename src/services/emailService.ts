@@ -14,8 +14,23 @@ export class EmailService {
   
   // EmailJS configuration - Cập nhật với thông tin thật từ EmailJS dashboard
   private readonly EMAILJS_SERVICE_ID = 'service_ca3qx8o'; // Service ID từ screenshot
-  private readonly EMAILJS_TEMPLATE_ID = 'template_yk3zaol'; // Contact Us template từ EmailJS dashboard
+  private readonly EMAILJS_TEMPLATE_ID = 'template_ttrrye'; // Template ID từ URL dashboard: /admin/template/ttrrye
   private readonly EMAILJS_PUBLIC_KEY = '3PkkqTaNztt7DEKdi'; // Public Key từ EmailJS Account → General
+  
+  // Temporary debug method để test với simple template variables
+  private getSimpleTemplateParams(contactData: ContactMessage, messageId: string) {
+    return {
+      // Basic EmailJS template variables (most common)
+      to_name: 'Admin',
+      from_name: contactData.userName,
+      from_email: contactData.userEmail, 
+      message: contactData.message,
+      reply_to: contactData.userEmail,
+      // Additional info
+      message_id: messageId,
+      timestamp: new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })
+    };
+  }
   async sendContactMessage(contactData: ContactMessage): Promise<boolean> {
     try {
       logger.info('Sending contact message', 'EmailService', { 
@@ -84,27 +99,17 @@ export class EmailService {
 
   private async sendEmailNotificationToAdmin(contactData: ContactMessage, messageId: string): Promise<void> {
     try {
-      // Prepare email template parameters
-      const templateParams = {
-        to_email: this.ADMIN_EMAIL,
-        from_name: contactData.userName,
-        from_email: contactData.userEmail,
-        message: contactData.message,
-        message_id: messageId,
-        timestamp: new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }),
-        app_url: window.location.origin,
-        // Add common template variables that might be expected
-        user_name: contactData.userName,
-        user_email: contactData.userEmail,
-        subject: `New Contact Message from ${contactData.userName}`
-      };
+      // Use simple template parameters that are commonly supported
+      const templateParams = this.getSimpleTemplateParams(contactData, messageId);
 
       // Log template params for debugging
-      logger.info('Sending email with template params', 'EmailService', {
+      logger.info('Sending email with SIMPLE template params', 'EmailService', {
         templateParams: { 
           ...templateParams, 
           message: templateParams.message.substring(0, 50) + '...' 
-        }
+        },
+        templateId: this.EMAILJS_TEMPLATE_ID,
+        serviceId: this.EMAILJS_SERVICE_ID
       });
 
       // Send email using EmailJS - Template đã được cấu hình
