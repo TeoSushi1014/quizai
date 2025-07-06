@@ -15,6 +15,7 @@ export class EmailService {
   // EmailJS configuration - Cập nhật với thông tin thật từ EmailJS dashboard
   private readonly EMAILJS_SERVICE_ID = 'service_ca3qx8o'; // Service ID từ screenshot
   private readonly EMAILJS_TEMPLATE_ID = 'template_yk32a0i'; // Template ID CHÍNH XÁC từ EmailJS test
+  private readonly EMAILJS_AUTO_REPLY_TEMPLATE_ID = 'template_zxpohea'; // Auto-Reply template cho user
   private readonly EMAILJS_PUBLIC_KEY = '3PkkqTaNztt7DEKdi'; // Public Key từ EmailJS Account → General
   
   // Template parameters method để match với EmailJS template format  
@@ -27,7 +28,28 @@ export class EmailService {
       title: `New Contact Message from ${contactData.userName}`,
       // Additional info cho admin
       message_id: messageId,
-      timestamp: new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })
+      timestamp: new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }),
+      // User info for better email display
+      from_name: contactData.userName,
+      from_email: contactData.userEmail,
+      reply_to: contactData.userEmail
+    };
+  }
+
+  // Auto-reply template parameters cho user
+  private getAutoReplyTemplateParams(contactData: ContactMessage, messageId: string) {
+    return {
+      // Template variables cho auto-reply email gửi cho user
+      to_name: contactData.userName,     // {{to_name}} - tên người nhận (user)
+      to_email: contactData.userEmail,   // {{to_email}} - email người nhận
+      user_name: contactData.userName,   // {{user_name}} - backup
+      user_email: contactData.userEmail, // {{user_email}} - backup
+      message_id: messageId,
+      timestamp: new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }),
+      // Admin info
+      admin_email: this.ADMIN_EMAIL,
+      app_name: 'QuizAI',
+      app_url: window.location.origin
     };
   }
   async sendContactMessage(contactData: ContactMessage): Promise<boolean> {
@@ -74,19 +96,42 @@ export class EmailService {
       });
       
       // Gửi email notification đến admin sau khi lưu database thành công
+      let emailSent = false;
       try {
         await this.sendEmailNotificationToAdmin(contactData, data.id);
-        logger.info('Email notification sent successfully', 'EmailService');
+        logger.info('Admin email notification sent successfully', 'EmailService');
+        emailSent = true;
       } catch (emailError) {
-        logger.error('Failed to send email notification', 'EmailService', {
+        logger.error('Failed to send admin email notification', 'EmailService', {
           willUseFallback: true,
           messageStillSaved: true
         }, emailError as Error);
-        // Không return false vì message đã được lưu thành công
-        // User vẫn sẽ thấy thông báo thành công
+        emailSent = false;
+      }
+
+      // Gửi auto-reply email cho user
+      let autoReplySent = false;
+      try {
+        await this.sendAutoReplyToUser(contactData, data.id);
+        logger.info('Auto-reply email sent successfully to user', 'EmailService');
+        autoReplySent = true;
+      } catch (autoReplyError) {
+        logger.error('Failed to send auto-reply email to user', 'EmailService', {}, autoReplyError as Error);
+        autoReplySent = false;
       }
       
-      return true;
+      // Log kết quả
+      if (emailSent && autoReplySent) {
+        logger.info('Contact message sent completely (database + admin email + auto-reply)', 'EmailService');
+      } else if (emailSent) {
+        logger.info('Contact message sent (database + admin email, auto-reply failed)', 'EmailService');
+      } else if (autoReplySent) {
+        logger.info('Contact message sent (database + auto-reply, admin email failed)', 'EmailService');
+      } else {
+        logger.info('Contact message saved to database but both emails failed', 'EmailService');
+      }
+      
+      return true; // Database success is enough for user notification
     } catch (error) {
       logger.error('Error sending contact message', 'EmailService', {}, error as Error);
       
@@ -111,6 +156,12 @@ export class EmailService {
         serviceId: this.EMAILJS_SERVICE_ID
       });
 
+      console.log('🚀 EmailJS sending with params:', {
+        serviceId: this.EMAILJS_SERVICE_ID,
+        templateId: this.EMAILJS_TEMPLATE_ID,
+        params: { ...templateParams, message: templateParams.message.substring(0, 30) + '...' }
+      });
+
       // Send email using EmailJS - Template đã được cấu hình
       const response = await emailjs.send(
         this.EMAILJS_SERVICE_ID,
@@ -122,6 +173,11 @@ export class EmailService {
       logger.info('EmailJS response received', 'EmailService', { 
         status: response.status, 
         text: response.text 
+      });
+
+      console.log('✅ EmailJS success response:', {
+        status: response.status,
+        text: response.text
       });
 
       if (response.status !== 200) {
@@ -150,6 +206,49 @@ export class EmailService {
       };
       
       this.sendMailtoFallback(templateParams);
+      throw error;
+    }
+  }
+
+  private async sendAutoReplyToUser(contactData: ContactMessage, messageId: string): Promise<void> {
+    try {
+      // Prepare auto-reply template parameters
+      const templateParams = this.getAutoReplyTemplateParams(contactData, messageId);
+
+      console.log('🤖 Sending auto-reply to user:', {
+        to: contactData.userEmail,
+        userName: contactData.userName,
+        templateId: this.EMAILJS_AUTO_REPLY_TEMPLATE_ID,
+        params: { ...templateParams, message_id: templateParams.message_id }
+      });
+
+      // Send auto-reply email using EmailJS
+      const response = await emailjs.send(
+        this.EMAILJS_SERVICE_ID,
+        this.EMAILJS_AUTO_REPLY_TEMPLATE_ID,
+        templateParams,
+        this.EMAILJS_PUBLIC_KEY
+      );
+
+      console.log('✅ Auto-reply sent successfully:', {
+        status: response.status,
+        text: response.text,
+        recipient: contactData.userEmail
+      });
+
+      if (response.status !== 200) {
+        throw new Error(`Auto-reply EmailJS failed with status: ${response.status}, text: ${response.text}`);
+      }
+
+    } catch (error) {
+      const err = error as any;
+      logger.error('Error in sendAutoReplyToUser', 'EmailService', {
+        errorMessage: err.message,
+        errorStatus: err.status,
+        errorText: err.text,
+        recipient: contactData.userEmail
+      }, error as Error);
+      
       throw error;
     }
   }
