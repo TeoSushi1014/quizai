@@ -826,6 +826,31 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
           } catch (error) {
             console.error('Error getting user quizzes:', error);
           }
+        },
+        getContactMessages: async () => {
+          try {
+            const { data, error } = await supabase
+              .from('contact_messages')
+              .select('*')
+              .order('created_at', { ascending: false });
+            
+            if (error) {
+              console.error('Error loading contact messages:', error);
+              return null;
+            }
+            
+            console.log('Contact messages:', data);
+            return data;
+          } catch (error) {
+            console.error('Error in getContactMessages:', error);
+            return null;
+          }
+        },
+        showContactMessages: async () => {
+          const messages = await (window as any).QuizAIDebug.getContactMessages();
+          if (messages) {
+            console.table(messages);
+          }
         }
       };
     }

@@ -7,6 +7,7 @@ import { Quiz } from '../../types';
 import { UserCircleIcon, ChevronRightIcon } from '../../constants';
 import { QuizCard } from './components/QuizCard'; 
 import useShouldReduceMotion from '../../hooks/useShouldReduceMotion';
+import { emailService } from '../../services/emailService';
 
 import MathText from '../../components/MathText';
 
@@ -44,22 +45,36 @@ const heroItemVariantsFactory = (shouldReduceMotion: boolean) => ({
 
 
 const FeedbackSection: React.FC = () => {
-  const { currentUser, setCurrentView } = useAppContext();
+  const { currentUser, setCurrentView, showSuccessNotification, showErrorNotification } = useAppContext();
   const { t } = useTranslation();
   const [feedbackText, setFeedbackText] = useState('');
+  const [isSending, setIsSending] = useState(false);
   const shouldReduceMotion = useShouldReduceMotion();
 
-  const handleSendFeedback = () => {
-    if (!currentUser || !feedbackText.trim()) return;
+  const handleSendFeedback = async () => {
+    if (!currentUser || !feedbackText.trim() || isSending) return;
 
-    const mailToEmail = 'teosushi1014@gmail.com';
-    const subject = encodeURIComponent(t('feedbackMailSubject', { appName: t('appName') }));
-    const body = encodeURIComponent(
-      `${t('feedbackMailBodyUser', { userName: currentUser.name || 'N/A', userEmail: currentUser.email || 'N/A' })}\n\n` +
-      `${t('feedbackMailBodyContentLabel')}\n${feedbackText}`
-    );
-    window.location.href = `mailto:${mailToEmail}?subject=${subject}&body=${body}`;
-    setFeedbackText('');
+    setIsSending(true);
+    
+    try {
+      const success = await emailService.sendContactMessage({
+        userEmail: currentUser.email || '',
+        userName: currentUser.name || 'Unknown User',
+        message: feedbackText.trim(),
+        userId: currentUser.id
+      });
+
+      if (success) {
+        showSuccessNotification(t('feedbackSentSuccess'), 5000);
+        setFeedbackText(''); // Clear the form
+      } else {
+        showErrorNotification(t('feedbackSentError'), 5000);
+      }
+    } catch (error) {
+      showErrorNotification(t('feedbackSentError'), 5000);
+    } finally {
+      setIsSending(false);
+    }
   };
 
   return (
@@ -115,13 +130,13 @@ const FeedbackSection: React.FC = () => {
                 />
                 <Button
                   onClick={handleSendFeedback}
-                  disabled={!feedbackText.trim()}
+                  disabled={!feedbackText.trim() || isSending}
                   fullWidth
                   size="md"
                   variant="secondary"
                   className="py-2.5 sm:py-3 shadow-lg"
                 >
-                  {t('feedbackSendButton')}
+                  {isSending ? t('feedbackSendingButton') : t('feedbackSendButton')}
                 </Button>
               </div>
             ) : (
