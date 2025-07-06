@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { Quiz } from '../../../types';
 import { Button, Card, Tooltip, Modal, Toggle, Input, LoadingSpinner } from '../../../components/ui';
 import MathText from '../../../components/MathText';
-import { EditIcon, DeleteIcon, ShareIcon, XCircleIcon, CheckCircleIcon } from '../../../constants';
+import { EditIcon, DeleteIcon, ShareIcon, XCircleIcon, CheckCircleIcon, HistoryIcon } from '../../../constants';
 import { useTranslation, useAppContext } from '../../../App';
 import { translations } from '../../../i18n';
 import ShareModal from './ShareModal';
@@ -217,6 +217,17 @@ export const QuizCard: React.FC<QuizCardProps> = ({ quiz, onDelete, onEdit, anim
 
             <div className="flex flex-wrap gap-x-2 gap-y-2 w-full sm:w-auto justify-between sm:justify-end items-center">
               <div className="flex items-center gap-x-2">
+                <Tooltip content="Analytics" wrapperClassName="inline-flex">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => navigate(`/quiz-analytics/${quiz.id}`)}
+                    className="!p-2.5 rounded-lg !border-[var(--color-border-interactive)] hover:!border-[var(--color-primary-accent)] min-w-[40px] min-h-[40px]"
+                    aria-label="Analytics"
+                  >
+                    <HistoryIcon className="w-4 h-4" />
+                  </Button>
+                </Tooltip>
                 <Tooltip content={t('edit')} wrapperClassName="inline-flex">
                   <Button
                     size="sm"

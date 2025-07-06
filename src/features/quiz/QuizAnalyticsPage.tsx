@@ -55,9 +55,10 @@ const QuizAnalyticsPage: React.FC = () => {
       const quizStats = await quizResultsService.getQuizStats(quizId);
       setStats(quizStats);
       
-      // Load detailed results
+      // Load detailed results - only for current user
       const quizHistory = await quizResultsService.getQuizHistory({ 
         quizId,
+        userId: currentUser.id, // Filter by current user only
         limit: 50 
       });
       setResults(quizHistory);
@@ -104,7 +105,7 @@ const QuizAnalyticsPage: React.FC = () => {
       <div className="container mx-auto px-4 py-8">
         <Card className="max-w-md mx-auto p-8 text-center">
           <p className="text-red-600 mb-4">{error}</p>
-          <Button onClick={() => navigate('/my-quizzes')}>Back to My Quizzes</Button>
+          <Button onClick={() => navigate('/dashboard')}>Back to Dashboard</Button>
         </Card>
       </div>
     );
@@ -116,15 +117,15 @@ const QuizAnalyticsPage: React.FC = () => {
       <div className="mb-8">
         <Button
           variant="outline"
-          onClick={() => navigate('/my-quizzes')}
+          onClick={() => navigate('/dashboard')}
           leftIcon={<ChevronLeftIcon className="w-4 h-4" />}
           className="mb-4"
         >
-          Back to My Quizzes
+          Back to Dashboard
         </Button>
         
         <h1 className="text-3xl font-bold text-[var(--color-text-primary)] mb-2">
-          Quiz Analytics
+          My Quiz Analytics
         </h1>
         {quiz && (
           <h2 className="text-xl text-[var(--color-text-secondary)] mb-4">

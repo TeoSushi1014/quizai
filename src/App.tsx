@@ -1246,7 +1246,6 @@ const AppLayout: React.FC = () => {
                  <NavLink to="/" end icon={<HomeIcon className="w-4 h-4"/>}>{t('navHome')}</NavLink>
                 <NavLink to="/dashboard" icon={<ChartBarIcon className="w-4 h-4"/>}>{t('navDashboard')}</NavLink>
                 <NavLink to="/create" icon={<PlusCircleIcon className="w-4 h-4"/>}>{t('navCreateQuiz')}</NavLink>
-                {currentUser && <NavLink to="/my-quizzes" icon={<ChartBarIcon className="w-4 h-4"/>}>My Quizzes</NavLink>}
                 {currentUser && <NavLink to="/history" icon={<HistoryIcon className="w-4 h-4"/>}>History</NavLink>}
               </nav>
 

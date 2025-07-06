@@ -36,7 +36,9 @@ export const useQuizFlow = (quizIdParam?: string, onTimeUp?: () => void) => {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
+  const [elapsedTime, setElapsedTime] = useState<number>(0); // Track elapsed time
   const timerRef = useRef<number | null>(null);
+  const elapsedTimerRef = useRef<number | null>(null);
 
   
   const routeAttemptSettingsFromState = (location.state as { attemptSettings?: AttemptSettings } | null)?.attemptSettings;
@@ -95,9 +97,23 @@ export const useQuizFlow = (quizIdParam?: string, onTimeUp?: () => void) => {
     return () => {
       mounted = false;
       if (timerRef.current) clearInterval(timerRef.current);
+      if (elapsedTimerRef.current) clearInterval(elapsedTimerRef.current);
     };
   }, [quizId, quizzes, globalActiveQuiz, navigate, setGlobalActiveQuiz, stableRouteAttemptSettings, localActiveQuiz?.id, attemptSettingsState]); 
 
+  // Start elapsed time tracking when quiz loads
+  useEffect(() => {
+    if (localActiveQuiz && !loading) {
+      // Start elapsed time counter
+      elapsedTimerRef.current = window.setInterval(() => {
+        setElapsedTime(prev => prev + 1);
+      }, 1000);
+      
+      return () => {
+        if (elapsedTimerRef.current) clearInterval(elapsedTimerRef.current);
+      };
+    }
+  }, [localActiveQuiz, loading]);
 
   useEffect(() => {
     if (timeLeft === null) {
@@ -157,6 +173,7 @@ export const useQuizFlow = (quizIdParam?: string, onTimeUp?: () => void) => {
     currentQuestionIndex,
     loading,
     timeLeft,
+    elapsedTime, // Add elapsed time to return
     attemptSettings: attemptSettingsState, 
     goToNextQuestion,
     goToPreviousQuestion,

@@ -43,6 +43,7 @@ const QuizPracticePage: React.FC = () => {
     currentQuestionIndex,
     loading,
     timeLeft,
+    elapsedTime,
     goToNextQuestion,
     goToPreviousQuestion,
     formatTime,
@@ -131,7 +132,7 @@ const QuizPracticePage: React.FC = () => {
       answers: finalUserAnswersArray,
       totalCorrect: correctAnswersCount,
       totalQuestions: localActiveQuiz.questions.length,
-      timeTaken: attemptSettings.timeLimit > 0 ? (attemptSettings.timeLimit * 60) - (timeLeft || 0) : undefined,
+      timeTaken: elapsedTime, // Use elapsed time
       sourceMode: 'practice',
       createdAt: new Date().toISOString(),
     };
@@ -266,13 +267,6 @@ const QuizPracticePage: React.FC = () => {
   }, [triggerFinishPractice]);
 
 
-  // Add helper function to get option label from option value
-  const getOptionLabel = (optionValue: string, options: string[]) => {
-    const index = options.findIndex(option => option === optionValue);
-    if (index === -1) return optionValue;
-    return `${String.fromCharCode(65 + index)}. ${optionValue}`;
-  };
-
   // Define renderQuizContent function
   const renderQuizContent = () => {
     if (!currentQuestion) return null;
@@ -297,9 +291,6 @@ const QuizPracticePage: React.FC = () => {
         {isCurrentSelectionChecked && (
           <PracticeQuizExplanation 
             explanation={currentQuestion.explanation || t('resultsNoExplanation')}
-            isCorrect={isCurrentSelectionCorrectFeedback === true}
-            correctOptionLabel={getOptionLabel(currentQuestion.correctAnswer, currentQuestion.options)}
-            showFeedbackBanner={false}
           />
         )}
       </div>
@@ -349,6 +340,9 @@ const QuizPracticePage: React.FC = () => {
            {t('quizPracticeTitle', { quizTitle: localActiveQuiz.title })}
         </h1>
         <div className="flex justify-between items-center text-xs text-[var(--color-text-secondary)] mb-2">
+          <span className="font-semibold text-[var(--color-text-muted)]">
+            Time: {formatTime(elapsedTime)}
+          </span>
           {timeLeft !== null && <span className={`font-semibold ${timeLeft <= 60 ? 'text-red-400 animate-pulse' : 'text-[var(--color-primary-accent)]'}`}>{t('quizTakingTimeLeft', { time: formatTime(timeLeft) })}</span>}
           {/* Removed LightbulbIcon tooltip */}
         </div>

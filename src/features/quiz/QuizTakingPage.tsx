@@ -18,8 +18,7 @@ const QuizTakingPage: React.FC = () => {
   const [userAnswers, setUserAnswers] = useState<Record<string, string>>({}); 
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);
-  const [showTimesUpModalState, setShowTimesUpModalState] = useState(false);
-  const [startTime] = useState<number>(Date.now()); // Track start time 
+  const [showTimesUpModalState, setShowTimesUpModalState] = useState(false); 
 
   const handleTimeUp = useCallback(() => {
     setShowTimesUpModalState(true);
@@ -31,6 +30,7 @@ const QuizTakingPage: React.FC = () => {
     currentQuestionIndex,
     loading,
     timeLeft,
+    elapsedTime,
     goToNextQuestion,
     goToPreviousQuestion,
     formatTime,
@@ -98,7 +98,7 @@ const QuizTakingPage: React.FC = () => {
       answers: finalUserAnswersArray,
       totalCorrect: correctCount,
       totalQuestions: totalQuestions,
-      timeTaken: Math.round((Date.now() - startTime) / 1000), // Calculate actual time taken in seconds
+      timeTaken: elapsedTime, // Use elapsed time instead of calculated time
       sourceMode: 'take',
       createdAt: new Date().toISOString(),
     };
@@ -188,7 +188,12 @@ const QuizTakingPage: React.FC = () => {
         </h1>
         <div className="flex justify-between items-center text-sm text-[var(--color-text-secondary)] mb-4 sm:mb-5">
           <span>{t('quizTakingQuestionProgress', {current: currentQuestionIndex + 1, total: totalQuestions})}</span>
-          {timeLeft !== null && <span className={`font-semibold ${timeLeft <= 60 ? 'text-red-400 animate-pulse' : 'text-[var(--color-primary-accent)]'}`}>{t('quizTakingTimeLeft', { time: formatTime(timeLeft) })}</span>}
+          <div className="flex gap-4">
+            <span className="font-semibold text-[var(--color-text-muted)]">
+              Time: {formatTime(elapsedTime)}
+            </span>
+            {timeLeft !== null && <span className={`font-semibold ${timeLeft <= 60 ? 'text-red-400 animate-pulse' : 'text-[var(--color-primary-accent)]'}`}>{t('quizTakingTimeLeft', { time: formatTime(timeLeft) })}</span>}
+          </div>
         </div>
         <ProgressBar progress={progressPercent} size="md" />
       </div>
