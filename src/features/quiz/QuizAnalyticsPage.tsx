@@ -40,9 +40,8 @@ const QuizAnalyticsPage: React.FC = () => {
       setLoading(true);
       logger.info('Loading quiz analytics', 'QuizAnalyticsPage', { quizId });
       
-      // Load quiz details - get from user's quizzes
-      const userQuizzes = await supabaseService.getUserQuizzes(currentUser.id);
-      const quizData = userQuizzes.find(q => q.id === quizId);
+      // Load quiz details - get quiz by ID (works for both owned and shared quizzes)
+      const quizData = await supabaseService.getQuizById(quizId);
       
       if (!quizData) {
         setError('Quiz not found or you do not have permission to view it');
@@ -55,10 +54,14 @@ const QuizAnalyticsPage: React.FC = () => {
       const quizStats = await quizResultsService.getQuizStats(quizId);
       setStats(quizStats);
       
-      // Load detailed results - only for current user
+      // Load detailed results
+      // If this is the user's own quiz, show all attempts from everyone
+      // If this is someone else's quiz, show only current user's attempts
+      const isOwner = quizData.userId === currentUser.id;
+      
       const quizHistory = await quizResultsService.getQuizHistory({ 
         quizId,
-        userId: currentUser.id, // Filter by current user only
+        userId: isOwner ? undefined : currentUser.id, // Show all if owner, only self if not owner
         limit: 50 
       });
       setResults(quizHistory);
@@ -125,12 +128,20 @@ const QuizAnalyticsPage: React.FC = () => {
         </Button>
         
         <h1 className="text-3xl font-bold text-[var(--color-text-primary)] mb-2">
-          My Quiz Analytics
+          Quiz Analytics
         </h1>
         {quiz && (
-          <h2 className="text-xl text-[var(--color-text-secondary)] mb-4">
-            {quiz.title}
-          </h2>
+          <div>
+            <h2 className="text-xl text-[var(--color-text-secondary)] mb-2">
+              {quiz.title}
+            </h2>
+            <p className="text-sm text-[var(--color-text-muted)]">
+              {quiz.userId === currentUser?.id ? 
+                'Showing all attempts from everyone who took this quiz' : 
+                'Showing your attempts only'
+              }
+            </p>
+          </div>
         )}
       </div>
 

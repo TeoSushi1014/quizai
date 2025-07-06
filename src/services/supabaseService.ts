@@ -321,6 +321,51 @@ export class SupabaseService {
     }
   }
 
+  async getQuizById(quizId: string): Promise<Quiz | null> {
+    try {
+      // Use the ensureAuthenticated helper to verify session
+      const { session } = await this.ensureAuthenticated();
+      
+      logger.info('SupabaseService: Getting quiz by ID with authenticated session', 'SupabaseService', { 
+        sessionUserId: session.user.id,
+        quizId 
+      });
+
+      // First try to get from user's own quizzes (direct access with RLS)
+      const { data, error } = await supabase
+        .from('quizzes')
+        .select('*')
+        .eq('id', quizId)
+        .eq('user_id', session.user.id) // Only get if user owns it
+        .maybeSingle()
+
+      if (!error && data) {
+        logger.info('Quiz found as user owned quiz', 'SupabaseService', { quizId });
+        return this.mapDatabaseQuizToQuiz(data);
+      }
+
+      // If not found in user's quizzes, try to get as public shared quiz
+      logger.info('Quiz not found in user quizzes, trying public shared quiz', 'SupabaseService', { quizId });
+      const publicQuiz = await this.getPublicQuizById(quizId);
+      
+      if (publicQuiz) {
+        logger.info('Quiz found as public shared quiz', 'SupabaseService', { quizId });
+        return publicQuiz;
+      }
+      
+      // If still not found, log the original error from user query for debugging
+      if (error) {
+        this.handleDatabaseError(error, 'getQuizById', { quizId, sessionUserId: session?.user?.id || 'no-session' });
+      }
+      
+      logger.info('Quiz not found', 'SupabaseService', { quizId });
+      return null;
+    } catch (error) {
+      logger.error('Failed to get quiz by ID', 'SupabaseService', { quizId }, error as Error)
+      return null;
+    }
+  }
+
   // Generate a unique quiz ID that doesn't exist in the database
   async generateUniqueQuizId(): Promise<string> {
     let attempts = 0;
