@@ -268,7 +268,10 @@ const ResultsPage: React.FC = () => {
   }
 
   if (currentDisplayQuiz.id !== quizResult.quizId) {
-   console.error("ResultsPage: Mismatch between currentDisplayQuiz.id and quizResult.quizId. This indicates a critical state inconsistency.");
+    logger.error("ResultsPage: Mismatch between currentDisplayQuiz.id and quizResult.quizId", "ResultsPage", {
+      displayQuizId: currentDisplayQuiz.id,
+      resultQuizId: quizResult.quizId
+    });
     return (
      <motion.div 
         initial={shouldReduceMotion ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}

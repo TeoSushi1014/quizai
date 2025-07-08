@@ -55,29 +55,20 @@ export class SupabaseService {
 
   async createUser(profile: Partial<UserProfile>): Promise<UserProfile | null> {
     try {
-      logger.info('SupabaseService: Attempting to create user', 'SupabaseService', { 
-        userId: profile.id,
-        email: profile.email,
-        hasName: !!profile.name,
-        hasImageUrl: !!profile.imageUrl
-      })
-
-      // Verify we have an authenticated session before proceeding
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session?.user) {
-        logger.error('SupabaseService: No authenticated session found for user creation', 'SupabaseService', { 
+        logger.error('No authenticated session found for user creation', 'SupabaseService', { 
           requestedUserId: profile.id,
           email: profile.email 
         });
         throw new Error('Authentication required: No active Supabase session for user creation');
       }
 
-      // Use the authenticated user's ID from the session
       const authenticatedUserId = session.user.id;
       
       const userInsertData = {
-        id: authenticatedUserId, // Use session user ID to satisfy RLS policies
+        id: authenticatedUserId,
         email: profile.email!,
         name: profile.name,
         bio: profile.bio,
@@ -87,8 +78,6 @@ export class SupabaseService {
         average_score: profile.averageScore
       }
 
-      logger.info('SupabaseService: Insert data prepared', 'SupabaseService', { userInsertData })
-
       const { data, error } = await supabase
         .from('users')
         .insert([userInsertData])
@@ -96,7 +85,7 @@ export class SupabaseService {
         .single()
 
       if (error) {
-        logger.error('SupabaseService: Insert error details', 'SupabaseService', { 
+        logger.error('Insert error details', 'SupabaseService', { 
           error: error,
           code: error.code,
           message: error.message,
@@ -104,9 +93,8 @@ export class SupabaseService {
           hint: error.hint
         })
         
-        // Handle RLS policy violations - try to find existing user instead
         if (error.code === '42501') {
-          logger.warn('SupabaseService: RLS policy violation, attempting to find existing user by email', 'SupabaseService', { email: profile.email });
+          logger.warn('RLS policy violation, attempting to find existing user by email', 'SupabaseService', { email: profile.email });
           
           try {
             const { data: existingData, error: lookupError } = await supabase
@@ -116,19 +104,16 @@ export class SupabaseService {
               .single()
             
             if (!lookupError && existingData) {
-              logger.info('SupabaseService: Found existing user after RLS violation', 'SupabaseService', { userId: existingData.id });
               return this.mapDatabaseUserToProfile(existingData);
             }
           } catch (lookupError) {
-            logger.warn('SupabaseService: Could not lookup existing user after RLS violation', 'SupabaseService', {}, lookupError as Error);
+            logger.warn('Could not lookup existing user after RLS violation', 'SupabaseService', {}, lookupError as Error);
           }
         }
         
         if (error.code === '23505' && error.message.includes('users_email_key')) {
-          logger.info('SupabaseService: User with email already exists, attempting to find existing user', 'SupabaseService', { email: profile.email })
           const existingUser = await this.getUserByEmail(profile.email!)
           if (existingUser) {
-            logger.info('SupabaseService: Found existing user by email', 'SupabaseService', { userId: existingUser.id })
             return existingUser
           }
         }
@@ -136,7 +121,6 @@ export class SupabaseService {
         throw error
       }
       
-      logger.info('User created in Supabase successfully', 'SupabaseService', { userId: data.id, insertedData: data })
       return this.mapDatabaseUserToProfile(data)
     } catch (error) {
       logger.error('Failed to create user - full error', 'SupabaseService', { 
@@ -151,11 +135,10 @@ export class SupabaseService {
 
   async getUserById(id: string): Promise<UserProfile | null> {
     try {
-      // Check if we have a session for RLS compliance
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session?.user) {
-        logger.warn('SupabaseService: No authenticated session for getUserById, this may fail due to RLS', 'SupabaseService', { id });
+        logger.warn('No authenticated session for getUserById, this may fail due to RLS', 'SupabaseService', { id });
       }
 
       const { data, error } = await supabase
@@ -182,35 +165,28 @@ export class SupabaseService {
 
   async getUserByEmail(email: string): Promise<UserProfile | null> {
     try {
-      // Check if we have a session for RLS compliance
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session?.user) {
-        logger.warn('SupabaseService: No authenticated session for getUserByEmail, this may fail due to RLS', 'SupabaseService', { email });
+        logger.warn('No authenticated session for getUserByEmail, this may fail due to RLS', 'SupabaseService', { email });
       }
 
       const { data, error } = await supabase
         .from('users')
         .select('*')
         .eq('email', email)
-        .maybeSingle() // Use maybeSingle to avoid errors when no rows found
+        .maybeSingle()
 
       if (error) {
         if (error.code === 'PGRST116') {
-          logger.info('SupabaseService: No user found with email', 'SupabaseService', { email });
-          return null
+          return null;
         }
         
         this.handleDatabaseError(error, 'getUserByEmail', { email });
         throw error
       }
       
-      if (!data) {
-        logger.info('SupabaseService: No user found with email', 'SupabaseService', { email });
-        return null;
-      }
-      
-      return this.mapDatabaseUserToProfile(data)
+      return data ? this.mapDatabaseUserToProfile(data) : null
     } catch (error) {
       logger.error('Failed to get user by email', 'SupabaseService', { email }, error as Error)
       return null
@@ -246,8 +222,6 @@ export class SupabaseService {
       }
 
       if (!existingUser) {
-        logger.warn('User not found for update, attempting to create user instead', 'SupabaseService', { userId: id });
-        
         // If user doesn't exist, try to create it with available data
         const userProfile: Partial<UserProfile> = {
           id: id,
@@ -259,10 +233,9 @@ export class SupabaseService {
           const { data: { user: authUser } } = await supabase.auth.getUser();
           if (authUser && authUser.id === id) {
             userProfile.email = authUser.email;
-            logger.info('Using auth user email for user creation', 'SupabaseService', { userId: id, email: authUser.email });
           }
         } catch (authError) {
-          logger.warn('Could not get auth user data', 'SupabaseService', { userId: id });
+          logger.error('Could not get auth user data', 'SupabaseService', { userId: id });
         }
         
         if (!userProfile.email) {
@@ -272,11 +245,6 @@ export class SupabaseService {
         
         return await this.createUser(userProfile);
       }
-
-      logger.info('User exists, proceeding with update', 'SupabaseService', { 
-        userId: id, 
-        updateData 
-      });
 
       const { data, error } = await supabase
         .from('users')
@@ -296,11 +264,6 @@ export class SupabaseService {
         });
         throw error;
       }
-      
-      logger.info('User updated in Supabase successfully', 'SupabaseService', { 
-        userId: id,
-        updatedData: data 
-      });
       return this.mapDatabaseUserToProfile(data)
     } catch (error) {
       logger.error('Failed to update user', 'SupabaseService', { id, updates }, error as Error)
@@ -313,11 +276,6 @@ export class SupabaseService {
       // Use the ensureAuthenticated helper to verify session
       const { session } = await this.ensureAuthenticated();
       
-      logger.info('SupabaseService: Getting user quizzes with authenticated session', 'SupabaseService', { 
-        sessionUserId: session.user.id,
-        requestedUserId: userId 
-      });
-
       const { data, error } = await supabase
         .from('quizzes')
         .select('*')
@@ -622,7 +580,7 @@ export class SupabaseService {
         score: result.score,
         total_questions: result.totalQuestions,
         answers: result.answers,
-        time_taken: result.timeTaken || null
+        time_taken: typeof result.timeTaken === 'number' ? Math.round(result.timeTaken) : null
       }
 
       const { error } = await supabase
@@ -708,53 +666,26 @@ export class SupabaseService {
   // Diagnostic function to check database state and permissions
   async diagnoseDatabaseState(shareId: string): Promise<any> {
     try {
-      logger.info('Starting comprehensive database state check', 'SupabaseService', { shareId });
-      
       // Check 1: Basic connection
       const { error: connectionError } = await supabase
         .from('shared_quizzes')
         .select('count')
         .limit(0);
-      
-      logger.info('Connection test result', 'SupabaseService', { 
-        hasError: !!connectionError,
-        error: connectionError?.message,
-        code: connectionError?.code
-      });
 
       // Check 2: Auth state
       const { data: { session } } = await supabase.auth.getSession();
-      logger.info('Auth session state', 'SupabaseService', { 
-        hasSession: !!session,
-        userId: session?.user?.id,
-        isAnonymous: !session
-      });
 
       // Check 3: shared_quizzes table access
       const { data: sharedQuizzesData, error: sharedQuizzesError } = await supabase
         .from('shared_quizzes')
         .select('id, quiz_id, is_public')
         .limit(5);
-      
-      logger.info('shared_quizzes access test', 'SupabaseService', { 
-        hasError: !!sharedQuizzesError,
-        error: sharedQuizzesError?.message,
-        code: sharedQuizzesError?.code,
-        dataCount: sharedQuizzesData?.length || 0
-      });
 
       // Check 4: quizzes table access
       const { data: quizzesData, error: quizzesError } = await supabase
         .from('quizzes')
         .select('id, title')
         .limit(5);
-      
-      logger.info('quizzes access test', 'SupabaseService', { 
-        hasError: !!quizzesError,
-        error: quizzesError?.message,
-        code: quizzesError?.code,
-        dataCount: quizzesData?.length || 0
-      });
 
       // Check 5: JOIN query test
       const { data: joinData, error: joinError } = await supabase
@@ -963,27 +894,12 @@ export class SupabaseService {
         .eq('id', quizId)
         .limit(1);
       
-      logger.info('Quiz table check result', 'SupabaseService', { 
-        quizId, 
-        found: !!quizData && quizData.length > 0,
-        error: quizError?.message,
-        data: quizData 
-      });
-      
       // Check if quiz exists in shared_quizzes table
       const { data: sharedData, error: sharedError } = await supabase
         .from('shared_quizzes')
         .select('id, quiz_id, share_token, is_public, expires_at, created_at')
         .eq('quiz_id', quizId)
         .limit(5); // Get up to 5 entries
-      
-      logger.info('Shared quiz table check result', 'SupabaseService', { 
-        quizId, 
-        found: !!sharedData && sharedData.length > 0,
-        count: sharedData?.length || 0,
-        error: sharedError?.message,
-        data: sharedData 
-      });
       
       // Try the JOIN query
       const { data: joinData, error: joinError } = await supabase
@@ -995,13 +911,6 @@ export class SupabaseService {
         .eq('quiz_id', quizId)
         .eq('is_public', true)
         .limit(1);
-      
-      logger.info('JOIN query check result', 'SupabaseService', { 
-        quizId, 
-        found: !!joinData && joinData.length > 0,
-        error: joinError?.message,
-        data: joinData 
-      });
       
       return {
         quizExists: !!quizData && quizData.length > 0,

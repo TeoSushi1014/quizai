@@ -44,19 +44,9 @@ export const shareQuizViaAPI = async (quiz: Quiz, currentUser?: UserProfile | nu
   if (supabaseUser && !sessionError) {
     // User has active Supabase session, use Supabase ID
     effectiveUserId = supabaseUser.id;
-    logger.info('Using active Supabase session for sharing', 'quizSharingService', { 
-      quizId: quiz.id, 
-      supabaseUserId: effectiveUserId,
-      googleUserId: currentUser.id
-    });
   } else if (currentUser.supabaseId) {
     // User has Supabase ID but no active session, try using it
     effectiveUserId = currentUser.supabaseId;
-    logger.info('Using stored Supabase ID for sharing', 'quizSharingService', { 
-      quizId: quiz.id, 
-      supabaseUserId: effectiveUserId,
-      googleUserId: currentUser.id
-    });
   } else {
     // User only has Google authentication - provide helpful error message
     logger.error('User authentication incomplete - missing Supabase session', 'quizSharingService', { 
@@ -68,11 +58,6 @@ export const shareQuizViaAPI = async (quiz: Quiz, currentUser?: UserProfile | nu
     });
     throw new Error('User must be properly authenticated with Supabase to share quizzes');
   }
-
-  logger.info('Sharing quiz via Supabase', 'quizSharingService', { 
-    quizId: quiz.id, 
-    userId: effectiveUserId 
-  });
 
   // Ensure user exists in Supabase
   let userExists = await supabaseService.getUserById(effectiveUserId);

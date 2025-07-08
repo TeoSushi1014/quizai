@@ -14,33 +14,18 @@ export function validateAndCleanQuizzes(quizzes: Quiz[]): Quiz[] {
       validQuizzes.push(quiz);
     } else {
       invalidQuizzes.push(quiz);
-      // Check if it's a legacy quiz ID format
       if (quiz.id.startsWith('new-quiz-')) {
-        logger.warn('Found legacy quiz with old ID format, removing from collection', 'QuizValidation', { 
+        logger.warn('Found legacy quiz with old ID format', 'QuizValidation', { 
           quizId: quiz.id, 
-          title: quiz.title,
-          type: 'legacy'
+          title: quiz.title
         });
       } else {
-        logger.warn('Found quiz with invalid UUID, removing from collection', 'QuizValidation', { 
+        logger.warn('Found quiz with invalid UUID', 'QuizValidation', { 
           quizId: quiz.id, 
-          title: quiz.title,
-          type: 'invalid'
+          title: quiz.title
         });
       }
     }
-  }
-
-  if (invalidQuizzes.length > 0) {
-    const legacyCount = invalidQuizzes.filter(q => q.id.startsWith('new-quiz-')).length;
-    const otherInvalidCount = invalidQuizzes.length - legacyCount;
-    
-    logger.info('Cleaned up invalid quizzes from collection', 'QuizValidation', { 
-      totalQuizzes: quizzes.length,
-      validQuizzes: validQuizzes.length,
-      legacyQuizzes: legacyCount,
-      otherInvalidQuizzes: otherInvalidCount
-    });
   }
 
   return validQuizzes;

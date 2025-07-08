@@ -13,14 +13,6 @@ export class AuthService {
 
   async signInWithGoogle(googleUser: any): Promise<UserProfile | null> {
     try {
-      logger.info('Starting Google sign in process', 'AuthService', { 
-        hasEmail: !!googleUser.email,
-        hasName: !!googleUser.name,
-        hasId: !!googleUser.sub || !!googleUser.id,
-        hasAccessToken: !!googleUser.access_token,
-        isProduction: this.isProduction()
-      });
-
       if (!googleUser.email) {
         logger.error('No email provided by Google OAuth', 'AuthService');
         throw new Error('No email provided by Google OAuth');
@@ -42,12 +34,6 @@ export class AuthService {
         throw new Error('Full authentication required. Please try again or contact support.');
       }
 
-      logger.info('Authentication completed successfully', 'AuthService', {
-        userId: result.id,
-        email: result.email,
-        supabaseId: result.supabaseId
-      });
-
       return result;
 
     } catch (error) {
@@ -59,7 +45,6 @@ export class AuthService {
   async signOut(): Promise<boolean> {
     try {
       await supabase.auth.signOut();
-      logger.info('User signed out successfully', 'AuthService');
       return true;
     } catch (error) {
       logger.error('Failed to sign out', 'AuthService', {}, error as Error);
@@ -94,7 +79,7 @@ export class AuthService {
         });
       }
     } catch (connectionError) {
-      logger.warn('Supabase connection error during health check', 'AuthService', {}, connectionError as Error);
+      logger.error('Supabase connection error during health check', 'AuthService', {}, connectionError as Error);
     }
   }
 
@@ -109,8 +94,6 @@ export class AuthService {
     error?: string 
   }> {
     try {
-      logger.info('Testing Supabase connectivity and authentication', 'AuthService', { email });
-
       const { data: { session } } = await supabase.auth.getSession();
       const hasSession = !!session?.user;
       
@@ -154,7 +137,7 @@ export class AuthService {
         logger.error('Quizzes table read test error', 'AuthService', {}, error as Error);
       }
 
-      const result = {
+      return {
         canConnect,
         hasSession,
         canReadUsers,
@@ -163,9 +146,6 @@ export class AuthService {
         userDetails,
         sessionDetails
       };
-
-      logger.info('Supabase connectivity test completed', 'AuthService', result);
-      return result;
 
     } catch (error) {
       const errorMsg = (error as Error).message;

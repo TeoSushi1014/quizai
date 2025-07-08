@@ -68,17 +68,8 @@ class Logger {
       };
     }
 
-    if (this.isProduction) {
-      // In production, only log warnings and errors to reduce console spam
-      if (level === 'warn' || level === 'error') {
-        this.consoleLog(entry);
-      }
-      // Store critical logs for debugging
-      if (level === 'error') {
-        this.storeRecentLog(entry);
-      }
-    } else {
-      // In development, log everything to console
+    // Only log errors and critical warnings
+    if (level === 'error' || (level === 'warn' && entry.message.toLowerCase().includes('critical'))) {
       this.consoleLog(entry);
       this.storeRecentLog(entry);
     }

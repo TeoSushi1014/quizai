@@ -4,6 +4,7 @@ import * as dashboardTranslations from './i18n/modules/dashboard';
 import * as quizCreationTranslations from './i18n/modules/quizCreation';
 import * as quizTakingTranslations from './i18n/modules/quizTaking';
 import * as settingsTranslations from './i18n/modules/settings';
+import { logger } from './services/logService';
 
 export const translations = {
   en: {
@@ -30,7 +31,11 @@ export const getTranslator = (lang: Language) => {
     let text = translationSet[key] || translations.en[key];
 
     if (text === undefined) {
-      console.warn(`Translation key "${key}" not found for language "${lang}" or fallback "en".`);
+      logger.warn(`Translation key not found`, 'i18n', {
+        key,
+        language: lang,
+        fallbackLanguage: 'en'
+      });
       return key;
     }
 

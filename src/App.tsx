@@ -21,6 +21,7 @@ import './styles/markdown.css';
 import 'github-markdown-css/github-markdown.css';
 import './styles/markdown-custom.css';
 import './styles/markdown-github.css';
+import { ThemeProvider } from './contexts/ThemeContext';
 
 import HomePage from './features/quiz/HomePage';
 import DashboardPage from './features/quiz/DashboardPage';
@@ -32,7 +33,7 @@ const SignInPage = lazy(() => import('./features/auth/SignInPage'));
 const QuizPracticePage = lazy(() => import('./features/quiz/QuizPracticePage'));
 const SyncSettingsPage = lazy(() => import('./features/settings/SyncSettingsPage'));
 const ProfilePage = lazy(() => import('./features/user/ProfilePage'));
-const SharedQuizPage = lazy(() => import('./features/quiz/SharedQuizPage')); 
+const SharedQuizPage = lazy(() => import(/* webpackChunkName: "shared-quiz" */ './features/quiz/SharedQuizPage')); 
 const QuizHistoryPage = lazy(() => import('./features/quiz/QuizHistoryPage'));
 const MyQuizzesPage = lazy(() => import('./features/quiz/MyQuizzesPage'));
 const QuizAnalyticsPage = lazy(() => import('./features/quiz/QuizAnalyticsPage')); 
@@ -65,7 +66,6 @@ const LOCALSTORAGE_AUTH_EXPIRY_KEY = 'quizai_accessTokenExpiry_v2';
 
 
 const mergeQuizzes = (localQuizzes: Quiz[], supabaseQuizzes: Quiz[]): Quiz[] => {
-  logger.info('Merging local and Supabase quizzes', 'MergeUtils', { localCount: localQuizzes.length, supabaseCount: supabaseQuizzes.length });
   const quizMap = new Map<string, Quiz>();
 
   [...localQuizzes, ...supabaseQuizzes].forEach(quiz => {
@@ -80,9 +80,7 @@ const mergeQuizzes = (localQuizzes: Quiz[], supabaseQuizzes: Quiz[]): Quiz[] => 
       }
     }
   });
-  const merged = Array.from(quizMap.values());
-  logger.info('Merge complete', 'MergeUtils', { mergedCount: merged.length });
-  return merged;
+  return Array.from(quizMap.values());
 };
 
 
@@ -119,7 +117,6 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
         setCurrentUserInternal(userWithDefaults);
         localStorage.setItem(LOCALSTORAGE_USER_KEY, JSON.stringify(userWithDefaults));
         
-        // Only store access tokens for Google-only users (for backward compatibility)
         if (tokenInfo && !user.supabaseId) {
           localStorage.setItem(LOCALSTORAGE_AUTH_TOKEN_KEY, tokenInfo.token);
           const expiryTime = new Date().getTime() + (tokenInfo.expires_in * 1000); 
@@ -132,25 +129,17 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
              localStorage.setItem(LOCALSTORAGE_AUTH_EXPIRY_KEY, expiryTime.toString());
           }
         } else if (user.supabaseId) {
-          // For Supabase users, don't store access tokens - rely on Supabase session
           localStorage.removeItem(LOCALSTORAGE_AUTH_TOKEN_KEY);
           localStorage.removeItem(LOCALSTORAGE_AUTH_EXPIRY_KEY);
         }
         
         logger.setUserId(userWithDefaults.id);
-        logger.info('User logged in or updated', 'AuthContext', { 
-          userId: userWithDefaults.id, 
-          email: userWithDefaults.email, 
-          hasPhotoUrl: !!userWithDefaults.imageUrl,
-          isSupabaseUser: !!userWithDefaults.supabaseId
-        });
     } else {
         setCurrentUserInternal(null);
         localStorage.removeItem(LOCALSTORAGE_USER_KEY);
         localStorage.removeItem(LOCALSTORAGE_AUTH_TOKEN_KEY);
         localStorage.removeItem(LOCALSTORAGE_AUTH_EXPIRY_KEY);
         logger.setUserId(null);
-        logger.info('User logged out', 'AuthContext');
     }
   }, []);
 
@@ -165,14 +154,11 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
   useEffect(() => {
     const initializeApp = async () => {
         if (initializationStarted) {
-            logger.info('Initialization already started, skipping duplicate call', 'AppInit');
             return;
         }
         
         setInitializationStarted(true);
-        logger.info('Starting app initialization', 'AppInit');
         
-        // Add timeout to prevent infinite hanging
         const initTimeout = setTimeout(() => {
           logger.error('App initialization timed out after 10 seconds', 'AppInit');
           setAppInitialized(true);
@@ -185,126 +171,58 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
               setLanguageState(savedLanguage);
           }
 
-          // Check for existing Supabase session first
           try {
             const { data: { session } } = await supabase.auth.getSession();
             
             if (session?.user) {
-              logger.info('Found existing Supabase session', 'AppInit', { 
-                userId: session.user.id,
-                email: session.user.email 
-              });
-              
-              // Try to get user profile from database
               try {
                 const userProfile = await supabaseService.getUserByEmail(session.user.email!);
-                
                 if (userProfile) {
-                  const restoredUser: UserProfile = {
+                  setCurrentUser({
                     ...userProfile,
-                    supabaseId: session.user.id,
-                    // Don't store access tokens in localStorage for security
-                  };
-                  setCurrentUser(restoredUser);
-                  logger.info('User session restored from Supabase', 'AppInit', { 
-                    userId: restoredUser.id,
-                    email: restoredUser.email 
-                  });
-                } else {
-                  // User exists in Supabase auth but not in our database
-                  const basicUser: UserProfile = {
-                    id: session.user.id,
-                    supabaseId: session.user.id,
-                    email: session.user.email!,
-                    name: session.user.user_metadata?.name || session.user.email!,
-                    imageUrl: session.user.user_metadata?.picture || null,
-                  };
-                  setCurrentUser(basicUser);
-                  logger.info('User session restored with basic profile', 'AppInit', { 
-                    userId: basicUser.id 
+                    supabaseId: session.user.id
                   });
                 }
               } catch (profileError) {
-                logger.error('Error loading user profile from database', 'AppInit', {}, profileError as Error);
-                // Clear invalid session
-                await supabase.auth.signOut();
-                setCurrentUser(null);
-              }
-            } else {
-              // No Supabase session, try Google token fallback (for backward compatibility)
-              const savedUserJson = localStorage.getItem(LOCALSTORAGE_USER_KEY);
-              const savedToken = localStorage.getItem(LOCALSTORAGE_AUTH_TOKEN_KEY);
-
-              if (savedToken && isTokenStillValid() && savedUserJson) {
-                logger.info('Attempting Google token validation for legacy users', 'AppInit');
-                
-                if (authInProgressRef.current) {
-                  logger.info('Auth already in progress, skipping Google token validation', 'AppInit');
-                  return;
-                }
-                
-                authInProgressRef.current = true;
-                try {
-                  const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-                    headers: { Authorization: `Bearer ${savedToken}` },
-                  });
-                  
-                  if (userInfoResponse.ok) {
-                    const userInfo = await userInfoResponse.json();
-                    const localUser = JSON.parse(savedUserJson) as UserProfile;
-                    
-                    const fallbackUser: UserProfile = {
-                      ...localUser,
-                      id: userInfo.sub,
-                      email: userInfo.email,
-                      name: userInfo.name,
-                      imageUrl: userInfo.picture?.replace(/=s\d+-c$/, '=s256-c') || userInfo.picture,
-                      accessToken: savedToken,
-                    };
-                    
-                    setCurrentUser(fallbackUser);
-                    logger.info('Legacy Google session restored', 'AppInit', { 
-                      userId: fallbackUser.id 
-                    });
-                  } else {
-                    logger.warn('Google token validation failed', 'AppInit');
-                    setCurrentUser(null);
-                  }
-                } catch (e) {
-                  logger.error("Error validating Google token", 'AppInit', undefined, e as Error);
-                  setCurrentUser(null);
-                } finally {
-                  authInProgressRef.current = false;
-                }
-              } else {
-                setCurrentUser(null);
+                logger.error('Failed to get user profile from Supabase', 'AppInit', {}, profileError as Error);
               }
             }
-          } catch (sessionError) {
-            logger.error('Error checking Supabase session', 'AppInit', {}, sessionError as Error);
-            setCurrentUser(null);
+          } catch (supabaseError) {
+            logger.error('Failed to check Supabase session', 'AppInit', {}, supabaseError as Error);
+          }
+
+          const savedUserJson = localStorage.getItem(LOCALSTORAGE_USER_KEY);
+          if (savedUserJson) {
+            try {
+              const savedUser = JSON.parse(savedUserJson) as UserProfile;
+              if (!currentUser && savedUser.accessToken && isTokenStillValid()) {
+                setCurrentUser(savedUser);
+              }
+            } catch (e) {
+              logger.error('Failed to parse saved user data', 'AppInit', {}, e as Error);
+              localStorage.removeItem(LOCALSTORAGE_USER_KEY);
+            }
           }
 
           const savedResultJson = localStorage.getItem(LOCALSTORAGE_QUIZ_RESULT_KEY);
           if (savedResultJson) {
-              try { setQuizResult(JSON.parse(savedResultJson) as QuizResult); }
-              catch (e) {
-                  logger.error("Failed to parse quiz result from localStorage", 'AppInit', undefined, e as Error);
-                  localStorage.removeItem(LOCALSTORAGE_QUIZ_RESULT_KEY);
-              }
+            try { 
+              setQuizResult(JSON.parse(savedResultJson) as QuizResult); 
+            } catch (e) {
+              logger.error('Failed to parse quiz result from localStorage', 'AppInit', undefined, e as Error);
+              localStorage.removeItem(LOCALSTORAGE_QUIZ_RESULT_KEY);
+            }
           }
-
         } catch (error) {
           logger.error('Error during app initialization', 'AppInit', {}, error as Error);
         } finally {
           clearTimeout(initTimeout);
           setAppInitialized(true);
-          logger.info('App initialization completed', 'AppInit');
         }
     };
     
     initializeApp();
-  }, []); // Remove dependencies to prevent re-runs 
+  }, []);
 
   // Emergency initialization timeout - force initialize after 15 seconds
   useEffect(() => {
@@ -328,15 +246,12 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
       try {
         const localQuizzes = await quizStorage.getAllQuizzes();
         setAllQuizzes(localQuizzes);
-        logger.info('Local quizzes loaded', 'QuizLoading', { count: localQuizzes.length });
         
         if (currentUser?.id) {
-          // Check if user has a Supabase UUID (vs Google ID)
           const isSupabaseUser = currentUser.id.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
           
           if (isSupabaseUser) {
             try {
-              logger.info('Attempting to sync with Supabase', 'QuizLoading', { userId: currentUser.id });
               const supabaseQuizzes = await supabaseService.getUserQuizzes(currentUser.id);
               const mergedQuizzes = mergeQuizzes(localQuizzes, supabaseQuizzes);
               
@@ -344,28 +259,16 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
                   JSON.stringify(mergedQuizzes) !== JSON.stringify(localQuizzes)) {
                 setAllQuizzes(mergedQuizzes);
                 await quizStorage.saveQuizzes(mergedQuizzes);
-                logger.info('Quizzes synced with Supabase', 'QuizLoading', { 
-                  localCount: localQuizzes.length, 
-                  supabaseCount: supabaseQuizzes.length,
-                  mergedCount: mergedQuizzes.length 
-                });
-              } else {
-                logger.info('Local and Supabase quizzes are already in sync', 'QuizLoading');
               }
             } catch (error) {
               logger.warn('Failed to sync with Supabase, using local quizzes only', 'QuizLoading', {}, error as Error);
-              // Keep using local quizzes if Supabase fails
             }
-          } else {
-            logger.info('User has Google ID, using local storage only', 'QuizLoading', { userId: currentUser.id });
           }
         }
-        
-        setIsLoading(false);
       } catch (error) {
-        logger.error('Error loading initial quizzes', 'QuizLoading', undefined, error as Error);
+        logger.error('Error loading initial quizzes', 'QuizLoading', {}, error as Error);
+      } finally {
         setIsLoading(false);
-        setAllQuizzes([]);
       }
     };
 
@@ -379,19 +282,10 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
 
     // Set up Supabase auth state listener for ongoing session changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      logger.info('Supabase auth state changed', 'AuthListener', { 
-        event, 
-        hasSession: !!session,
-        userId: session?.user?.id,
-        appInitialized 
-      });
-
       // Only handle explicit auth events, not initial session
       if (event === 'SIGNED_OUT') {
-        logger.info('User signed out via auth state change', 'AuthListener');
         setCurrentUser(null);
       } else if (event === 'TOKEN_REFRESHED' && session) {
-        logger.info('Token refreshed, session is still valid', 'AuthListener');
         // Session is automatically maintained, no need to update user
       }
       // Ignore SIGNED_IN events during initialization to prevent conflicts
@@ -701,7 +595,6 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
         };
         
         setCurrentUser(fallbackUser, tokenInfo);
-        logger.info('User logged in with fallback Google profile', 'AuthContext', { userId: fallbackUser.id })
         return fallbackUser
       }
     } catch (error) {
@@ -710,8 +603,7 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     }
   }, [setCurrentUser]); 
 
-  const handleLogout = useCallback(async () => { 
-    logger.info('Logout initiated', 'AuthContext');
+  const handleLogout = useCallback(async () => {
     
     // Sign out from Google
     googleLogout();
@@ -1354,7 +1246,6 @@ const App: React.FC = () => {
         const clientId = await secureConfig.getApiKey('GOOGLE_CLIENT_ID');
         if (clientId) {
           setGoogleClientId(clientId);
-          logger.info('Google Client ID loaded from database', 'App');
         } else {
           setConfigError('Missing Google Client ID configuration');
           logger.error('No Google Client ID found in database', 'App');
@@ -1418,13 +1309,15 @@ const App: React.FC = () => {
   }
 
   return (
-    <GoogleOAuthProvider clientId={googleClientId}>
-      <HashRouter>
-        <AppProvider>
-          <AppContent />
-        </AppProvider>
-      </HashRouter>
-    </GoogleOAuthProvider>
+    <ThemeProvider>
+      <GoogleOAuthProvider clientId={googleClientId}>
+        <HashRouter>
+          <AppProvider>
+            <AppContent />
+          </AppProvider>
+        </HashRouter>
+      </GoogleOAuthProvider>
+    </ThemeProvider>
   );
 };
 App.displayName = "App";

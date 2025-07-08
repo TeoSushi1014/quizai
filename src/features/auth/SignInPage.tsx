@@ -27,11 +27,6 @@ const SignInPage: React.FC = () => {
 
   // Handle credential-based authentication (provides ID token)
   const handleCredentialResponse = async (credentialResponse: GoogleCredentialResponse) => {
-    logger.info("🎉 Google Login successful - ID token received!", 'SignInPage', { 
-      hasCredential: !!credentialResponse.credential,
-      credentialLength: credentialResponse.credential?.length || 0
-    });
-    
     if (credentialResponse.credential) {
       try {
         // Decode the JWT to get user info
@@ -42,10 +37,6 @@ const SignInPage: React.FC = () => {
         }).join(''));
         
         const userInfo = JSON.parse(jsonPayload);
-        logger.info("ID token decoded successfully", 'SignInPage', { 
-          userId: userInfo.sub,
-          email: userInfo.email 
-        });
 
         const userProfile: UserProfile = {
           id: userInfo.sub,
@@ -55,15 +46,9 @@ const SignInPage: React.FC = () => {
           idToken: credentialResponse.credential, // This is the ID token we need for Supabase
         };
         
-        logger.info("Calling login...", 'SignInPage', { 
-          userId: userProfile.id,
-          hasIdToken: true
-        });
-        
         const loginResult = await login(userProfile);
         
         if (loginResult) {
-          logger.info("Login completed successfully, redirecting...", 'SignInPage', { userId: loginResult.id });
           const from = (location.state as any)?.from?.pathname || '/dashboard';
           navigate(from, { replace: true });
         } else {

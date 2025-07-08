@@ -93,15 +93,16 @@ const QuizTakingPage: React.FC = () => {
     
     const result: QuizResult = {
       quizId: localActiveQuiz.id,
-      userId: currentUser?.id,  // Add userId to result
+      userId: currentUser?.id,
       score: parseFloat(score.toFixed(2)),
       answers: finalUserAnswersArray,
       totalCorrect: correctCount,
       totalQuestions: totalQuestions,
-      timeTaken: elapsedTime, // Use elapsed time instead of calculated time
+      timeTaken: Math.max(1, elapsedTime), // Ensure minimum 1 second
       sourceMode: 'take',
       createdAt: new Date().toISOString(),
     };
+
     setQuizResult(result);
     
     // Save to database if user is logged in
@@ -109,17 +110,13 @@ const QuizTakingPage: React.FC = () => {
       try {
         // Use new quiz results service
         const resultId = await quizResultsService.saveQuizResult(result);
-        if (resultId) {
-          logger.info('Quiz result saved to database successfully', 'QuizTakingPage', { resultId });
-        } else {
+        if (!resultId) {
           logger.warn('Failed to save quiz result to database', 'QuizTakingPage');
         }
       } catch (error) {
         logger.error('Error saving quiz result to database', 'QuizTakingPage', {}, error as Error);
         // Continue anyway - result is still saved locally
       }
-    } else {
-      logger.info('No user logged in, quiz result saved locally only', 'QuizTakingPage');
     }
     
     setShowConfirmationModal(false);
@@ -135,7 +132,8 @@ const QuizTakingPage: React.FC = () => {
     navigate, 
     totalQuestions, 
     attemptSettings.timeLimit,
-    currentUser
+    currentUser,
+    elapsedTime
   ]);
 
 

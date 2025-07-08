@@ -4,6 +4,7 @@ import { useTranslation } from '../../../App';
 import { quizResultsService, QuizResultRecord } from '../../../services/quizResultsService';
 import { UserCircleIcon } from '../../../constants';
 import { logger } from '../../../services/logService';
+import { UserAvatar } from '../../../components/UserAvatar';
 
 interface QuizHistoryProps {
   quizId: string;
@@ -55,8 +56,8 @@ export const QuizHistory: React.FC<QuizHistoryProps> = ({
   const formatTime = (seconds: number | null): string => {
     if (!seconds) return '--:--';
     const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+    const remainingSeconds = Math.round(seconds % 60);
+    return `${minutes}m ${remainingSeconds}s`;
   };
 
   const formatDate = (dateString: string): string => {
@@ -66,6 +67,12 @@ export const QuizHistory: React.FC<QuizHistoryProps> = ({
       hour: '2-digit',
       minute: '2-digit'
     });
+  };
+
+  const getScoreColor = (score: number): string => {
+    if (score >= 80) return 'text-[var(--color-success-accent)]';
+    if (score >= 60) return 'text-[var(--color-warning-accent)]';
+    return 'text-[var(--color-danger-accent)]';
   };
 
   if (loading) {
@@ -118,28 +125,27 @@ export const QuizHistory: React.FC<QuizHistoryProps> = ({
         {results.map((result) => (
           <div
             key={result.id}
-            className="flex items-center justify-between p-3 bg-[var(--color-bg-surface-2)] rounded-lg"
+            className="flex items-center justify-between p-3 bg-[var(--color-bg-surface-2)] rounded-lg hover:bg-[var(--color-bg-surface-3)] transition-colors duration-200"
           >
             <div className="flex items-center space-x-3">
-              {isOwner && (
-                <div className="flex items-center space-x-1">
-                  <UserCircleIcon className="w-4 h-4 text-[var(--color-text-secondary)]" />
-                  <span className="text-sm font-medium text-[var(--color-text-primary)]">
-                    {result.user_name}
-                  </span>
-                </div>
-              )}
+              <div className="flex items-center space-x-2">
+                <UserAvatar
+                  user={{
+                    id: result.user_id || '',
+                    name: result.user_name || 'Anonymous',
+                    email: result.user_email || '',
+                    imageUrl: result.user_image_url
+                  }}
+                  size="sm"
+                  className="w-8 h-8"
+                />
+                <span className="text-sm font-medium text-[var(--color-text-primary)]">
+                  {result.user_name || 'Anonymous'}
+                </span>
+              </div>
               
               <div className="flex items-center space-x-2">
-                <span 
-                  className={`font-semibold ${
-                    result.score >= 80 
-                      ? 'text-[var(--color-success-accent)]' 
-                      : result.score >= 60 
-                        ? 'text-[var(--color-warning-accent)]'
-                        : 'text-[var(--color-danger-accent)]'
-                  }`}
-                >
+                <span className={`text-base font-semibold ${getScoreColor(result.score)}`}>
                   {result.score}%
                 </span>
                 <span className="text-xs text-[var(--color-text-secondary)]">
@@ -147,9 +153,11 @@ export const QuizHistory: React.FC<QuizHistoryProps> = ({
                 </span>
               </div>
 
-              <span className="text-xs text-[var(--color-text-muted)]">
-                {formatTime(result.time_taken)}
-              </span>
+              <div className="flex items-center space-x-2">
+                <span className="text-sm text-[var(--color-text-secondary)]">
+                  {formatTime(result.time_taken)}
+                </span>
+              </div>
 
               <span className="text-xs text-[var(--color-text-muted)]">
                 {formatDate(result.created_at)}

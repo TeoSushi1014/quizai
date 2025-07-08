@@ -100,9 +100,6 @@ const QuizCreatePage: React.FC = () => {
 
   const setProcessingError = (message: string | null) => {
     setProcessingErrorState(message);
-    if (message) {
-      logger.warn(`Processing Error Set: ${message}`, 'QuizCreatePage');
-    }
   };
 
   useEffect(() => {
@@ -124,11 +121,6 @@ const QuizCreatePage: React.FC = () => {
       import('../../services/geminiService').then(module => {
         const isFormatted = module.isFormattedQuiz(processedContentText);
         setIsFormattedQuiz(isFormatted);
-        if (isFormatted) {
-          logger.info('Formatted quiz detected in content', 'QuizCreatePage', {
-            contentPreview: processedContentText.substring(0, 100)
-          });
-        }
       }).catch(error => {
         logger.error('Error checking for formatted quiz', 'QuizCreatePage', undefined, error as Error);
         setIsFormattedQuiz(false);

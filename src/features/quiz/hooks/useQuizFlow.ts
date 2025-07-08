@@ -39,6 +39,7 @@ export const useQuizFlow = (quizIdParam?: string, onTimeUp?: () => void) => {
   const [elapsedTime, setElapsedTime] = useState<number>(0); // Track elapsed time
   const timerRef = useRef<number | null>(null);
   const elapsedTimerRef = useRef<number | null>(null);
+  const startTimeRef = useRef<number | null>(null);
 
   
   const routeAttemptSettingsFromState = (location.state as { attemptSettings?: AttemptSettings } | null)?.attemptSettings;
@@ -104,9 +105,16 @@ export const useQuizFlow = (quizIdParam?: string, onTimeUp?: () => void) => {
   // Start elapsed time tracking when quiz loads
   useEffect(() => {
     if (localActiveQuiz && !loading) {
+      if (!startTimeRef.current) {
+        startTimeRef.current = Date.now();
+        setElapsedTime(0);
+      }
+      
       // Start elapsed time counter
       elapsedTimerRef.current = window.setInterval(() => {
-        setElapsedTime(prev => prev + 1);
+        const currentTime = Date.now();
+        const elapsed = Math.floor((currentTime - startTimeRef.current!) / 1000);
+        setElapsedTime(elapsed);
       }, 1000);
       
       return () => {
@@ -114,6 +122,14 @@ export const useQuizFlow = (quizIdParam?: string, onTimeUp?: () => void) => {
       };
     }
   }, [localActiveQuiz, loading]);
+
+  useEffect(() => {
+    return () => {
+      startTimeRef.current = null;
+      if (timerRef.current) clearInterval(timerRef.current);
+      if (elapsedTimerRef.current) clearInterval(elapsedTimerRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     if (timeLeft === null) {

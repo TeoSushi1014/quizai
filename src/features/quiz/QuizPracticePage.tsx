@@ -9,6 +9,7 @@ import PracticeQuizQuestion from './components/PracticeQuizQuestion';
 import PracticeQuizExplanation from './components/PracticeQuizExplanation'; // Import the new explanation component
 import { supabaseService } from '../../services/supabaseService';
 import { logger } from '../../services/logService';
+import { quizResultsService } from '../../services/quizResultsService';
 
 interface PracticeAttempt {
   questionId: string;
@@ -94,6 +95,11 @@ const QuizPracticePage: React.FC = () => {
     isFinishingPracticeRef.current = true; 
     setIsFinishingOrChecking(true); 
 
+    logger.info('Starting practice finish process', 'QuizPracticePage', {
+      quizId: localActiveQuiz.id,
+      currentTime: elapsedTime
+    });
+
     let finalPracticeAttempts = [...practiceAttempts];
 
     if (currentQuestion && currentTentativeSelection && !isCurrentSelectionChecked) {
@@ -132,23 +138,31 @@ const QuizPracticePage: React.FC = () => {
       answers: finalUserAnswersArray,
       totalCorrect: correctAnswersCount,
       totalQuestions: localActiveQuiz.questions.length,
-      timeTaken: elapsedTime, // Use elapsed time
+      timeTaken: Math.max(1, elapsedTime), // Ensure minimum 1 second
       sourceMode: 'practice',
       createdAt: new Date().toISOString(),
     };
+
+    logger.info('Submitting practice result', 'QuizPracticePage', {
+      quizId: localActiveQuiz.id,
+      elapsedTime,
+      timeTaken: resultData.timeTaken
+    });
     
     setGlobalQuizResult(resultData);
     
     // Save to database if user is logged in
     if (currentUser) {
       try {
-        const saved = await supabaseService.saveQuizResult(resultData, currentUser.id, currentUser);
-        if (saved) {
-          logger.info('Practice result saved to database successfully', 'QuizPracticePage');
+        // Use quiz results service for consistency
+        const resultId = await quizResultsService.saveQuizResult(resultData);
+        if (resultId) {
+          logger.info('Practice result saved to database successfully', 'QuizPracticePage', { resultId });
         } else {
-          logger.info('Practice result not saved to database (user not authenticated with Supabase, using local storage only)', 'QuizPracticePage');
+          logger.info('Practice result not saved to database (user not authenticated)', 'QuizPracticePage');
         }
       } catch (error) {
+        logger.error('Error saving practice result', 'QuizPracticePage', {}, error as Error);
         // Continue anyway - result is still saved locally
       }
     } else {
@@ -166,7 +180,8 @@ const QuizPracticePage: React.FC = () => {
     attemptSettings.timeLimit, 
     timeLeft,
     navigate,
-    currentUser
+    currentUser,
+    elapsedTime
   ]);
 
 

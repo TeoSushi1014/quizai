@@ -29,7 +29,6 @@ const SharedQuizPage: React.FC = () => {
       setError(null);
 
       if (!quizId) {
-        logger.warn('SharedQuizPage: No quizId in params.', 'SharedQuizPage');
         setError(t('sharedQuizNotFound'));
         setLoading(false);
         return;
@@ -37,27 +36,26 @@ const SharedQuizPage: React.FC = () => {
       
       // Validate quiz ID format - allow potentially corrupted IDs to proceed to sharing service
       if (!validateQuizId(quizId) && quizId.length < 30) {
-        logger.warn('SharedQuizPage: Invalid quiz ID format and too short to be a corrupted ID.', 'SharedQuizPage', { quizId });
         setError(t('sharedQuizNotFound'));
         setLoading(false);
         return;
       }
       
-      // Log potential corruption for debugging
       if (!validateQuizId(quizId)) {
-        logger.info('SharedQuizPage: Detected potentially corrupted quiz ID, proceeding to sharing service for recovery', 'SharedQuizPage', { quizId });
+        // Proceed with potentially corrupted ID
+        logger.warn('SharedQuizPage: Proceeding with potentially corrupted quiz ID', 'SharedQuizPage', { quizId });
       }
       
       try {
         // Priority 1: Check if it's one of the current user's quizzes (if logged in)
         if (currentUser) {
-            const userOwnedQuiz = localUserQuizzes.find(q => q.id === quizId);
-            if (userOwnedQuiz) {
-                logger.info('SharedQuizPage: Displaying quiz owned by current user.', 'SharedQuizPage', { quizId });
-                setSharedQuiz(userOwnedQuiz);
-                setLoading(false);
-                return;
-            }
+          const userOwnedQuiz = localUserQuizzes.find(q => q.id === quizId);
+          if (userOwnedQuiz) {
+            logger.info('SharedQuizPage: Displaying quiz owned by current user.', 'SharedQuizPage', { quizId });
+            setSharedQuiz(userOwnedQuiz);
+            setLoading(false);
+            return;
+          }
         }
 
         // Priority 2: Try to fetch from shared mechanism (localStorage sim or API)
@@ -237,19 +235,19 @@ const SharedQuizPage: React.FC = () => {
         </div>
         {/* Additional information row */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-center sm:text-left">
-          <div className="bg-[var(--color-bg-surface-2)]/30 p-3 rounded-lg border border-[var(--color-border-default)]/50">
-            <p className="text-xs font-medium text-[var(--color-text-muted)] mb-1">Created</p>
+          <div className="bg-[var(--color-bg-surface-2)]/60 p-4 rounded-xl border border-[var(--color-border-default)] shadow-md">
+            <p className="text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wider mb-1">Created</p>
             <p className="text-sm text-[var(--color-text-primary)]">{createdDate}</p>
           </div>
-          <div className="bg-[var(--color-bg-surface-2)]/30 p-3 rounded-lg border border-[var(--color-border-default)]/50">
-            <p className="text-xs font-medium text-[var(--color-text-muted)] mb-1">Last Modified</p>
+          <div className="bg-[var(--color-bg-surface-2)]/60 p-4 rounded-xl border border-[var(--color-border-default)] shadow-md">
+            <p className="text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wider mb-1">Last Modified</p>
             <p className="text-sm text-[var(--color-text-primary)]">{lastModified}</p>
           </div>
         </div>
         {/* Source content information if available */}
         {sharedQuiz.sourceContentSnippet && (
-          <div className="mt-4 bg-[var(--color-bg-surface-2)]/30 p-4 rounded-lg border border-[var(--color-border-default)]/50">
-            <p className="text-xs font-medium text-[var(--color-text-muted)] mb-2">Source Content</p>
+          <div className="mt-4 bg-[var(--color-bg-surface-2)]/60 p-4 rounded-xl border border-[var(--color-border-default)] shadow-md">
+            <p className="text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wider mb-1">Source Content</p>
             <p className="text-sm text-[var(--color-text-secondary)] line-clamp-3">{sharedQuiz.sourceContentSnippet}</p>
           </div>
         )}

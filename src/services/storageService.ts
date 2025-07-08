@@ -17,17 +17,12 @@ const quizStore = localforage.createInstance(QUIZ_STORE_CONFIG);
 class QuizStorage {
   async getAllQuizzes(): Promise<Quiz[]> {
     try {
-      logger.info('Getting all quizzes from storage', 'QuizStorage');
       const quizzes = await quizStore.getItem<Quiz[]>(QUIZZES_STORE_NAME) || [];
       
       // Validate and clean quizzes
       const cleanedQuizzes = validateAndCleanQuizzes(quizzes);
       
       if (cleanedQuizzes.length !== quizzes.length) {
-        logger.info('Some quizzes were cleaned during validation', 'QuizStorage', {
-          original: quizzes.length,
-          cleaned: cleanedQuizzes.length
-        });
         await this.saveQuizzes(cleanedQuizzes);
       }
       

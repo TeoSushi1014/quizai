@@ -6,7 +6,8 @@ import { ChevronLeftIcon } from '../../constants';
 import { quizResultsService, QuizResultRecord } from '../../services/quizResultsService';
 import { supabaseService } from '../../services/supabaseService';
 import { logger } from '../../services/logService';
-import { Quiz } from '../../types';
+import { Quiz, UserProfile } from '../../types';
+import { UserAvatar } from '../../components/UserAvatar';
 
 const QuizAnalyticsPage: React.FC = () => {
   const { quizId } = useParams<{ quizId: string }>();
@@ -99,9 +100,9 @@ const QuizAnalyticsPage: React.FC = () => {
   };
 
   const formatTime = (seconds: number | null): string => {
-    if (!seconds) return 'N/A';
+    if (typeof seconds !== 'number' || seconds < 0) return 'N/A';
     const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
+    const remainingSeconds = Math.round(seconds % 60);
     return `${minutes}m ${remainingSeconds}s`;
   };
 
@@ -241,15 +242,26 @@ const QuizAnalyticsPage: React.FC = () => {
                     className="border-b border-[var(--color-border-default)] hover:bg-[var(--color-bg-surface-2)]"
                   >
                     <td className="py-3 px-2">
-                      <div>
-                        <div className="font-medium">
-                          {result.user_name || 'Anonymous User'}
-                        </div>
-                        {result.user_email && (
-                          <div className="text-sm text-[var(--color-text-muted)]">
-                            {result.user_email}
+                      <div className="flex items-center space-x-3">
+                        <UserAvatar 
+                          user={{
+                            id: result.user_id,
+                            name: result.user_name,
+                            email: result.user_email,
+                            imageUrl: result.user_image_url || null
+                          } as UserProfile}
+                          size="sm"
+                        />
+                        <div>
+                          <div className="font-medium">
+                            {result.user_name || 'Anonymous User'}
                           </div>
-                        )}
+                          {result.user_email && (
+                            <div className="text-sm text-[var(--color-text-muted)]">
+                              {result.user_email}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </td>
                     <td className="py-3 px-2">

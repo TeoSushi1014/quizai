@@ -9,7 +9,7 @@ export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, process.cwd(), '');
     
     return {
-      base: "/quizai/",
+      base: mode === 'development' ? '/' : '/quizai/',
       plugins: [react()],
       define: {
         'process.env.API_KEY': JSON.stringify(''),
@@ -35,6 +35,14 @@ export default defineConfig(({ mode }) => {
       resolve: {
         alias: {
           '@': path.resolve(__dirname, 'src'),
+        }
+      },
+      optimizeDeps: {
+        include: ['react', 'react-dom', 'react-router-dom']
+      },
+      server: {
+        fs: {
+          strict: false
         }
       }
     };

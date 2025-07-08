@@ -47,7 +47,6 @@ const initializeGeminiAI = async (): Promise<GoogleGenAI> => {
       throw new Error(errorMessage); 
     }
     
-    logger.info("Gemini AI SDK Initializing with secure API Key.", "GeminiServiceInit");
     geminiAI = new GoogleGenAI({ apiKey });
   }
   return geminiAI;
@@ -134,7 +133,6 @@ const parseJsonFromMarkdown = <T,>(text: string): T | null => {
             try {
                 let potentialJson = jsonStr.substring(actualJsonStart, actualJsonEnd + 1);
                 potentialJson = potentialJson.replace(/,\s*([\}\]])/g, '$1');
-                logger.info("Fallback parsing attempting with substring.", "GeminiServiceParse", { substringPreview: potentialJson.substring(0,200) });
                 return JSON.parse(potentialJson) as T;
             } catch (e2: any) {
                 logger.error("Fallback JSON.parse also failed (Gemini).", "GeminiServiceParse", { errorMsg: e2.message, substringAttempted: jsonStr.substring(actualJsonStart, actualJsonEnd + 1).substring(0,200) }, e2);
@@ -406,35 +404,11 @@ export const generateQuizWithGemini = async (
   config: QuizConfig,
   titleSuggestion?: string
 ): Promise<Omit<Quiz, 'id' | 'createdAt'>> => {
-  logger.info("Attempting to generate quiz with Gemini", "GeminiService", { model: GEMINI_TEXT_MODEL, lang: config.language });
-  
-  // Check if this is a prompt-only generation (content will be minimal, focus on customUserPrompt)
   const isPromptOnlyModeForLogging = typeof content === 'string' && 
                          content === "Generate quiz from user prompt." && 
                          config.customUserPrompt && 
                          config.customUserPrompt.trim().length > 0;
                          
-  if (isPromptOnlyModeForLogging) {
-    logger.info("Prompt-only mode detected - using customUserPrompt as primary source", "GeminiService", {
-      promptPreview: config.customUserPrompt?.substring(0, 100),
-      promptOnlyMode: true
-    });
-  }
-  // Check if the content is a formatted quiz (only for text content and not in prompt-only mode)
-  else if (typeof content === 'string' && isFormattedQuiz(content)) {
-    // Extract information about the quiz: count questions & options
-    const questionMatches = content.match(/(?:Question|Câu)\s*\d+|^\s*\d+\s*[.)]/gmi) || [];
-    const optionMatches = content.match(/[A-D]\s*[.)]\s*\S+/gi) || [];
-    
-    logger.info("Formatted quiz detected - will preserve exact format", "GeminiService", { 
-      contentPreview: content.substring(0, 100),
-      formattedQuiz: true,
-      questionCount: questionMatches.length,
-      optionCount: optionMatches.length
-    });
-    // We will still use the AI to process the quiz, but with instructions to preserve the format
-  }
-  
   const genAIInstance = await initializeGeminiAI(); 
   const { requestContents, sourceContentSnippet, systemInstructionString } = buildGeminiPrompt(content, config, titleSuggestion);
 
@@ -442,53 +416,93 @@ export const generateQuizWithGemini = async (
     const response: GenerateContentResponse = await genAIInstance.models.generateContent({
       model: GEMINI_TEXT_MODEL,
       contents: requestContents,
-      config: {
-        responseMimeType: "application/json", // Request JSON output
-        systemInstruction: systemInstructionString, // Provide system instruction
-        // Add other parameters like temperature, topK, topP if needed, but systemInstruction and responseMimeType are key for structured output.
-      }
-    });
-    const textResponse = response.text || '';
-    logger.info("Received response from Gemini", "GeminiService", { responsePreview: textResponse.substring(0, 200) });
-    const parsedQuizData = parseJsonFromMarkdown<Omit<Quiz, 'id' | 'createdAt' | 'sourceContentSnippet'>>(textResponse);
-
-    if (!parsedQuizData || !parsedQuizData.questions || !parsedQuizData.title || !Array.isArray(parsedQuizData.questions) || parsedQuizData.questions.length === 0) {
-      logger.error("Failed to parse quiz data or data is incomplete/invalid structure (Gemini).", "GeminiService", { parsedDataPreview: JSON.stringify(parsedQuizData)?.substring(0,200) }); 
-      throw new Error("Gemini AI failed to generate quiz in the expected format or returned an empty/invalid quiz. Please check the console for the raw AI response and parsing attempts.");
-    }
-    
-    const currentLanguage = (config.language === 'Vietnamese' ? 'vi' : 'en') as Language;
-    const questionsWithCorrectOptions = validateAndFixQuestions(parsedQuizData.questions, currentLanguage);
-
-    const validatedQuestionsFinal = questionsWithCorrectOptions.map((q) => {
-        let questionId = q.id;
-        if (!questionId) {
-          questionId = generateQuestionId();
+      generationConfig: {
+        temperature: 0.7,
+        topK: 40,
+        topP: 0.95,
+        maxOutputTokens: 8192,
+      },
+      safetySettings: [
+        {
+          category: 'HARM_CATEGORY_HARASSMENT',
+          threshold: 'BLOCK_MEDIUM_AND_ABOVE'
+        },
+        {
+          category: 'HARM_CATEGORY_HATE_SPEECH',
+          threshold: 'BLOCK_MEDIUM_AND_ABOVE'
+        },
+        {
+          category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
+          threshold: 'BLOCK_MEDIUM_AND_ABOVE'
+        },
+        {
+          category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
+          threshold: 'BLOCK_MEDIUM_AND_ABOVE'
         }
-        return { ...q, id: questionId, explanation: q.explanation || getTranslator(currentLanguage)('resultsNoExplanation') };
+      ]
     });
 
-    logger.info("Successfully generated and validated quiz from Gemini.", "GeminiService", { title: parsedQuizData.title, questionCount: validatedQuestionsFinal.length });
-    return { ...parsedQuizData, questions: validatedQuestionsFinal, sourceContentSnippet };
+    if (!response.response.candidates || response.response.candidates.length === 0) {
+      logger.error('No candidates in Gemini response', 'GeminiService', {
+        promptLength: sourceContentSnippet.length,
+        isPromptOnlyMode: isPromptOnlyModeForLogging,
+        response: response
+      });
+      throw new Error('No candidates in Gemini response');
+    }
+
+    const candidate = response.response.candidates[0];
+    if (!candidate.content || !candidate.content.parts || candidate.content.parts.length === 0) {
+      logger.error('Invalid candidate structure in Gemini response', 'GeminiService', {
+        promptLength: sourceContentSnippet.length,
+        isPromptOnlyMode: isPromptOnlyModeForLogging,
+        candidate: candidate
+      });
+      throw new Error('Invalid candidate structure in Gemini response');
+    }
+
+    const generatedText = candidate.content.parts[0].text;
+    if (!generatedText) {
+      logger.error('Empty text in Gemini response', 'GeminiService', {
+        promptLength: sourceContentSnippet.length,
+        isPromptOnlyMode: isPromptOnlyModeForLogging,
+        parts: candidate.content.parts
+      });
+      throw new Error('Empty text in Gemini response');
+    }
+
+    const parsedQuiz = parseJsonFromMarkdown<{ title: string; questions: Question[] }>(generatedText);
+    if (!parsedQuiz) {
+      logger.error('Failed to parse quiz JSON from Gemini response', 'GeminiService', {
+        promptLength: sourceContentSnippet.length,
+        isPromptOnlyMode: isPromptOnlyModeForLogging,
+        generatedText: generatedText.substring(0, 200)
+      });
+      throw new Error('Failed to parse quiz JSON from Gemini response');
+    }
+
+    const validatedQuestions = validateAndFixQuestions(parsedQuiz.questions, config.language);
+
+    return {
+      title: parsedQuiz.title || titleSuggestion || 'Generated Quiz',
+      questions: validatedQuestions,
+      language: config.language,
+      difficulty: config.difficulty,
+      tags: config.tags || [],
+      sourceContent: sourceContentSnippet,
+      sourceType: typeof content === 'string' ? 'text' : 'image',
+      systemPrompt: systemInstructionString,
+      modelResponse: generatedText,
+      modelId: GEMINI_MODEL_ID,
+      userId: config.userId
+    };
   } catch (error) {
-    logger.error("Error generating quiz with Gemini", "GeminiService", undefined, error as Error);
-    let detailedMessage = `Failed to generate quiz with Gemini. An unexpected error occurred. Please try again later.`;
-    if (error instanceof Error) {
-        const errorMessage = error.message; 
-        const lowerErrorMessage = errorMessage.toLowerCase();
-        if (lowerErrorMessage.includes("api key not valid") || lowerErrorMessage.includes("api_key_invalid") || lowerErrorMessage.includes("process.env.api_key not set") || lowerErrorMessage.includes("api_key is not configured") || lowerErrorMessage.includes("process.env.gemini_api_key")) {
-            detailedMessage = "Invalid or Missing Gemini API Key (process.env.API_KEY). Please ensure the environment variable is correctly configured and accessible.";
-        } else if (lowerErrorMessage.includes("deadline exceeded")) {
-            detailedMessage = "The Gemini AI took too long to respond. This might be due to complex content or a temporary issue. Please try again or simplify the content.";
-        } else if (lowerErrorMessage.includes("quota")) {
-            detailedMessage = "Gemini API quota exceeded. Please check your Google AI Platform quotas or try again later.";
-        } else if (lowerErrorMessage.includes("500") || lowerErrorMessage.includes("unknown") || lowerErrorMessage.includes("rpc failed") || lowerErrorMessage.includes("xhr error")) {
-            detailedMessage = "An unexpected error occurred while communicating with the AI service (Server Error or Network Issue). Please check your internet connection and try again in a few moments. If the problem persists, the AI service might be temporarily unavailable.";
-        } else if (lowerErrorMessage.includes("ai failed to generate quiz") || lowerErrorMessage.includes("empty/invalid quiz")) {
-            detailedMessage = errorMessage; 
-        }
-    }
-    throw new Error(detailedMessage);
+    logger.error('Error generating quiz with Gemini', 'GeminiService', {
+      promptLength: sourceContentSnippet.length,
+      isPromptOnlyMode: isPromptOnlyModeForLogging,
+      error: error
+    }, error as Error);
+    throw error;
   }
 };
 
