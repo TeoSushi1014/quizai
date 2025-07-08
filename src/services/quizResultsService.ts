@@ -40,7 +40,8 @@ export class QuizResultsService {
         score: result.score,
         totalQuestions: result.totalQuestions,
         userId: result.userId,
-        sessionUserId: session.user.id
+        sessionUserId: session.user.id,
+        timeTaken: result.timeTaken
       });
 
       // Prepare the data with proper types
@@ -50,7 +51,7 @@ export class QuizResultsService {
         score: Number(result.score),
         total_questions: Number(result.totalQuestions),
         answers: result.answers || [],
-        time_taken: result.timeTaken ? Number(result.timeTaken) : null,
+        time_taken: typeof result.timeTaken === 'number' ? Number(result.timeTaken) : null,
         created_at: new Date().toISOString()
       };
 
@@ -76,7 +77,8 @@ export class QuizResultsService {
 
       logger.info('Quiz result saved successfully', 'QuizResultsService', {
         resultId: data.id,
-        quizId: result.quizId
+        quizId: result.quizId,
+        timeTaken: insertData.time_taken
       });
 
       return data.id;
