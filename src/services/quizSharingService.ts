@@ -59,48 +59,62 @@ export const shareQuizViaAPI = async (quiz: Quiz, currentUser?: UserProfile | nu
     throw new Error('User must be properly authenticated with Supabase to share quizzes');
   }
 
-  // Ensure user exists in Supabase
-  let userExists = await supabaseService.getUserById(effectiveUserId);
-  if (!userExists) {
-    logger.info('User not found in Supabase, creating user first', 'quizSharingService', { 
-      userId: effectiveUserId 
+  try {
+    // First try to get existing share URL - this is a fast operation
+    const existingShare = await supabaseService.getExistingShareUrl(quiz.id);
+    if (existingShare) {
+      logger.info('Retrieved existing share URL', 'quizSharingService', { 
+        quizId: quiz.id 
+      });
+      return { shareUrl: existingShare };
+    }
+
+    // If no existing share, ensure user exists and create share
+    let userExists = await supabaseService.getUserById(effectiveUserId);
+    if (!userExists) {
+      logger.info('User not found in Supabase, creating user first', 'quizSharingService', { 
+        userId: effectiveUserId 
+      });
+      userExists = await supabaseService.createUser({
+        ...currentUser,
+        id: effectiveUserId
+      });
+    }
+
+    // Ensure quiz exists in Supabase
+    const existingUserQuizzes = await supabaseService.getUserQuizzes(effectiveUserId);
+    const existingQuiz = existingUserQuizzes.find(q => q.id === quiz.id);
+    
+    if (existingQuiz) {
+      logger.info('Quiz already exists in Supabase, updating it', 'quizSharingService', { 
+        quizId: quiz.id 
+      });
+      await supabaseService.updateQuiz(quiz);
+    } else {
+      logger.info('Quiz does not exist in Supabase, creating it', 'quizSharingService', { 
+        quizId: quiz.id 
+      });
+      await supabaseService.createQuiz(quiz, effectiveUserId);
+    }
+
+    // Share the quiz
+    const shareResult = await supabaseService.shareQuiz(quiz.id, true, undefined, effectiveUserId);
+    
+    if (!shareResult) {
+      throw new Error('Failed to create share entry in Supabase');
+    }
+
+    logger.info('Quiz shared successfully', 'quizSharingService', { 
+      quizId: quiz.id, 
+      shareUrl: shareResult.shareUrl,
+      shareToken: shareResult.shareToken 
     });
-    userExists = await supabaseService.createUser({
-      ...currentUser,
-      id: effectiveUserId // Use the effective Supabase ID
-    });
+
+    return { shareUrl: shareResult.shareUrl };
+  } catch (error) {
+    logger.error('Failed to share quiz', 'quizSharingService', { quizId: quiz.id }, error as Error);
+    throw error;
   }
-
-  // Ensure quiz exists in Supabase
-  const existingUserQuizzes = await supabaseService.getUserQuizzes(effectiveUserId);
-  const existingQuiz = existingUserQuizzes.find(q => q.id === quiz.id);
-  
-  if (existingQuiz) {
-    logger.info('Quiz already exists in Supabase, updating it', 'quizSharingService', { 
-      quizId: quiz.id 
-    });
-    await supabaseService.updateQuiz(quiz);
-  } else {
-    logger.info('Quiz does not exist in Supabase, creating it', 'quizSharingService', { 
-      quizId: quiz.id 
-    });
-    await supabaseService.createQuiz(quiz, effectiveUserId);
-  }
-
-  // Share the quiz
-  const shareResult = await supabaseService.shareQuiz(quiz.id, true, undefined, effectiveUserId);
-  
-  if (!shareResult) {
-    throw new Error('Failed to create share entry in Supabase');
-  }
-
-  logger.info('Quiz shared successfully', 'quizSharingService', { 
-    quizId: quiz.id, 
-    shareUrl: shareResult.shareUrl,
-    shareToken: shareResult.shareToken 
-  });
-
-  return { shareUrl: shareResult.shareUrl };
 };
 
 export const getSharedQuiz = async (quizId: string, currentUser?: UserProfile | null): Promise<QuizForSharing | null> => {

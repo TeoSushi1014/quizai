@@ -125,7 +125,7 @@ const DashboardPage: React.FC = () => {
         <QuizCard
           quiz={quiz}
           onDelete={deleteQuiz}
-          onEditQuiz={handleEditQuiz}
+          onEdit={handleEditQuiz}
           animationDelay={0} 
         />
       </div>

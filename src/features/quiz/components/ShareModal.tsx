@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Modal, Button, Input, LoadingSpinner } from '../../../components/ui';
 import { useAppContext, useTranslation } from '../../../App';
@@ -6,6 +5,9 @@ import { CopyIcon, CheckCircleIcon, FacebookIcon, XIcon, LinkedInIcon, ShareIcon
 import { shareQuizViaAPI } from '../../../services/quizSharingService';
 import { Quiz } from '../../../types';
 import { logger } from '../../../services/logService';
+
+// Cache object to store share URLs
+const shareUrlCache = new Map<string, string>();
 
 interface ShareModalProps {
   isOpen: boolean;
@@ -20,7 +22,7 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, quiz }) => {
   const [isLoadingUrl, setIsLoadingUrl] = useState(false);
   const [isLinkCopied, setIsLinkCopied] = useState(false);
   const [urlError, setUrlError] = useState<string | null>(null);
-  const isShareRequestInProgress = useRef(false); // Prevent duplicate requests
+  const isShareRequestInProgress = useRef(false);
   
   useEffect(() => {
     let mounted = true;
@@ -28,26 +30,36 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, quiz }) => {
       // Prevent duplicate requests
       if (isShareRequestInProgress.current) return;
       
-      if (isOpen && quiz && !shareUrl && !isLoadingUrl && !urlError) { 
+      if (isOpen && quiz && !isLoadingUrl && !urlError) {
+        // Check cache first
+        const cachedUrl = shareUrlCache.get(quiz.id);
+        if (cachedUrl) {
+          setShareUrl(cachedUrl);
+          return;
+        }
+        
         isShareRequestInProgress.current = true;
         setIsLoadingUrl(true);
-        setIsLinkCopied(false); 
+        setIsLinkCopied(false);
         setUrlError(null);
+        
         try {
           const result = await shareQuizViaAPI(quiz, currentUser);
           if (mounted) {
             setShareUrl(result.shareUrl);
+            // Cache the result
+            shareUrlCache.set(quiz.id, result.shareUrl);
           }
         } catch (error) {
           logger.error('Error generating share URL in Modal:', 'ShareModal', { quizId: quiz.id }, error as Error);
           if (mounted) {
             const errorMessage = (error as Error).message;
             if (errorMessage.includes('properly authenticated with Supabase')) {
-              setUrlError('Please sign in again to share quizzes'); 
+              setUrlError('Please sign in again to share quizzes');
             } else {
-              setUrlError(t('dashboardShareLinkFailed')); 
+              setUrlError(t('dashboardShareLinkFailed'));
             }
-            setShareUrl(''); 
+            setShareUrl('');
           }
         } finally {
           if (mounted) {
@@ -56,8 +68,7 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, quiz }) => {
           isShareRequestInProgress.current = false;
         }
       } else if (!isOpen) {
-        // Reset state when modal is closed
-        setShareUrl('');
+        // Don't reset shareUrl when closing to maintain cache
         setIsLoadingUrl(false);
         setIsLinkCopied(false);
         setUrlError(null);
@@ -66,8 +77,8 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, quiz }) => {
     };
     
     loadShareUrl();
-    return () => { 
-      mounted = false; 
+    return () => {
+      mounted = false;
       isShareRequestInProgress.current = false;
     };
   }, [isOpen, quiz?.id, currentUser?.id, t]);

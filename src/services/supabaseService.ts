@@ -1251,6 +1251,38 @@ export class SupabaseService {
       createdAt: dbResult.created_at
     }
   }
+
+  async getExistingShareUrl(quizId: string): Promise<string | null> {
+    try {
+      logger.info('Checking for existing share URL', 'SupabaseService', { quizId });
+      
+      // Fast lookup for existing share
+      const { data: existingShareArray, error: shareCheckError } = await supabase
+        .from('shared_quizzes')
+        .select('quiz_id')
+        .eq('quiz_id', quizId)
+        .limit(1);
+
+      if (shareCheckError) {
+        logger.error('Error checking existing share', 'SupabaseService', { 
+          quizId, 
+          error: shareCheckError.message 
+        });
+        return null;
+      }
+
+      if (existingShareArray && existingShareArray.length > 0) {
+        const shareUrl = `${window.location.origin}/quizai/#/shared/${quizId}`;
+        logger.info('Found existing share URL', 'SupabaseService', { quizId });
+        return shareUrl;
+      }
+
+      return null;
+    } catch (error) {
+      logger.error('Failed to check existing share URL', 'SupabaseService', { quizId }, error as Error);
+      return null;
+    }
+  }
 }
 
 export const supabaseService = new SupabaseService()
