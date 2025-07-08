@@ -442,7 +442,7 @@ export const generateQuizWithGemini = async (
       ]
     });
 
-    if (!response.response.candidates || response.response.candidates.length === 0) {
+    if (!response.candidates || response.candidates.length === 0) {
       logger.error('No candidates in Gemini response', 'GeminiService', {
         promptLength: sourceContentSnippet.length,
         isPromptOnlyMode: isPromptOnlyModeForLogging,
@@ -451,7 +451,7 @@ export const generateQuizWithGemini = async (
       throw new Error('No candidates in Gemini response');
     }
 
-    const candidate = response.response.candidates[0];
+    const candidate = response.candidates[0];
     if (!candidate.content || !candidate.content.parts || candidate.content.parts.length === 0) {
       logger.error('Invalid candidate structure in Gemini response', 'GeminiService', {
         promptLength: sourceContentSnippet.length,
