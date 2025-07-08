@@ -13,7 +13,7 @@ export class AuthService {
 
   async signInWithGoogle(googleUser: any): Promise<UserProfile | null> {
     try {
-      logger.info('AuthService: Starting Google sign in process', 'AuthService', { 
+      logger.info('Starting Google sign in process', 'AuthService', { 
         hasEmail: !!googleUser.email,
         hasName: !!googleUser.name,
         hasId: !!googleUser.sub || !!googleUser.id,
@@ -21,68 +21,38 @@ export class AuthService {
         isProduction: this.isProduction()
       });
 
-      // Validate input
       if (!googleUser.email) {
-        logger.error('AuthService: No email provided by Google OAuth', 'AuthService', { 
-          googleUser: { 
-            hasEmail: !!googleUser.email,
-            hasName: !!googleUser.name,
-            keys: Object.keys(googleUser || {})
-          }
-        });
+        logger.error('No email provided by Google OAuth', 'AuthService');
         throw new Error('No email provided by Google OAuth');
       }
 
-      // Pre-flight check
       await this.performHealthCheck();
 
-      // Use authentication manager for clean strategy selection
       const result = await this.authManager.authenticate(googleUser);
       
       if (!result) {
-        throw new Error('Authentication failed with all available strategies');
+        throw new Error('Authentication failed. Please try again or contact support.');
       }
 
-      logger.info('AuthService: Authentication completed successfully', 'AuthService', {
+      if (!result.supabaseId) {
+        logger.error('Authentication failed - Supabase integration required', 'AuthService', {
+          userId: result.id,
+          email: result.email
+        });
+        throw new Error('Full authentication required. Please try again or contact support.');
+      }
+
+      logger.info('Authentication completed successfully', 'AuthService', {
         userId: result.id,
         email: result.email,
-        hasSupabaseId: !!result.supabaseId,
-        strategy: result.supabaseId ? 'Full Integration' : 'Google Only'
+        supabaseId: result.supabaseId
       });
-
-      // If user doesn't have Supabase integration, they should be informed about limitations
-      if (!result.supabaseId) {
-        logger.info('AuthService: User authenticated with Google-only mode (limited features)', 'AuthService', {
-          userId: result.id,
-          limitation: 'Quiz sharing and cloud sync features will be unavailable'
-        });
-      }
 
       return result;
 
     } catch (error) {
-      logger.error('AuthService: Sign in failed', 'AuthService', {}, error as Error);
-      
-      // Emergency fallback
-      try {
-        const emergencyProfile: UserProfile = {
-          id: googleUser.sub || googleUser.id || `google_emergency_${Date.now()}`,
-          email: googleUser.email,
-          name: googleUser.name || googleUser.given_name || googleUser.family_name || 'User',
-          imageUrl: googleUser.picture,
-          accessToken: googleUser.access_token,
-          idToken: googleUser.credential || googleUser.idToken
-        };
-        
-        logger.info('AuthService: Using emergency fallback profile', 'AuthService', { 
-          userId: emergencyProfile.id 
-        });
-        
-        return emergencyProfile;
-      } catch (fallbackError) {
-        logger.error('AuthService: Emergency fallback also failed', 'AuthService', {}, fallbackError as Error);
-        return null;
-      }
+      logger.error('Sign in failed', 'AuthService', {}, error as Error);
+      return null;
     }
   }
 
@@ -117,20 +87,17 @@ export class AuthService {
     try {
       const { error: testError } = await supabase.from('users').select('count').limit(1);
       if (testError) {
-        logger.warn('AuthService: Supabase health check failed', 'AuthService', { 
+        logger.warn('Supabase health check failed', 'AuthService', { 
           error: testError.message,
           code: testError.code,
           hint: testError.hint
         });
-      } else {
-        logger.info('AuthService: Supabase health check passed', 'AuthService');
       }
     } catch (connectionError) {
-      logger.warn('AuthService: Supabase connection error during health check', 'AuthService', {}, connectionError as Error);
+      logger.warn('Supabase connection error during health check', 'AuthService', {}, connectionError as Error);
     }
   }
 
-  // Debug function to test authentication and database connectivity
   async testSupabaseConnectivity(email: string): Promise<{ 
     canConnect: boolean; 
     hasSession: boolean; 
@@ -144,7 +111,6 @@ export class AuthService {
     try {
       logger.info('Testing Supabase connectivity and authentication', 'AuthService', { email });
 
-      // Test 1: Check session
       const { data: { session } } = await supabase.auth.getSession();
       const hasSession = !!session?.user;
       
@@ -155,7 +121,6 @@ export class AuthService {
         lastSignIn: session.user?.last_sign_in_at
       } : null;
 
-      // Test 2: Basic connectivity
       let canConnect = false;
       try {
         const { error: connectError } = await supabase.from('users').select('count').limit(1);
@@ -164,7 +129,6 @@ export class AuthService {
         logger.error('Basic connectivity test error', 'AuthService', {}, error as Error);
       }
 
-      // Test 3: Can read users table
       let canReadUsers = false;
       let userExists = false;
       let userDetails = null;
@@ -182,7 +146,6 @@ export class AuthService {
         logger.error('Users table read test error', 'AuthService', {}, error as Error);
       }
 
-      // Test 4: Can read quizzes table
       let canReadQuizzes = false;
       try {
         const { error: quizError } = await supabase.from('quizzes').select('count').limit(1);

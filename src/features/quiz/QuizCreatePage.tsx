@@ -7,9 +7,8 @@ import { useAppContext, useTranslation } from '../../App';
 import { QuizConfig } from '../../types'; 
 import { Button, Card, Input, Textarea, Select, ProgressBar, Toggle, Dropzone, Modal, Tooltip } from '../../components/ui';
 import MathText from '../../components/MathText';
-import { generateQuizWithSelectedModel } from '../../services/aiQuizService';
 import { extractTextFromPdf, convertImageToBase64, extractTextFromDocx } from '../../services/fileService';
-import { extractTextFromImageWithGemini } from '../../services/geminiService'; 
+import { extractTextFromImageWithGemini, generateQuizWithGemini } from '../../services/geminiService'; 
 import { DocumentTextIcon, ChevronRightIcon, ChevronLeftIcon, InformationCircleIcon, KeyIcon, GEMINI_MODEL_ID, ChartBarIcon, CopyIcon } from '../../constants'; 
 import { translations } from '../../i18n';
 import { logger } from '../../services/logService';
@@ -325,9 +324,9 @@ const QuizCreatePage: React.FC = () => {
           setGenerationStatusText(t('step3AIIsRetrying', { currentAttempt: attempt, maxAttempts: MAX_GENERATION_RETRIES }));
           await new Promise(resolve => setTimeout(resolve, 1500 * attempt)); 
         }
-        const finalConfig: QuizConfig = { ...quizConfig, customUserPrompt: customUserPrompt.trim() || undefined, selectedModel: GEMINI_MODEL_ID };
+        const finalConfig: QuizConfig = { ...quizConfig, customUserPrompt: customUserPrompt.trim() || undefined };
         setProgress(10 + (attempt * 5)); 
-        const generatingQuizPromise = generateQuizWithSelectedModel(contentForAI, finalConfig, quizTitleSuggestion);
+        const generatingQuizPromise = generateQuizWithGemini(contentForAI, finalConfig, quizTitleSuggestion);
         let progressInterval = setInterval(() => { 
           setProgress(oldProgress => { 
             if (oldProgress >= 85 - (attempt * 5)) { clearInterval(progressInterval); return oldProgress; } 

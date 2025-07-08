@@ -11,7 +11,6 @@ export interface QuizResultRecord {
   answers: UserAnswer[];
   time_taken: number | null;
   created_at: string;
-  // Join với user info nếu cần
   user_name?: string;
   user_email?: string;
   quiz_title?: string;
@@ -25,10 +24,6 @@ export interface QuizHistoryParams {
 }
 
 export class QuizResultsService {
-  
-  /**
-   * Lưu kết quả quiz vào database
-   */
   async saveQuizResult(result: QuizResult): Promise<string | null> {
     try {
       // Check authentication first
@@ -50,11 +45,11 @@ export class QuizResultsService {
 
       // Prepare the data with proper types
       const insertData = {
-        user_id: session.user.id, // Use session user ID for consistency
+        user_id: session.user.id,
         quiz_id: result.quizId,
-        score: Number(result.score), // Ensure it's a number
-        total_questions: Number(result.totalQuestions), // Ensure it's a number
-        answers: result.answers || [], // Ensure it's an array
+        score: Number(result.score),
+        total_questions: Number(result.totalQuestions),
+        answers: result.answers || [],
         time_taken: result.timeTaken ? Number(result.timeTaken) : null,
         created_at: new Date().toISOString()
       };
@@ -94,9 +89,6 @@ export class QuizResultsService {
     }
   }
 
-  /**
-   * Lấy lịch sử làm bài của một quiz cụ thể
-   */
   async getQuizHistory(params: QuizHistoryParams): Promise<QuizResultRecord[]> {
     try {
       logger.info('Fetching quiz history', 'QuizResultsService', {
@@ -161,7 +153,7 @@ export class QuizResultsService {
         return [];
       }
 
-      // Transform data để include user info
+      // Transform data to include user info
       const results: QuizResultRecord[] = (data || []).map((record: any) => ({
         id: record.id,
         user_id: record.user_id,
@@ -190,9 +182,6 @@ export class QuizResultsService {
     }
   }
 
-  /**
-   * Lấy lịch sử làm bài của user hiện tại
-   */
   async getUserQuizHistory(userId: string, limit: number = 20): Promise<QuizResultRecord[]> {
     try {
       logger.info('Fetching user quiz history', 'QuizResultsService', {

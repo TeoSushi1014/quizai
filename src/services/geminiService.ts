@@ -6,38 +6,27 @@ import { getTranslator } from "../i18n";
 import { generateQuestionId } from '../utils/uuidUtils';
 import { secureConfig } from './secureConfigService';
 
-// Helper function to detect if content appears to be a formatted quiz
 export const isFormattedQuiz = (content: string): boolean => {
   if (!content || typeof content !== 'string') return false;
   
-  // Check for common quiz question patterns
   const questionPatterns = [
-    // Match "Question X:" or "Câu X:" pattern (with or without a space after the number)
     /(?:Question|Câu)\s*\d+\s*[:)]/i,
-    // Match line starting with number followed by period or parenthesis (e.g., "1. " or "1)")
     /^\s*\d+\s*[.)]\s*\S+/m,
-    // Match questions inside text with "Question X:" or "Câu X:" pattern
     /\b(?:Question|Câu)\s*\d+\s*[:)]/i
   ];
   
-  // Check for option patterns (A, B, C, D or similar)
   const optionPatterns = [
-    // Match options with "A." format
     /[A-D]\s*\.\s*\S+/i,
-    // Match options with "A)" format
     /[A-D]\s*\)\s*\S+/i,
-    // Check for multiple sequential options (A followed by B, B followed by C, etc.)
     /[A]\s*[.)].*?[B]\s*[.)]/is,
     /[B]\s*[.)].*?[C]\s*[.)]/is,
     /[C]\s*[.)].*?[D]\s*[.)]/is
   ];
   
   const hasQuestionFormat = questionPatterns.some(pattern => pattern.test(content));
-  
   const optionMatches = optionPatterns.filter(pattern => pattern.test(content)).length;
   const hasOptionFormat = optionMatches >= 2;
   
-  return hasQuestionFormat && hasOptionFormat;
   return hasQuestionFormat && hasOptionFormat;
 };
 
@@ -71,22 +60,13 @@ const parseJsonFromMarkdown = <T,>(text: string): T | null => {
   if (match && match[1]) {
     jsonStr = match[1].trim();
   }
-  // Minimalistic cleaning for common AI artifacts if they are outside quoted strings
-  // This is very basic; more robust cleaning might be needed if issues persist.
+
   jsonStr = jsonStr.replace(/侬/g, ''); 
   jsonStr = jsonStr.replace(/ܘ/g, ''); 
   jsonStr = jsonStr.replace(/对着/g, ''); 
-  
-  // Attempt to fix a very specific pattern of broken JSON strings due to newlines before closing quotes.
-  // Example: "some text\n", -> "some text",
-  // Example: "some text\n"} -> "some text"}
-  // Example: "some text\n"] -> "some text"]
   jsonStr = jsonStr.replace(/"\s*```\s*([\]\},])/g, '"$1');
   jsonStr = jsonStr.replace(/"\s*```\s*(,"[^"]+")/g, '"$1');
 
-
-  // Attempt to fix newlines within strings that break JSON.
-  // This regex looks for a quoted string followed by a newline and then more unquoted text that seems like it should be part of the string.
   try {
     const patternString = "(\"[^\"\\\\]*(?:\\\\.[^\"\\\\]*)*\")\\s*\\n\\s*([a-zA-Z_][a-zA-Z0-9_]*(?:\\s+[a-zA-Z_][a-zA-Z0-9_]*)*\\s*)\"";
     const brokenStringRegex = new RegExp(patternString, "g");
@@ -95,18 +75,13 @@ const parseJsonFromMarkdown = <T,>(text: string): T | null => {
     logger.warn("Error during string newline fixing regex replacement.", "GeminiServiceParse", undefined, e as Error);
   }
 
-  // Remove trailing commas before closing braces or brackets
   jsonStr = jsonStr.replace(/,\s*([\}\]])/g, '$1');
 
-  // Attempt to fix bad escapes (backslash not followed by a valid escape char)
   try {
-    // This regex looks for a backslash NOT followed by a known escape character or unicode/hex escape.
-    // If found, it doubles the backslash. This is risky and might need refinement.
     jsonStr = jsonStr.replace(/\\(?![bfnrtv"\\/]|u[0-9a-fA-F]{4}|x[0-9a-fA-F]{2})/g, '\\\\');
   } catch (e) {
     logger.warn("Error during bad escape fixing regex replacement.", "GeminiServiceParse", undefined, e as Error);
   }
-
 
   try {
     return JSON.parse(jsonStr) as T;
@@ -118,7 +93,7 @@ const parseJsonFromMarkdown = <T,>(text: string): T | null => {
         originalTextPreview: text.substring(0,200) 
       }, e
     );
-    // Fallback: try to find the start and end of the main JSON structure if surrounded by junk
+
     const jsonStartBracket = jsonStr.indexOf('[');
     const jsonStartBrace = jsonStr.indexOf('{');
     let actualJsonStart = -1;
@@ -134,13 +109,12 @@ const parseJsonFromMarkdown = <T,>(text: string): T | null => {
         const startingCharType = jsonStr[actualJsonStart];
         for (let i = actualJsonStart; i < jsonStr.length; i++) {
             const char = jsonStr[i];
-            // Basic string state tracking (doesn't handle escaped quotes within strings perfectly but often good enough)
             if (char === '"') {
-                if (i === 0 || jsonStr[i-1] !== '\\' || (jsonStr[i-1] === '\\' && i > 1 && jsonStr[i-2] === '\\')) { // check for unescaped quote
+                if (i === 0 || jsonStr[i-1] !== '\\' || (jsonStr[i-1] === '\\' && i > 1 && jsonStr[i-2] === '\\')) {
                     inString = !inString;
                 }
             }
-            if (inString) continue; // Skip brace/bracket counting if inside a string
+            if (inString) continue;
 
             if (char === '{') openBraces++;
             else if (char === '}') openBraces--;
@@ -159,7 +133,7 @@ const parseJsonFromMarkdown = <T,>(text: string): T | null => {
         if (actualJsonEnd !== -1) {
             try {
                 let potentialJson = jsonStr.substring(actualJsonStart, actualJsonEnd + 1);
-                potentialJson = potentialJson.replace(/,\s*([\}\]])/g, '$1'); // Clean trailing commas again
+                potentialJson = potentialJson.replace(/,\s*([\}\]])/g, '$1');
                 logger.info("Fallback parsing attempting with substring.", "GeminiServiceParse", { substringPreview: potentialJson.substring(0,200) });
                 return JSON.parse(potentialJson) as T;
             } catch (e2: any) {
@@ -181,20 +155,17 @@ CRITICAL JSON Output Schema (MUST follow strictly):
   "title": "string (creative and relevant quiz title in ${language || 'English'}, or use original title if preserving a formatted quiz)",
   "questions": [
     {
-      "id": "string (unique identifier, e.g., 'q1', 'q2'. Make this reasonably unique.)",
-      "questionText": "string (If preserving a formatted quiz: use the EXACT original question text including any numbering like 'Question 1:' or 'Câu 1:'. Otherwise: create a clear, unambiguous multiple-choice question in ${language || 'English'}. This string MUST be formatted using Markdown, including lists, bolding, and LaTeX for math like $inline_math$ or $$block_math$$ where appropriate. Do not truncate.)",
-      "options": ["string (A JSON array of EXACTLY 4 distinct option strings. If preserving a formatted quiz: use the exact original options, preserving their order as A, B, C, D. Each option string MUST be formatted using Markdown. CRITICAL: Each option MUST be a complete, valid JSON string, properly quoted (e.g., \\"Option Text\\"), and NOT TRUNCATED. All string content, including special characters and internal quotes, MUST be correctly escaped (e.g., \\"Option with \\\\\\"quote\\\\\\" inside\\"). Options in the array MUST be separated by commas. ABSOLUTELY NO extraneous text, unquoted characters, or non-JSON content should appear.)",
-      ],
-      "correctAnswer": "string (If preserving a formatted quiz with provided answers: use the exact correct answer from the original. If preserving a quiz without answers: research to find the correct answer. Otherwise for new quizzes: select one option as the correct answer. Must exactly match one of the option strings in the options array.)",
-      "explanation": "string (Detailed explanation in ${language || 'English'}, formatted using Markdown. For preserved formatted quizzes: provide explanation if available in original, otherwise create a brief explanation of why the answer is correct. For new quizzes: ideally 2-4 concise sentences explaining why the answer is correct and why distractors are wrong. Refer to source content if possible. This field can ALSO include supplementary information as requested by custom user prompts. Ensure this string is valid JSON content, formatted with Markdown, and not truncated.)"
+      "id": "string (unique identifier)",
+      "questionText": "string (formatted using Markdown, including LaTeX for math)",
+      "options": ["string (array of EXACTLY 4 distinct options, properly formatted with Markdown)"],
+      "correctAnswer": "string (must match one of the options exactly)",
+      "explanation": "string (detailed explanation in ${language || 'English'}, formatted with Markdown)"
     }
   ]
 }
 `;
 
-// Updated system instruction based on user's "roles.ts" and "prompt_builder.ts"
 const buildGeminiSystemInstruction = (_config: QuizConfig): string => {
-    // Using config parameter is optional as it's now handled in buildGeminiPrompt
     return `You are an expert quiz creator for students. Your role is to:
 
 1. Create high-quality multiple choice questions based on the provided content.

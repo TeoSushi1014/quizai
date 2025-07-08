@@ -15,7 +15,22 @@ interface State {
   errorInfo: ErrorInfo | null;
 }
 
-class ErrorBoundary extends Component<Props, State> {
+const isNetworkError = (error: Error): boolean => {
+  const errorMessage = error.message.toLowerCase();
+  return errorMessage.includes('network') || errorMessage.includes('fetch');
+};
+
+const isSupabaseError = (error: Error): boolean => {
+  const errorMessage = error.message.toLowerCase();
+  return errorMessage.includes('supabase') || errorMessage.includes('auth');
+};
+
+const isModuleError = (error: Error): boolean => {
+  const errorMessage = error.message.toLowerCase();
+  return errorMessage.includes('import') || errorMessage.includes('module');
+};
+
+export default class ErrorBoundary extends Component<Props, State> {
   public state: State = {
     hasError: false,
     error: null,
@@ -56,29 +71,30 @@ class ErrorBoundary extends Component<Props, State> {
       componentStack: errorInfo.componentStack
     };
     
-    console.group('🚨 Deployment Error Details');
-    console.error('Error:', error);
-    console.error('Error Info:', errorInfo);
-    console.log('Deployment Context:', deploymentInfo);
-    console.groupEnd();
-    
-    // Check for common deployment issues
-    const errorMessage = error.message.toLowerCase();
-    if (errorMessage.includes('network') || errorMessage.includes('fetch')) {
-      console.warn('💡 This appears to be a network error. Check:');
-      console.warn('   - Internet connectivity');
-      console.warn('   - API endpoints accessibility');
-      console.warn('   - CORS configuration');
-    } else if (errorMessage.includes('supabase') || errorMessage.includes('auth')) {
-      console.warn('💡 This appears to be a Supabase/Auth error. Check:');
-      console.warn('   - VITE_SUPABASE_URL environment variable');
-      console.warn('   - VITE_SUPABASE_ANON_KEY environment variable');
-      console.warn('   - Supabase project status');
-    } else if (errorMessage.includes('import') || errorMessage.includes('module')) {
-      console.warn('💡 This appears to be a module loading error. Check:');
-      console.warn('   - Build process completed successfully');
-      console.warn('   - All dependencies are installed');
-      console.warn('   - Base path configuration');
+    // Only log in development
+    if (process.env.NODE_ENV === 'development') {
+      console.group('🚨 Deployment Error Details');
+      console.error('Error:', error);
+      console.error('Error Info:', errorInfo);
+      console.log('Deployment Context:', deploymentInfo);
+      console.groupEnd();
+
+      if (isNetworkError(error)) {
+        console.warn('💡 This appears to be a network error. Check:');
+        console.warn('   - Internet connectivity');
+        console.warn('   - API endpoints accessibility');
+        console.warn('   - CORS configuration');
+      } else if (isSupabaseError(error)) {
+        console.warn('💡 This appears to be a Supabase/Auth error. Check:');
+        console.warn('   - VITE_SUPABASE_URL environment variable');
+        console.warn('   - VITE_SUPABASE_ANON_KEY environment variable');
+        console.warn('   - Supabase project status');
+      } else if (isModuleError(error)) {
+        console.warn('💡 This appears to be a module loading error. Check:');
+        console.warn('   - Build process completed successfully');
+        console.warn('   - All dependencies are installed');
+        console.warn('   - Base path configuration');
+      }
     }
   }
 
@@ -249,5 +265,3 @@ class ErrorBoundary extends Component<Props, State> {
     return this.props.children;
   }
 }
-
-export default ErrorBoundary;

@@ -270,50 +270,37 @@ export class GoogleOnlyStrategy implements AuthStrategy {
 // Authentication Manager
 export class AuthenticationManager {
   private strategies: AuthStrategy[] = [];
-  
+
   constructor(supabase: any, supabaseService: any) {
-    // Register strategies in priority order
-    this.strategies = [
-      new FullIntegrationStrategy(supabase, supabaseService),
-      new GoogleOnlyStrategy()
-    ];
+    // Only use the full integration strategy - remove Google-only fallback
+    this.strategies.push(new FullIntegrationStrategy(supabase, supabaseService));
   }
 
   async authenticate(googleUser: any): Promise<UserProfile | null> {
     const environment = AuthEnvironmentChecker.check();
     
-    logger.info('Starting authentication process', 'AuthManager', {
-      environment,
-      availableStrategies: this.strategies.map(s => s.name)
-    });
-
-    // Try strategies in order
     for (const strategy of this.strategies) {
       if (strategy.canHandle(environment)) {
         try {
-          logger.info(`Attempting authentication with ${strategy.name}`, 'AuthManager');
           const result = await strategy.authenticate(googleUser);
-          
           if (result) {
-            logger.info(`Authentication successful with ${strategy.name}`, 'AuthManager', {
+            logger.info('Authentication successful with strategy', 'AuthManager', {
+              strategy: strategy.name,
               userId: result.id,
-              email: result.email,
-              hasSupabaseId: !!result.supabaseId
+              email: result.email
             });
             return result;
           }
         } catch (error) {
-          logger.warn(`${strategy.name} failed, trying next strategy`, 'AuthManager', {
-            error: (error as Error).message
-          });
-          continue;
+          logger.error(`Authentication failed with strategy ${strategy.name}`, 'AuthManager', {}, error as Error);
         }
-      } else {
-        logger.info(`${strategy.name} cannot handle current environment`, 'AuthManager');
       }
     }
 
-    logger.error('All authentication strategies failed', 'AuthManager');
+    logger.error('All authentication strategies failed', 'AuthManager', {
+      email: googleUser.email,
+      availableStrategies: this.strategies.map(s => s.name).join(', ')
+    });
     return null;
   }
 }
