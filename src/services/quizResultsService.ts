@@ -51,7 +51,7 @@ export class QuizResultsService {
         score: Number(result.score),
         total_questions: Number(result.totalQuestions),
         answers: result.answers || [],
-        time_taken: typeof result.timeTaken === 'number' ? Number(result.timeTaken) : null,
+        time_taken: result.timeTaken ? Math.round(Number(result.timeTaken)) : null,
         created_at: new Date().toISOString()
       };
 
