@@ -14,13 +14,13 @@ import { logger } from '../../../services/logService';
 export interface AttemptSettings {
   shuffleQuestions: boolean;
   shuffleAnswers: boolean;
-  timeLimit: number;
+  timeLimit: number | '';
 }
 
 const DEFAULT_ATTEMPT_SETTINGS: AttemptSettings = {
   shuffleQuestions: false,
   shuffleAnswers: false,
-  timeLimit: 0,
+  timeLimit: '',
 };
 
 
@@ -68,7 +68,12 @@ export const QuizCard: React.FC<QuizCardProps> = ({ quiz, onDelete, onEdit, anim
     const storedSettings = localStorage.getItem(`attemptSettings_${quizId}`);
     if (storedSettings) {
       try {
-        return JSON.parse(storedSettings) as AttemptSettings;
+        const parsed = JSON.parse(storedSettings) as AttemptSettings;
+        // Convert legacy 0 to '' for infinite
+        return {
+          ...parsed,
+          timeLimit: parsed.timeLimit === 0 ? '' : parsed.timeLimit
+        };
       } catch (e) {
         logger.error("Failed to parse stored attempt settings:", 'QuizCard', { quizId }, e as Error);
         return DEFAULT_ATTEMPT_SETTINGS;
@@ -100,13 +105,26 @@ export const QuizCard: React.FC<QuizCardProps> = ({ quiz, onDelete, onEdit, anim
   }, []);
 
 
-  const handleAttemptSettingsChange = (setting: keyof AttemptSettings, value: boolean | number) => {
+  const handleAttemptSettingsChange = (setting: keyof AttemptSettings, value: boolean | number | string) => {
+    if (setting === 'timeLimit') {
+      if (value === '' || value === 0 || value === '0') {
+        setCurrentAttemptSettings(prev => ({ ...prev, timeLimit: '' }));
+        return;
+      }
+      const num = Number(value);
+      setCurrentAttemptSettings(prev => ({ ...prev, timeLimit: isNaN(num) ? '' : Math.max(1, num) }));
+      return;
+    }
     setCurrentAttemptSettings(prev => ({ ...prev, [setting]: value }));
   };
 
   const handleSaveAttemptSettings = () => {
     try {
-      localStorage.setItem(`attemptSettings_${quiz.id}`, JSON.stringify(currentAttemptSettings));
+      const toSave = {
+        ...currentAttemptSettings,
+        timeLimit: currentAttemptSettings.timeLimit === '' ? '' : Math.max(0, Number(currentAttemptSettings.timeLimit) || 0)
+      };
+      localStorage.setItem(`attemptSettings_${quiz.id}`, JSON.stringify(toSave));
     } catch (e) {
       logger.error("Failed to save attempt settings to localStorage:", 'QuizCard', { quizId: quiz.id }, e as Error);
     }
@@ -330,12 +348,15 @@ export const QuizCard: React.FC<QuizCardProps> = ({ quiz, onDelete, onEdit, anim
               label={t('attemptTimeLimitLabel')}
               type="number"
               name="timeLimit"
-              value={currentAttemptSettings.timeLimit}
-              onChange={(e) => handleAttemptSettingsChange('timeLimit', parseInt(e.target.value, 10) || 0)}
+              value={currentAttemptSettings.timeLimit === '' ? '' : currentAttemptSettings.timeLimit}
+              onChange={(e) => {
+                const val = e.target.value;
+                handleAttemptSettingsChange('timeLimit', val === '' ? '' : Math.max(0, parseInt(val, 10) || 0));
+              }}
               min="0"
               containerClassName="mt-4"
               inputClassName="w-32"
-              placeholder={t('attemptTimeLimitInfo')}
+              placeholder={t('attemptTimeLimitInfo') + ' (leave empty for infinite)'}
             />
           </div>
         </Modal>

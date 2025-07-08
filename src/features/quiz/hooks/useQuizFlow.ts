@@ -20,7 +20,7 @@ function shuffleArray<T>(array: T[]): T[] {
 const DEFAULT_ATTEMPT_SETTINGS: AttemptSettings = {
   shuffleQuestions: false,
   shuffleAnswers: false,
-  timeLimit: 0,
+  timeLimit: '',
 };
 
 export const useQuizFlow = (quizIdParam?: string, onTimeUp?: () => void) => {
@@ -82,8 +82,8 @@ export const useQuizFlow = (quizIdParam?: string, onTimeUp?: () => void) => {
           setShuffledQuestions(questionsToUse);
           setCurrentQuestionIndex(0);
 
-          if (newAttemptSettings.timeLimit > 0) {
-            setTimeLeft(newAttemptSettings.timeLimit * 60);
+          if (newAttemptSettings.timeLimit !== '' && Number(newAttemptSettings.timeLimit) > 0) {
+            setTimeLeft(Number(newAttemptSettings.timeLimit) * 60);
           } else {
             setTimeLeft(null);
           }

@@ -354,7 +354,11 @@ const QuizPracticePage: React.FC = () => {
           <span className="font-semibold text-[var(--color-text-muted)]">
             Time: {formatTime(elapsedTime)}
           </span>
-          {timeLeft !== null && <span className={`font-semibold ${timeLeft <= 60 ? 'text-red-400 animate-pulse' : 'text-[var(--color-primary-accent)]'}`}>{t('quizTakingTimeLeft', { time: formatTime(timeLeft) })}</span>}
+          {attemptSettings.timeLimit !== '' && timeLeft !== null && (
+            <span className={`font-semibold ${timeLeft <= 60 ? 'text-red-400 animate-pulse' : 'text-[var(--color-primary-accent)]'}`}>
+              {t('quizTakingTimeLeft', { time: formatTime(timeLeft) })}
+            </span>
+          )}
           {/* Removed LightbulbIcon tooltip */}
         </div>
       </div>
