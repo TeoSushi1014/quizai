@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://teosushi1014.github.io/quizai/sitemap.xml 
