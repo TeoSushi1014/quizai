@@ -170,32 +170,29 @@ const QuestionItem: React.FC<QuestionItemProps> = ({
   return (
     <motion.div
       ref={itemRef}
-      initial={{ opacity: 0, y: 30 }}
-      animate={isVisible ? { opacity: 1, y: 0 } : { opacity: 0, y: 30 }}
-      transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1], delay: isVisible ? animationDelayFactor * 0.07 : 0 }}
       className="question-item-motion-wrapper"
     >
       <Card useGlassEffect className="shadow-xl !rounded-2xl !border-slate-700/50">
         <div className="flex justify-between items-center mb-5 sm:mb-6">
-          <h3 className="text-lg sm:text-xl font-semibold text-sky-300">
+          <h3 className="text-lg sm:text-xl font-semibold text-[var(--color-primary-accent)]">
             {t('reviewQuestionLabel', { index: questionIndex + 1 })}
           </h3>
           <Tooltip content={t('reviewDeleteQuestionLabel')} placement="left">
             <Button
               variant="danger"
               size="sm"
-              onClick={handleDeleteQuestionRequest} // Changed to request
-              className="!p-2.5 rounded-lg shadow-md hover:shadow-red-500/50"
+              onClick={handleDeleteQuestionRequest}
+              className="!p-2.5 rounded-lg shadow-md hover:shadow-[var(--color-danger-accent)]/50 bg-transparent"
               aria-label={t('reviewDeleteQuestionLabel')}
             >
-              <DeleteIcon className="w-4 h-4" />
+              <DeleteIcon className="w-4 h-4 text-[var(--color-danger-accent)]" />
             </Button>
           </Tooltip>
         </div>
 
         <div className="space-y-5 sm:space-y-6">
           <Textarea
-            label={<span className="font-medium text-slate-200">{t('reviewQuestionTextLabel')}</span>}
+            label={<span className="font-medium text-[var(--color-text-primary)]">{t('reviewQuestionTextLabel')}</span>}
             value={question.questionText}
             onChange={(e) => handleFieldChange('questionText', e.target.value)}
             placeholder={t('reviewQuestionTextPlaceholder')}
@@ -204,7 +201,7 @@ const QuestionItem: React.FC<QuestionItemProps> = ({
           />
 
           <div>
-            <label className="block text-sm font-medium text-slate-200 mb-2.5">{t('reviewOptionsLabel')}</label>
+            <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-2.5">{t('reviewOptionsLabel')}</label>
             <div className="space-y-3.5">
               {question.options.map((optionText, optIndex) => (
                 <div key={optIndex} className="flex items-center gap-3">
@@ -222,7 +219,7 @@ const QuestionItem: React.FC<QuestionItemProps> = ({
                         variant="ghost"
                         size="sm"
                         onClick={() => handleRemoveOption(optIndex)}
-                        className="!p-2.5 rounded-lg text-red-400/80 hover:text-red-400 hover:bg-red-400/15"
+                        className="!p-2.5 rounded-lg text-[var(--color-danger-accent)] hover:text-[var(--color-danger-accent)] hover:bg-[var(--color-danger-accent)]/10 bg-transparent"
                         aria-label={t('reviewRemoveOptionLabel')}
                       >
                         <DeleteIcon className="w-4 h-4" />
@@ -238,7 +235,7 @@ const QuestionItem: React.FC<QuestionItemProps> = ({
                 size="sm"
                 onClick={handleAddOption}
                 leftIcon={<PlusIcon className="w-4 h-4" strokeWidth={2}/>}
-                className="mt-4 py-2 px-4 rounded-lg border-dashed border-sky-400/70 text-sky-300 hover:bg-sky-400/15 hover:border-sky-400"
+                className="mt-4 py-2 px-4 rounded-lg border-dashed border-[var(--color-primary-accent)] text-[var(--color-primary-accent)] hover:bg-[var(--color-primary-accent)]/15 hover:border-[var(--color-primary-accent)]"
               >
                 {t('reviewAddOption')}
               </Button>
@@ -246,7 +243,7 @@ const QuestionItem: React.FC<QuestionItemProps> = ({
           </div>
           
           <Select
-            label={<span className="font-medium text-slate-200">{t('reviewCorrectAnswerLabel')}</span>}
+            label={<span className="font-medium text-[var(--color-text-primary)]">{t('reviewCorrectAnswerLabel')}</span>}
             value={question.correctAnswer}
             onChange={(e) => handleFieldChange('correctAnswer', e.target.value)}
             options={optionItems.length > 0 ? optionItems : [{value: "", label: "Please add options"}]}
@@ -255,7 +252,7 @@ const QuestionItem: React.FC<QuestionItemProps> = ({
           />
 
           <Textarea
-            label={<span className="font-medium text-slate-200">{t('reviewExplanationLabel')}</span>}
+            label={<span className="font-medium text-[var(--color-text-primary)]">{t('reviewExplanationLabel')}</span>}
             value={question.explanation}
             onChange={(e) => handleFieldChange('explanation', e.target.value)}
             placeholder={t('reviewExplanationPlaceholder')}
@@ -454,36 +451,36 @@ const QuizReviewPage: React.FC = () => {
   const handleCloseAzotaExportModal = useCallback(() => setIsAzotaExportModalOpen(false), []);
 
   if (isLoading) return <LoadingSpinner text={t('loading')} className="mt-24" size="xl"/>;
-  if (error && !editableQuiz && !isSaving) return <Card className="text-red-400 p-12 text-center shadow-xl !border-red-500/70 !bg-red-800/40 text-lg font-semibold !rounded-2xl animate-fadeInUp" useGlassEffect>{error}</Card>;
-  if (!editableQuiz) return <Card className="text-slate-400 p-12 text-center shadow-lg text-lg font-medium !rounded-2xl animate-fadeInUp" useGlassEffect>{t('reviewErrorNoQuizData')}</Card>;
+  if (error && !editableQuiz && !isSaving) return <Card className="text-[var(--color-danger-accent)] p-12 text-center shadow-xl !border-[var(--color-danger-accent)]/70 !bg-[var(--color-danger-accent)]/10 text-lg font-semibold !rounded-2xl animate-fadeInUp" useGlassEffect>{error}</Card>;
+  if (!editableQuiz) return <Card className="text-[var(--color-text-muted)] p-12 text-center shadow-lg text-lg font-medium !rounded-2xl animate-fadeInUp" useGlassEffect>{t('reviewErrorNoQuizData')}</Card>;
 
   const isEditingExisting = !!existingQuizIdFromParams;
 
   return (
     <div className="pb-16">
       <NotificationDisplay notification={notification} onClose={clearNotification} />
-      <div className={`sticky-review-actions bg-slate-800 shadow-xl py-4 -mx-4 sm:-mx-6 lg:-mx-8 rounded-b-2xl border-b border-slate-700 animate-fadeInUp`}>
+      <div className={`sticky-review-actions bg-[var(--color-bg-surface-2)] shadow-xl py-4 -mx-4 sm:-mx-6 lg:-mx-8 rounded-b-2xl border-b border-[var(--color-border-default)] animate-fadeInUp`}>
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-                <h1 className="text-xl sm:text-2xl font-bold text-slate-50 leading-tight truncate tracking-tight flex items-center" title={editableQuiz.title}>
+                <h1 className="text-xl sm:text-2xl font-bold text-[var(--color-text-primary)] leading-tight truncate tracking-tight flex items-center" title={editableQuiz.title}>
                      <MathText text={isEditingExisting ? t('reviewEditQuizTitle') : t('reviewFinalizeQuizTitle')} markdownFormatting={true} />
                 </h1>
                 <div className="flex flex-wrap justify-center sm:justify-end items-center gap-2.5">
                     {!isEditingExisting && (<Button variant="outline" size="sm" onClick={() => navigate('/create')} leftIcon={<ArrowUturnLeftIcon className="w-4 h-4"/>}> {t('reviewDiscardRegenerateShort')} </Button>)}
                     <Button variant="secondary" size="sm" onClick={() => navigate('/dashboard')} leftIcon={<HomeIcon className="w-4 h-4"/>}> {isEditingExisting ? t('cancel') : t('reviewDiscardToDashboardShort')} </Button>
-                    <Button variant="outline" size="sm" onClick={() => setIsAzotaExportModalOpen(true)} leftIcon={<ExportIcon className="w-4 h-4"/>} className="border-sky-400/70 text-sky-300 hover:bg-sky-400/15" disabled={!editableQuiz || editableQuiz.questions.length === 0}> {t('azotaExportButton')} </Button>
+                    <Button variant="outline" size="sm" onClick={() => setIsAzotaExportModalOpen(true)} leftIcon={<ExportIcon className="w-4 h-4"/>} className="border-[var(--color-primary-accent)] text-[var(--color-primary-accent)] hover:bg-[var(--color-primary-accent)]/15" disabled={!editableQuiz || editableQuiz.questions.length === 0}> {t('azotaExportButton')} </Button>
                     <Button variant="primary" size="sm" onClick={handleSaveQuiz} isLoading={isSaving} disabled={isSaving || !editableQuiz.questions.length} leftIcon={<SaveIcon className="w-4 h-4"/>} className="bg-gradient-to-r from-green-500 to-teal-500 hover:from-green-600 hover:to-teal-600 text-white"> {isSaving ? t('reviewSavingButton') : (isEditingExisting ? t('reviewSaveChangesButton') : t('reviewSaveButton'))} </Button>
                 </div>
             </div>
-            {error && <p role="alert" className={`text-xs text-red-300 mt-4 bg-red-500/20 p-3 rounded-lg text-center sm:text-left shadow animate-fadeIn`}>{error}</p>}
-            {editableQuiz && !editableQuiz.questions.length && <p role="alert" className={`text-xs text-yellow-400 mt-4 bg-yellow-500/20 p-3 rounded-lg text-center sm:text-left shadow animate-fadeIn`}>{t('reviewCannotSaveNoQuestions')}</p>}
+            {error && <p role="alert" className={`text-xs text-[var(--color-danger-accent)] mt-4 bg-[var(--color-danger-accent)]/10 p-3 rounded-lg text-center sm:text-left shadow animate-fadeIn`}>{error}</p>}
+            {editableQuiz && !editableQuiz.questions.length && <p role="alert" className={`text-xs text-[var(--color-warning-accent)] mt-4 bg-[var(--color-warning-accent)]/20 p-3 rounded-lg text-center sm:text-left shadow animate-fadeIn`}>{t('reviewCannotSaveNoQuestions')}</p>}
         </div>
       </div>
 
       <div className="pt-6 sm:pt-8">
          <Card useGlassEffect className="shadow-xl !rounded-2xl !border-slate-700/50 mb-6 sm:mb-8">
             <Input
-                label={<p className="text-lg font-semibold text-slate-100">{t('reviewQuizTitleLabel')}</p>}
+                label={<p className="text-lg font-semibold text-[var(--color-text-primary)]">{t('reviewQuizTitleLabel')}</p>}
                 value={editableQuiz.title}
                 onChange={(e) => handleQuizTitleChange(e.target.value)}
                 placeholder={t('step2QuizTitlePlaceholder')}
@@ -492,11 +489,11 @@ const QuizReviewPage: React.FC = () => {
             />
              {editableQuiz.sourceContentSnippet && (
                 <details className="mt-4">
-                    <summary className="text-xs text-slate-400 cursor-pointer hover:text-sky-300 flex items-center font-semibold group transition-colors var(--duration-fast) var(--ease-ios)">
-                        <DocumentTextIcon className="w-4 h-4 mr-2.5 text-slate-500 group-hover:text-sky-400 transition-colors var(--duration-fast) var(--ease-ios)" strokeWidth={2} />
+                    <summary className="text-xs text-[var(--color-text-muted)] cursor-pointer hover:text-[var(--color-primary-accent)] flex items-center font-semibold group transition-colors var(--duration-fast) var(--ease-ios)">
+                        <DocumentTextIcon className="w-4 h-4 mr-2.5 text-[var(--color-text-secondary)] group-hover:text-[var(--color-primary-accent)] transition-colors var(--duration-fast) var(--ease-ios)" strokeWidth={2} />
                         {t('resultsViewSourceSnippet')}
                     </summary>
-                    <blockquote className="mt-3 text-xs text-slate-400/80 max-h-24 overflow-y-auto p-3 bg-slate-700/60 border border-slate-600/60 rounded-lg shadow-inner italic">
+                    <blockquote className="mt-3 text-xs text-[var(--color-text-muted)]/80 max-h-24 overflow-y-auto p-3 bg-[var(--color-bg-surface-2)] border border-[var(--color-border-default)] rounded-lg shadow-inner italic">
                         <MathText text={editableQuiz.sourceContentSnippet} markdownFormatting={true} />
                     </blockquote>
                 </details>
@@ -517,7 +514,7 @@ const QuizReviewPage: React.FC = () => {
       </div>
 
       <div className="mt-10 sm:mt-12 text-center">
-        <Button variant="subtle" onClick={handleAddNewQuestion} leftIcon={<PlusCircleIcon className="w-5 h-5" />} className={`border-2 border-dashed border-slate-600 hover:border-sky-400/80 text-slate-300 hover:text-sky-300 py-3 px-6 rounded-xl shadow-lg hover:shadow-black/20`}>
+        <Button variant="subtle" onClick={handleAddNewQuestion} leftIcon={<PlusCircleIcon className="w-5 h-5" />} className={`border-2 border-dashed border-[var(--color-primary-accent)] hover:border-[var(--color-primary-accent)]/80 text-[var(--color-primary-accent)] hover:text-[var(--color-primary-accent)] py-3 px-6 rounded-xl shadow-lg hover:shadow-black/20`}>
            {t('reviewAddNewQuestion')}
         </Button>
       </div>
@@ -547,7 +544,7 @@ const QuizReviewPage: React.FC = () => {
             </div>
           }
         >
-          <p className="text-slate-200 text-base leading-relaxed">
+          <p className="text-[var(--color-text-primary)] text-base leading-relaxed">
             {t('reviewDeleteQuestionConfirmationMessage', { questionIndex: (confirmDeleteQuestionModal.questionIndex ?? 0) + 1 })}
           </p>
         </Modal>
