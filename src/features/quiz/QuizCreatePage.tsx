@@ -408,17 +408,13 @@ const QuizCreatePage: React.FC = () => {
                 <ProgressBar progress={(processingProgress.current / Math.max(1, processingProgress.total)) * 100} showPercentage={false} />
             </div>
         )}
-        <div className="relative flex py-1 items-center"> <div className="flex-grow border-t border-[var(--color-border-default)]"></div> <span className="flex-shrink mx-4 text-[var(--color-text-muted)] text-xs font-medium uppercase tracking-wider">{t('step1Or')}</span> <div className="flex-grow border-t border-[var(--color-border-default)]"></div> </div> 
-        <Textarea label={<p className="text-base font-semibold text-[var(--color-text-primary)]">{t('step1PasteTextLabel')}</p>} value={pastedText} onChange={(e) => setPastedText(e.target.value)} placeholder={t('step1PasteTextPlaceholder')} rows={6} className="min-h-[150px] text-sm paste-text-area" /> 
-        <Button onClick={handlePasteText} disabled={!pastedText.trim() || isProcessingFiles} fullWidth size="lg" variant="secondary" className="py-3 shadow-lg"> {t('step1UsePastedText')} </Button> 
-        
         <div className="relative flex py-1 items-center"> <div className="flex-grow border-t border-[var(--color-border-default)]"></div> <span className="flex-shrink mx-4 text-[var(--color-text-muted)] text-xs font-medium uppercase tracking-wider">{t('step1Or')}</span> <div className="flex-grow border-t border-[var(--color-border-default)]"></div> </div>
         
         <Textarea 
           label={<p className="text-base font-semibold text-[var(--color-text-primary)]">AI Prompt</p>} 
           value={promptOnlyText} 
           onChange={(e) => setPromptOnlyText(e.target.value)} 
-          placeholder="Tạo 50 câu hỏi ôn tập tiếng Anh chủ đề gia đình" 
+          placeholder={t('step1AIPromptPlaceholder')} 
           rows={6} 
           className="min-h-[150px] text-sm paste-text-area" 
         />
@@ -448,6 +444,10 @@ const QuizCreatePage: React.FC = () => {
         > 
           Generate Quiz from Prompt
         </Button>
+        
+        <div className="relative flex py-1 items-center"> <div className="flex-grow border-t border-[var(--color-border-default)]"></div> <span className="flex-shrink mx-4 text-[var(--color-text-muted)] text-xs font-medium uppercase tracking-wider">{t('step1Or')}</span> <div className="flex-grow border-t border-[var(--color-border-default)]"></div> </div> 
+        <Textarea label={<p className="text-base font-semibold text-[var(--color-text-primary)]">{t('step1PasteTextLabel')}</p>} value={pastedText} onChange={(e) => setPastedText(e.target.value)} placeholder={t('step1PasteTextPlaceholder')} rows={6} className="min-h-[150px] text-sm paste-text-area" /> 
+        <Button onClick={handlePasteText} disabled={!pastedText.trim() || isProcessingFiles} fullWidth size="lg" variant="secondary" className="py-3 shadow-lg"> {t('step1UsePastedText')} </Button>
         {processingError && !isProcessingFiles && (
           <div role="alert" className={`p-3.5 ${processingError.startsWith('✅') ? 'bg-green-500/20 border-green-500/50 text-green-300' : 'bg-red-500/20 border-red-500/50 text-red-300'} border rounded-lg text-sm text-center shadow-md animate-fadeIn`}>
             {processingError}

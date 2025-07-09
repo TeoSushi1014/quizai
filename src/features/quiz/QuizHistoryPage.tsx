@@ -158,7 +158,7 @@ const QuizHistoryPage: React.FC = () => {
                 </div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-[var(--color-secondary-accent)]">
+                <div className="text-2xl font-bold text-[var(--color-primary-accent)]">
                   {new Set(results.map(r => r.quiz_id)).size}
                 </div>
                 <div className="text-sm text-[var(--color-text-secondary)]">
@@ -177,7 +177,7 @@ const QuizHistoryPage: React.FC = () => {
               {results.map((result) => (
                 <div
                   key={result.id}
-                  className={`p-4 rounded-lg border-2 ${getScoreBgColor(result.score)}`}
+                  className={`p-4 rounded-lg border-2 border-[var(--color-border-default)] ${getScoreBgColor(result.score)}`}
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">

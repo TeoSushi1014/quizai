@@ -167,51 +167,40 @@ const QuizAnalyticsPage: React.FC = () => {
       </div>
 
       {/* Stats Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
-        <Card className="p-4 text-center">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <Card className="p-6 rounded-xl border-2 border-[var(--color-border-default)] text-center shadow-md">
           <div className="text-2xl font-bold text-[var(--color-primary-accent)]">
             {stats.totalAttempts}
           </div>
-          <div className="text-sm text-[var(--color-text-muted)]">
+          <div className="text-sm text-[var(--color-text-secondary)]">
             Total Attempts
           </div>
         </Card>
-        
-        <Card className="p-4 text-center">
+        <Card className="p-6 rounded-xl border-2 border-[var(--color-border-default)] text-center shadow-md">
           <div className="text-2xl font-bold text-[var(--color-primary-accent)]">
             {stats.uniqueUsers}
           </div>
-          <div className="text-sm text-[var(--color-text-muted)]">
+          <div className="text-sm text-[var(--color-text-secondary)]">
             Unique Users
           </div>
         </Card>
-        
-        <Card className="p-4 text-center">
+        <Card className="p-6 rounded-xl border-2 border-[var(--color-border-default)] text-center shadow-md">
           <div className="text-2xl font-bold text-[var(--color-primary-accent)]">
             {stats.averageScore}%
           </div>
-          <div className="text-sm text-[var(--color-text-muted)]">
+          <div className="text-sm text-[var(--color-text-secondary)]">
             Average Score
           </div>
         </Card>
-        
-        <Card className="p-4 text-center">
+        <Card className="p-6 rounded-xl border-2 border-[var(--color-border-default)] text-center shadow-md">
           <div className="text-2xl font-bold text-[var(--color-primary-accent)]">
             {stats.bestScore}%
           </div>
-          <div className="text-sm text-[var(--color-text-muted)]">
+          <div className="text-sm text-[var(--color-text-secondary)]">
             Best Score
           </div>
         </Card>
-        
-        <Card className="p-4 text-center">
-          <div className="text-2xl font-bold text-[var(--color-primary-accent)]">
-            {formatTime(stats.averageTime)}
-          </div>
-          <div className="text-sm text-[var(--color-text-muted)]">
-            Avg Time
-          </div>
-        </Card>
+        {/* Nếu muốn giữ Avg Time, có thể thêm vào dưới dạng ẩn trên mobile hoặc chuyển sang dòng khác */}
       </div>
 
       {/* Detailed Results */}
