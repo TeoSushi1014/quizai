@@ -102,4 +102,8 @@ export interface AppContextType {
   // Notification state for UI rendering
   notification: import('./hooks/useNotification').NotificationState | null;
   clearNotification: () => void;
+  
+  // Admin state
+  isAdmin: boolean;
+  adminRole: string | null;
 }

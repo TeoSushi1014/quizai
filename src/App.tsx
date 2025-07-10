@@ -17,6 +17,9 @@ import { supabase } from './services/supabaseClient';
 import { logger } from './services/logService';
 import { migrateLocalDataToSupabase, checkMigrationNeeded } from './utils/migrationUtils';
 import { secureConfig } from './services/secureConfigService';
+import { maintenanceService } from './services/maintenanceService';
+import { MaintenancePage } from './components/MaintenancePage';
+import { adminService } from './services/adminService';
 import './styles/markdown.css';
 import 'github-markdown-css/github-markdown.css';
 import './styles/markdown-custom.css';
@@ -37,6 +40,7 @@ const SharedQuizPage = lazy(() => import(/* webpackChunkName: "shared-quiz" */ '
 const QuizHistoryPage = lazy(() => import('./features/quiz/QuizHistoryPage'));
 const MyQuizzesPage = lazy(() => import('./features/quiz/MyQuizzesPage'));
 const QuizAnalyticsPage = lazy(() => import('./features/quiz/QuizAnalyticsPage')); 
+const MaintenanceAdmin = lazy(() => import('./components/admin/MaintenanceAdmin')); 
 
 import { quizStorage } from './services/storageService'; 
 
@@ -93,6 +97,10 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true); 
   const [appInitialized, setAppInitialized] = useState(false);
   const [initializationStarted, setInitializationStarted] = useState(false);
+  const [maintenanceMode, setMaintenanceMode] = useState(false);
+  const [maintenanceMessage, setMaintenanceMessage] = useState('');
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [adminRole, setAdminRole] = useState<string | null>(null);
   const authInProgressRef = useRef(false);
   
   const tForProvider = useMemo(() => getTranslator(language), [language]);
@@ -169,6 +177,27 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
           const savedLanguage = localStorage.getItem(LOCALSTORAGE_LANGUAGE_KEY) as Language | null;
           if (savedLanguage && translations[savedLanguage]) {
               setLanguageState(savedLanguage);
+          }
+
+          const maintenanceSettings = await maintenanceService.getMaintenanceSettings();
+          if (maintenanceSettings?.isEnabled) {
+            const userEmail = currentUser?.email || undefined;
+            const isAllowed = await maintenanceService.isUserAllowed(userEmail);
+            
+            if (!isAllowed) {
+              setMaintenanceMode(true);
+              setMaintenanceMessage(maintenanceSettings.message);
+              setAppInitialized(true);
+              setIsLoading(false);
+              return;
+            }
+          }
+
+          if (currentUser?.email) {
+            const adminStatus = await adminService.isAdmin(currentUser.email);
+            const role = await adminService.getAdminRole(currentUser.email);
+            setIsAdmin(adminStatus);
+            setAdminRole(role);
           }
 
           try {
@@ -688,12 +717,18 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     showErrorNotification,
     notification,
     clearNotification,
+    isAdmin,
+    adminRole,
   }), [
     location.pathname, setCurrentView, language, setLanguage, quizzesForContext, 
     addQuiz, deleteQuiz, updateQuiz, getQuizByIdFromAll, activeQuiz, setActiveQuiz, quizResult, 
     setQuizResultWithPersistence, currentUser, login, handleLogout, updateUserProfile, combinedIsLoading,
-    showSuccessNotification, showErrorNotification, notification, clearNotification,
+    showSuccessNotification, showErrorNotification, notification, clearNotification, isAdmin, adminRole,
   ]);
+
+  if (maintenanceMode) {
+    return <MaintenancePage message={maintenanceMessage} />;
+  }
 
   if (!appInitialized) {
     return (
@@ -761,7 +796,7 @@ const NavLink: React.FC<{ to: string; children: ReactNode; end?: boolean; classN
 NavLink.displayName = "NavLink";
 
 const UserDropdownMenu: React.FC = () => {
-    const { currentUser, logout, setCurrentView } = useAppContext();
+    const { currentUser, logout, setCurrentView, isAdmin, adminRole } = useAppContext();
     const { t } = useTranslation();
     const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
     const userDropdownRef = useRef<HTMLDivElement>(null);
@@ -857,6 +892,26 @@ const UserDropdownMenu: React.FC = () => {
                         {t('navSettings')}
                     </button>
                 </div>
+
+                {isAdmin && (
+                  <div className="py-1.5 border-t border-[var(--color-border-default)]">
+                    <div className="px-5 pt-2 pb-1 text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Admin</div>
+                    <button
+                        onClick={() => { setCurrentView('/admin/maintenance'); setIsUserDropdownOpen(false); }}
+                        className="w-full text-left px-5 py-3 text-sm text-[var(--color-text-body)] hover:bg-[var(--color-bg-surface-2)] active:bg-[var(--color-bg-surface-3)] flex items-center hover:text-[var(--color-primary-accent)] transition-colors var(--duration-fast) var(--ease-ios)"
+                        role="menuitem"
+                    >
+                        <svg className="w-4 h-4 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        Quản Lý Bảo Trì
+                        {adminRole === 'super_admin' && (
+                          <span className="ml-auto bg-purple-100 text-purple-800 text-xs px-2 py-0.5 rounded-full">Super</span>
+                        )}
+                    </button>
+                  </div>
+                )}
 
                 <div className="py-1.5 border-t border-[var(--color-border-default)]">
                      <div className="px-5 pt-2 pb-1 text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{t('themeSettings')}</div>
@@ -1157,6 +1212,7 @@ const AppLayout: React.FC = () => {
             <Route path="/history" element={currentUser ? <QuizHistoryPage /> : <Navigate to="/signin" state={{ from: location }} replace />} />
             <Route path="/my-quizzes" element={currentUser ? <MyQuizzesPage /> : <Navigate to="/signin" state={{ from: location }} replace />} />
             <Route path="/quiz-analytics/:quizId" element={currentUser ? <QuizAnalyticsPage /> : <Navigate to="/signin" state={{ from: location }} replace />} />
+            <Route path="/admin/maintenance" element={currentUser ? <MaintenanceAdmin /> : <Navigate to="/signin" state={{ from: location }} replace />} />
             <Route path="/shared/:quizId" element={<SharedQuizPage />} /> 
             <Route path="*" element={<HomePage />} /> 
           </Routes>
