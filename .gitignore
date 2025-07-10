@@ -22,11 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+*.sql
 
-# Database files - contains sensitive API keys
-database.sql
-
-quizai_backup.sql
-fix.md
-
+todo.md
 copilot-instructions.md
