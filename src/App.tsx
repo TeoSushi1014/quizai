@@ -20,6 +20,8 @@ import { secureConfig } from './services/secureConfigService';
 import { maintenanceService } from './services/maintenanceService';
 import { MaintenancePage } from './components/MaintenancePage';
 import { adminService } from './services/adminService';
+import GithubApiLimitWarning from './components/GithubApiLimitWarning';
+import MarkdownPreviewTester from './components/MarkdownPreviewTester';
 import './styles/markdown.css';
 import 'github-markdown-css/github-markdown.css';
 import './styles/markdown-custom.css';
@@ -1214,6 +1216,7 @@ const AppLayout: React.FC = () => {
             <Route path="/quiz-analytics/:quizId" element={currentUser ? <QuizAnalyticsPage /> : <Navigate to="/signin" state={{ from: location }} replace />} />
             <Route path="/admin/maintenance" element={currentUser ? <MaintenanceAdmin /> : <Navigate to="/signin" state={{ from: location }} replace />} />
             <Route path="/shared/:quizId" element={<SharedQuizPage />} /> 
+            <Route path="/markdown-test" element={<MarkdownPreviewTester />} />
             <Route path="*" element={<HomePage />} /> 
           </Routes>
         </Suspense>
@@ -1266,6 +1269,11 @@ const AppLayout: React.FC = () => {
             </div>
         </AnimatedApiKeyWarning>
       )}
+      
+      {/* GitHub API rate limit warning */}
+      <div className="fixed bottom-4 right-4 z-50 max-w-md">
+        <GithubApiLimitWarning />
+      </div>
 
       {currentUser && isMobileProfileOpen && <MobileProfileSheet /> } 
 

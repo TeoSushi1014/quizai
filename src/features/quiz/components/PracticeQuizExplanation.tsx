@@ -1,9 +1,9 @@
 import React from 'react';
 import { useTranslation } from '../../../App';
-import MathText from '../../../components/MathText'; // Added import
+import GithubMarkdownContent from '../../../components/GithubMarkdownContent';
 
 interface PracticeQuizExplanationProps {
-  explanation: string;
+  explanation: string | undefined | null;
   className?: string;
 }
 
@@ -26,14 +26,14 @@ const PracticeQuizExplanation: React.FC<PracticeQuizExplanationProps> = ({
       <div className="explanation-content"> 
         
         <div className="pl-1.5 border-l-2 border-[var(--color-primary-accent)]/20">
-          {/* Updated to use MathText for robust markdown rendering */}
+          {/* Updated to use GithubMarkdownContent for GitHub API markdown rendering */}
           <div className="explanation-text text-sm leading-relaxed text-[var(--color-text-body)] markdown-content">
-            <MathText text={explanation} markdownFormatting={true} />
+            <GithubMarkdownContent content={explanation} />
           </div>
         </div>
       </div>
     </div>
   );
 };
-PracticeQuizExplanation.displayName = "PracticeQuizExplanation";
+
 export default PracticeQuizExplanation;

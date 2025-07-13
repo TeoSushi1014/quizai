@@ -1,6 +1,6 @@
 
 import React from 'react';
-import MathText from './MathText'; // Uses the updated MathText for GitHub style
+import GithubMarkdownContent from './GithubMarkdownContent';
 
 interface QuizMarkdownContentProps {
   content: string | undefined | null;
@@ -17,18 +17,15 @@ const QuizMarkdownContent: React.FC<QuizMarkdownContentProps> = ({
     return null;
   }
 
-  // MathText will apply the 'github-markdown' class internally
-  // and use its custom renderers to achieve GitHub style.
-  // The className passed here will be appended to the 'github-markdown ...' classes in MathText.
+  // Use the GitHub API powered markdown renderer
   return (
-    <MathText 
-      text={content} 
-      markdownFormatting={true} // This is key for enabling full Markdown rendering
+    <GithubMarkdownContent 
+      content={content} 
       className={className} 
       compact={compact} 
+      isRawMode={false} // Use standard mode, not raw mode
     />
   );
 };
 
-QuizMarkdownContent.displayName = "QuizMarkdownContentGitHub";
 export default QuizMarkdownContent;
