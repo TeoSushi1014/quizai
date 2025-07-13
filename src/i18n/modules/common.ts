@@ -185,6 +185,9 @@ export const en = {
   textSizeMedium: "Medium",
   textSizeLarge: "Large",
   textSizeExtraLarge: "Extra Large",
+  
+  // Added for TodoList
+  supportedQuestionTypes: "Supported Question Types",
 };
 
 export const vi = {
@@ -374,4 +377,7 @@ export const vi = {
   textSizeMedium: "Trung bình",
   textSizeLarge: "Lớn",
   textSizeExtraLarge: "Cực lớn",
+  
+  // Added for TodoList
+  supportedQuestionTypes: "Các dạng câu hỏi được hỗ trợ",
 };

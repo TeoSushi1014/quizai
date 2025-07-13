@@ -8,6 +8,7 @@ import { UserCircleIcon, ChevronRightIcon } from '../../constants';
 import { QuizCard } from './components/QuizCard'; 
 import useShouldReduceMotion from '../../hooks/useShouldReduceMotion';
 import { emailService } from '../../services/emailService';
+import TodoList from '../../components/TodoList';
 
 import MathText from '../../components/MathText';
 
@@ -219,7 +220,7 @@ const HomePage: React.FC = () => {
         >
           <LoadingSpinner size="xl" />
           <p className="mt-4 text-md md:text-lg text-[var(--color-text-secondary)]">
-            {t('loadingQuizzesMessage', 'Loading your quizzes...')}
+            {t('loadingQuizzesMessage')}
           </p>
         </motion.div>
       );
@@ -236,7 +237,7 @@ const HomePage: React.FC = () => {
           animate="visible"
         >
           <motion.h1 variants={currentHeroItemVariants} id="hero-title-empty" className="text-4xl md:text-5xl font-bold text-[var(--color-text-primary)] mb-4 md:mb-6">
-            {t('welcomeToQuizAI', 'Welcome to QuizAI!')} 
+            {t('welcomeToQuizAI')} 
           </motion.h1>
           <motion.p variants={currentHeroItemVariants} className="text-lg md:text-xl text-[var(--color-text-secondary)] mb-8 md:mb-10 max-w-2xl mx-auto">
             {t('heroSubtitleUserNoQuizzes')}
@@ -252,6 +253,17 @@ const HomePage: React.FC = () => {
               <img src="https://stg-images.samsung.com/is/image/samsung/assets/in/unpacked/ai-icon.png" alt="AI Create Quiz Icon" className="w-5 h-5 mr-2" />
               <MathText text={t('heroCTA')} />
             </Button>
+          </motion.div>
+          
+          {/* Add TodoList component after the hero section */}
+          <motion.div 
+            variants={currentHeroItemVariants} 
+            className="mt-12 max-w-3xl mx-auto"
+          >
+            <Card className="shadow-lg">
+              <h2 className="text-2xl font-bold mb-4">{t('supportedQuestionTypes')}</h2>
+              <TodoList />
+            </Card>
           </motion.div>
         </motion.section>
       );
@@ -273,7 +285,7 @@ const HomePage: React.FC = () => {
             variants={currentHeroContainerVariants}
             >
             <motion.h1 variants={currentHeroItemVariants} id="hero-title-existing" className="text-4xl md:text-5xl font-bold text-[var(--color-text-primary)] mb-4 md:mb-6">
-                {currentUser ? t('heroTitleUser', { name: currentUser.name?.split(' ')[0] || t('guest') }) : t('heroTitleExistingQuizzes', 'Your Quizzes')}
+                {currentUser ? t('heroTitleUser', { name: currentUser.name?.split(' ')[0] || t('guest') }) : t('heroTitleExistingQuizzes')}
             </motion.h1>
             <motion.p variants={currentHeroItemVariants} className="text-lg md:text-xl text-[var(--color-text-secondary)] mb-8 md:mb-10 max-w-2xl mx-auto">
                 {t('heroSubtitleUserWithQuizzes')}
@@ -312,13 +324,14 @@ const HomePage: React.FC = () => {
                 <motion.div
                 className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
                 >
-                {recentQuizzesForDisplay.map((quiz) => (
+                {recentQuizzesForDisplay.map((quiz, index) => (
                     <motion.div key={quiz.id} variants={currentHeroItemVariants}>
                     <QuizCard
+                        key={quiz.id}
                         quiz={quiz}
                         onDelete={() => handleDeleteQuiz(quiz.id)}
                         onEdit={() => handleEditQuiz(quiz)}
-                        onSelect={() => navigate(`/quiz/${quiz.id}`)}
+                        animationDelay={index * 0.1}
                     />
                     </motion.div>
                 ))}
