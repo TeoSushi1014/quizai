@@ -4,6 +4,7 @@ import { useAppContext, useTranslation } from '../../App';
 import { UserAnswer, QuizResult } from '../../types';
 import { Button, Card, LoadingSpinner, ProgressBar, Modal } from '../../components/ui';
 import MathText from '../../components/MathText';
+import GithubMarkdownContent from '../../components/GithubMarkdownContent';
 import { ChevronLeftIcon, ChevronRightIcon } from '../../constants';
 import { useQuizFlow } from './hooks/useQuizFlow';
 import { quizResultsService } from '../../services/quizResultsService';
@@ -204,7 +205,7 @@ const QuizTakingPage: React.FC = () => {
 
     <div className="mt-6 md:mt-8">
       <div className="quiz-question-text text-base sm:text-lg text-[var(--color-text-body)] leading-relaxed mb-4">
-        <MathText text={currentQuestion.questionText} markdownFormatting={true} />
+        <GithubMarkdownContent content={currentQuestion.questionText} />
       </div>
       
       <div className="quiz-options space-y-3">
@@ -229,7 +230,7 @@ const QuizTakingPage: React.FC = () => {
               <span className={`${indicatorBaseClasses} ${isSelectedForDisplay ? selectedIndicatorClasses : unselectedIndicatorClasses}`}>
               </span>
               <div className="text-sm sm:text-base flex-grow markdown-content">
-                <MathText text={option} markdownFormatting={true} />
+                <GithubMarkdownContent content={option} />
               </div>
             </button>
           );

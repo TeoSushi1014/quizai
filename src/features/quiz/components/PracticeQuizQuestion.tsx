@@ -1,7 +1,7 @@
 import React from 'react';
-import { useAppContext, useTranslation } from '../../../App';
-import MathText from '../../../components/MathText'; 
+import { useTranslation } from '../../../App';
 import { Button, ProgressBar } from '../../../components/ui';
+import GithubMarkdownContent from '../../../components/GithubMarkdownContent';
 
 interface QuestionProps {
   question: string;
@@ -50,69 +50,63 @@ const PracticeQuizQuestion: React.FC<QuestionProps> = ({
         />
       </div>
 
-      {/* Use MathText for the question text */}
+      {/* Use GithubMarkdownContent for the question text */}
       <div className="question-content mb-4"> 
-        <MathText text={question} markdownFormatting={true} />
+        <GithubMarkdownContent content={question} />
       </div>
 
-      <div className="space-y-3"> {/* Replaced quiz-options with space-y for Tailwind consistency */}
+      <div className="question-options space-y-2.5">
         {options.map((option, index) => {
-          // Determine the button style based on check state and correctness
           const isSelected = selectedOption === option;
-          const isThisOptionCorrect = correctAnswer === option;
+          const isThisOptionCorrect = isAnswerChecked && option === correctAnswer;
           
-          let buttonStyle = '';
-          let indicatorStyle = '';
-          let animationStyle = '';
+          // Define dynamic classes based on state
+          let optionClasses = "flex w-full p-3.5 rounded-lg border transition-all duration-300 ease-in-out";
+          let textClasses = "text-[var(--color-text-body)]";
           
-          if (isAnswerChecked) {
-            if (isSelected && isAnswerCorrect) {
-              // Correct answer - green
-              buttonStyle = 'answer-option-correct bg-green-100 dark:bg-green-900/30 border-green-500 text-green-700 dark:text-green-300 font-semibold scale-[1.01]';
-              indicatorStyle = 'border-green-500 bg-green-500';
-              animationStyle = 'correct-answer-pulse';
-            } else if (isSelected && !isAnswerCorrect) {
-              // Wrong answer - red
-              buttonStyle = 'answer-option-incorrect bg-red-100 dark:bg-red-900/30 border-red-500 text-red-700 dark:text-red-300 font-semibold scale-[1.01]';
-              indicatorStyle = 'border-red-500 bg-red-500';
-              animationStyle = 'incorrect-answer-pulse';
-            } else if (isThisOptionCorrect) {
-              // Show the correct answer - highlighted in green
-              buttonStyle = 'answer-option-correct bg-green-100 dark:bg-green-900/30 border-green-500 text-green-700 dark:text-green-300 font-semibold';
-              indicatorStyle = 'border-green-500 bg-green-500';
+          if (isSelected) {
+            if (isAnswerChecked) {
+              if (isAnswerCorrect) {
+                // Correct answer selected
+                optionClasses += " border-green-500 bg-green-500/10";
+                textClasses = "text-green-700 dark:text-green-300 font-medium";
+              } else {
+                // Incorrect answer selected
+                optionClasses += " border-red-500 bg-red-500/10";
+                textClasses = "text-red-700 dark:text-red-300";
+              }
             } else {
-              // Unselected, incorrect options - dimmed
-              buttonStyle = 'bg-[var(--color-bg-surface-3)]/70 border-[var(--color-border-interactive)] text-[var(--color-text-secondary)]';
-              indicatorStyle = 'border-[var(--color-text-muted)] bg-[var(--color-bg-surface-2)]';
+              // Selected but not checked yet
+              optionClasses += " border-[var(--color-primary-accent)] bg-[var(--color-primary-accent)]/10";
+              textClasses = "text-[var(--color-primary-accent)] font-medium";
             }
+          } else if (isAnswerChecked && option === correctAnswer) {
+            // Correct answer wasn't selected
+            optionClasses += " border-blue-500 bg-blue-500/10";
+            textClasses = "text-blue-700 dark:text-blue-300 font-medium";
           } else {
-            // Not checked yet - default styling
-            buttonStyle = isSelected 
-              ? 'bg-[var(--color-primary-accent)]/50 border-[var(--color-primary-accent)] text-[var(--color-primary-accent-text)] font-semibold scale-[1.01]'
-              : 'bg-[var(--color-bg-surface-3)]/70 hover:bg-[var(--color-bg-surface-3)]/40 border-[var(--color-border-interactive)] hover:border-[var(--color-primary-accent)] text-[var(--color-text-primary)]';
-            indicatorStyle = isSelected 
-              ? 'border-[var(--color-primary-accent-text)] bg-[var(--color-primary-accent)]'
-              : 'border-[var(--color-text-muted)] bg-[var(--color-bg-surface-2)] group-hover:border-[var(--color-primary-accent)]';
+            // Default unselected state
+            optionClasses += " border-[var(--color-border-default)] bg-[var(--color-bg-surface-2)]/50 hover:bg-[var(--color-bg-surface-2)]";
           }
           
           return (
             <button
               key={index}
-              type="button"
-              className={`w-full flex items-center text-left p-3.5 sm:p-4 rounded-xl border-2 focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--color-primary-accent)]/50 focus-visible:ring-offset-2 shadow-lg 
-                          transition-all var(--duration-fast) var(--ease-ios) will-change-transform, border, background-color
-                          ${buttonStyle} ${animationStyle}`}
+              className={optionClasses}
               onClick={() => onSelectOption(option)}
-              disabled={isSubmitting || isAnswerChecked}
-              aria-pressed={isSelected}
-              aria-checked={isAnswerChecked && isThisOptionCorrect ? "true" : "false"}
+              disabled={isAnswerChecked || isSubmitting}
+              aria-checked={isSelected}
+              role="radio"
+              aria-disabled={isAnswerChecked || isSubmitting}
             >
-              <span className={`option-indicator mr-3.5 flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center ${indicatorStyle}`}>
-                {(isSelected || (isAnswerChecked && isThisOptionCorrect)) && <div className="w-3 h-3 bg-white rounded-full"></div>}
-              </span>
-              {/* Use MathText for option text with letter prefix stripping */}
+              {/* Option letter indicator */}
+              <div className="option-index mr-3 min-w-[1.5rem] h-6 flex items-center justify-center rounded-full text-xs font-bold">
+                {String.fromCharCode(65 + index)}
+              </div>
+              
+              {/* Option content with GitHub-style markdown */}
               <div className="option-content flex-grow text-sm sm:text-base flex items-center"> 
-                <MathText text={option} markdownFormatting={true} compact={true} stripPrefix={true}/>
+                <GithubMarkdownContent content={option} compact={true} />
               </div>
               
               {/* Show check/x mark for checked answers */}
@@ -134,34 +128,39 @@ const PracticeQuizQuestion: React.FC<QuestionProps> = ({
         })}
       </div>
 
-      <div className="flex flex-col sm:flex-row justify-between items-center mt-5 pt-5 border-t border-[var(--color-border-default)] gap-3">
+      <div className="quiz-actions flex gap-3 mt-6">
         {!isAnswerChecked ? (
           <>
             <Button
-              variant="subtle" 
+              variant="primary"
+              onClick={onCheckAnswer}
+              disabled={!selectedOption || isSubmitting}
+              className="flex-1"
+              isLoading={isSubmitting}
+            >
+              {t('checkAnswer')}
+            </Button>
+            <Button
+              variant="outline"
               onClick={onSkipQuestion}
               disabled={isSubmitting}
-              className="w-full sm:w-auto"
+              className="flex-grow-0 px-4"
             >
               {t('skipQuestion')}
             </Button>
-            <Button
-              variant="primary"
-              onClick={onCheckAnswer}
-              disabled={isSubmitting || !selectedOption}
-              className="w-full sm:w-auto"
-            >
-              {isSubmitting ? t('loading') : t('checkAnswer')}
-            </Button>
           </>
         ) : (
-          <div className="w-full flex justify-end items-center">
-            {/* Feedback moved to banner at top */}
-          </div>
+          <Button
+            variant="primary"
+            onClick={onSkipQuestion}
+            className="w-full"
+          >
+            {t('nextQuestion')}
+          </Button>
         )}
       </div>
     </div>
   );
 };
-PracticeQuizQuestion.displayName = "PracticeQuizQuestion";
+
 export default PracticeQuizQuestion;

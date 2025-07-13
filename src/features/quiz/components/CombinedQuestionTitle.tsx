@@ -1,6 +1,6 @@
 import React from 'react';
 import { useTranslation } from '../../../App';
-import MathText from '../../../components/MathText';
+import GithubMarkdownContent from '../../../components/GithubMarkdownContent';
 
 interface CombinedQuestionTitleProps {
   questionIndex: number;
@@ -18,7 +18,7 @@ const CombinedQuestionTitle: React.FC<CombinedQuestionTitleProps> = ({
   
   // Get the question number (like "Q1.")
   const questionNumber = t('resultsQuestionItem', { index: questionIndex + 1 });
-    // Get the first paragraph of actual content from the question
+  // Get the first paragraph of actual content from the question
   let actualQuestionText = questionText;
   
   // Extract the first real sentence or paragraph from the markdown
@@ -26,12 +26,13 @@ const CombinedQuestionTitle: React.FC<CombinedQuestionTitleProps> = ({
   if (firstParagraphMatch && firstParagraphMatch[1]) {
     actualQuestionText = firstParagraphMatch[1].trim();
   }
+
   // We'll use these separately in the component
-    return (
+  return (
     <div className="text-[var(--color-text-primary)] font-medium text-sm md:text-base leading-relaxed combined-question-title">
       <span className="question-number">{questionNumber}</span>
       <span className="question-text">
-        <MathText text={actualQuestionText} markdownFormatting={true} />
+        <GithubMarkdownContent content={actualQuestionText} />
       </span>
     </div>
   );

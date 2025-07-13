@@ -8,6 +8,7 @@ import { useAppContext, useTranslation } from '../../App';
 import { Quiz, Question, QuizConfig } from '../../types';
 import { Button, Card, Input, Textarea, Select, Modal, LoadingSpinner, Tooltip, NotificationDisplay } from '../../components/ui'; // Added NotificationDisplay
 import MathText from '../../components/MathText';
+import GithubMarkdownContent from '../../components/GithubMarkdownContent';
 import { PlusIcon, DeleteIcon, SaveIcon, ArrowUturnLeftIcon, HomeIcon, PlusCircleIcon, ExportIcon, CopyIcon, DownloadIcon, GEMINI_MODEL_ID, DocumentTextIcon } from '../../constants';
 import { formatQuizToAzotaStyle1, formatQuizToAzotaStyle2, formatQuizToAzotaStyle4 } from '../../services/azotaExportService';
 import useIntersectionObserver from '../../hooks/useIntersectionObserver';
@@ -494,7 +495,7 @@ const QuizReviewPage: React.FC = () => {
                         {t('resultsViewSourceSnippet')}
                     </summary>
                     <blockquote className="mt-3 text-xs text-[var(--color-text-muted)]/80 max-h-24 overflow-y-auto p-3 bg-[var(--color-bg-surface-2)] border border-[var(--color-border-default)] rounded-lg shadow-inner italic">
-                        <MathText text={editableQuiz.sourceContentSnippet} markdownFormatting={true} />
+                        <GithubMarkdownContent content={editableQuiz.sourceContentSnippet} />
                     </blockquote>
                 </details>
             )}

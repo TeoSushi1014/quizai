@@ -788,6 +788,8 @@ interface NotificationDisplayProps {
 
 export const NotificationDisplay: React.FC<NotificationDisplayProps> = ({ notification, onClose }) => {
   const { t } = useTranslation();
+  // Always call hooks at the top level
+  const id = useId();
   
   if (!notification) return null;
 
@@ -819,14 +821,12 @@ export const NotificationDisplay: React.FC<NotificationDisplayProps> = ({ notifi
       break;
   }
 
-  const notificationId = useId();
-
   return (
     <div
       role="alert"
       aria-live="assertive"
       aria-atomic="true"
-      aria-labelledby={`${notificationId}-message`}
+      aria-labelledby={`${id}-message`}
       className={`fixed top-5 right-5 sm:top-6 sm:right-6 z-[200] w-auto max-w-[calc(100%-2.5rem)] sm:max-w-md
                   animate-slideInRight transition-all var(--duration-fast) var(--ease-ios)
                   transform hover:scale-[1.02] will-change-transform`}
@@ -838,7 +838,7 @@ export const NotificationDisplay: React.FC<NotificationDisplayProps> = ({ notifi
           </div>
         )}
         <div className="flex-grow">
-          <p id={`${notificationId}-message`} className="text-sm sm:text-base font-semibold leading-snug">
+          <p id={`${id}-message`} className="text-sm sm:text-base font-semibold leading-snug">
             {message}
           </p>
         </div>

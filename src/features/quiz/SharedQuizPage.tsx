@@ -5,6 +5,7 @@ import { Quiz } from '../../types';
 import { Button, Card, LoadingSpinner } from '../../components/ui';
 import { UserCircleIcon, CopyIcon, CheckCircleIcon, PlayIcon, PlusCircleIcon, XCircleIcon, SaveIcon } from '../../constants';
 import MathText from '../../components/MathText';
+import GithubMarkdownContent from '../../components/GithubMarkdownContent';
 import { getSharedQuiz } from '../../services/quizSharingService';
 import { logger } from '../../services/logService';
 import { validateQuizId } from '../../utils/quizValidationUtils';
@@ -261,7 +262,7 @@ const SharedQuizPage: React.FC = () => {
               <div key={question.id} className="bg-[var(--color-bg-surface-2)]/60 p-4 sm:p-5 rounded-xl border border-[var(--color-border-default)] shadow-md">
                 <div className="font-medium text-[var(--color-text-primary)] mb-2 text-sm sm:text-base">
                   <span className="text-[var(--color-primary-accent)] mr-2 font-semibold">{index + 1}.</span>
-                  <MathText text={question.questionText} markdownFormatting={true} />
+                  <GithubMarkdownContent content={question.questionText} />
                 </div>
                 {index === 2 && sharedQuiz.questions.length > 3 && (
                    <p className="text-xs text-[var(--color-text-muted)] italic text-center mt-3">{t('andMoreQuestions', {count: sharedQuiz.questions.length - 3})}</p>

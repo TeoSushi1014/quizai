@@ -5,7 +5,11 @@ interface MarkdownPreviewTesterProps {
   initialMarkdown?: string;
 }
 
-const MarkdownPreviewTester: React.FC<MarkdownPreviewTesterProps> = ({ initialMarkdown = '# Test Markdown\n\nThis is a **test** of GitHub API markdown rendering.\n\n- List item 1\n- List item 2\n\n```js\nconsole.log("Hello world!");\n```\n\nMath: $E = mc^2$' }) => {
+const SAMPLE_MARKDOWN = '# Test Markdown\n\nThis is a **test** of GitHub API markdown rendering.\n\n- List item 1\n- List item 2\n\n```js\nconsole.log("Hello world!");\n```\n\nMath: $E = mc^2$';
+
+const MarkdownPreviewTester: React.FC<MarkdownPreviewTesterProps> = ({ 
+  initialMarkdown = SAMPLE_MARKDOWN 
+}) => {
   const [markdown, setMarkdown] = useState(initialMarkdown);
   const [isRawMode, setIsRawMode] = useState(false);
   

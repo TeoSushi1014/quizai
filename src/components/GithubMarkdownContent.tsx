@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { githubMarkdownService } from '../services/githubMarkdownService';
-import { BlockMath, InlineMath } from 'react-katex';
 import 'katex/dist/katex.min.css';
+
+// Preload KaTeX to avoid dynamic imports during rendering
+import * as katex from 'katex';
 
 interface GithubMarkdownContentProps {
   content: string | undefined | null;
@@ -19,8 +21,17 @@ const GithubMarkdownContent: React.FC<GithubMarkdownContentProps> = ({
   const [renderedHtml, setRenderedHtml] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-
+  const contentRef = useRef<string | null>(null);
+  
+  // Debounce content changes to avoid excessive API calls during typing
   useEffect(() => {
+    // Skip if content is the same as the last processed content
+    if (contentRef.current === content) {
+      return;
+    }
+    
+    contentRef.current = content || null;
+    
     const renderMarkdown = async () => {
       if (!content || content.trim() === '') {
         setRenderedHtml('');
@@ -35,27 +46,54 @@ const GithubMarkdownContent: React.FC<GithubMarkdownContentProps> = ({
         const containsLatex = /(\$\$.*?\$\$|\$.*?\$)/gs.test(content);
         
         if (containsLatex) {
-          // Process LaTeX manually before sending to GitHub API
-          const parts = content.split(/(\$\$.*?\$\$|\$.*?\$)/gs).filter(Boolean);
+          // Process LaTeX by first replacing formulas with placeholders
+          const mathExpressions: Array<{
+            type: 'block' | 'inline';
+            formula: string;
+            placeholder: string;
+          }> = [];
           
-          // Process each part separately
-          const processedParts = await Promise.all(parts.map(async (part) => {
-            if (part.startsWith('$$') && part.endsWith('$$') && part.length > 4) {
-              // It's a block math expression, don't send to GitHub API
-              return `<div class="block-math" data-math="${encodeURIComponent(part.slice(2, -2))}"></div>`;
-            } else if (part.startsWith('$') && part.endsWith('$') && part.length > 2) {
-              // It's an inline math expression, don't send to GitHub API
-              return `<span class="inline-math" data-math="${encodeURIComponent(part.slice(1, -1))}"></span>`;
-            } else {
-              // Regular markdown content, render with GitHub API
-              return isRawMode 
-                ? await githubMarkdownService.renderMarkdownRaw(part)
-                : await githubMarkdownService.renderMarkdown(part, 'gfm');
-            }
-          }));
+          let processedContent = content;
+          let matchIndex = 0;
           
-          // Join the processed parts
-          setRenderedHtml(processedParts.join(''));
+          // Replace block math expressions
+          processedContent = processedContent.replace(/\$\$(.*?)\$\$/gs, (match, formula) => {
+            const placeholder = `BLOCK_MATH_PLACEHOLDER_${matchIndex++}`;
+            mathExpressions.push({
+              type: 'block',
+              formula,
+              placeholder
+            });
+            return placeholder;
+          });
+          
+          // Replace inline math expressions
+          processedContent = processedContent.replace(/\$([^\$]+)\$/g, (match, formula) => {
+            const placeholder = `INLINE_MATH_PLACEHOLDER_${matchIndex++}`;
+            mathExpressions.push({
+              type: 'inline',
+              formula,
+              placeholder
+            });
+            return placeholder;
+          });
+          
+          // Render the content without LaTeX using GitHub API
+          let html = isRawMode
+            ? await githubMarkdownService.renderMarkdownRaw(processedContent)
+            : await githubMarkdownService.renderMarkdown(processedContent, 'gfm');
+            
+          // Put math expressions back
+          mathExpressions.forEach(({ type, formula, placeholder }) => {
+            const mathHtml = type === 'block'
+              ? `<div class="block-math" data-math="${encodeURIComponent(formula)}"></div>`
+              : `<span class="inline-math" data-math="${encodeURIComponent(formula)}"></span>`;
+              
+            // Replace all occurrences of the placeholder
+            html = html.split(placeholder).join(mathHtml);
+          });
+          
+          setRenderedHtml(html);
         } else {
           // No LaTeX, just render with GitHub API
           const html = isRawMode
@@ -72,7 +110,9 @@ const GithubMarkdownContent: React.FC<GithubMarkdownContentProps> = ({
       }
     };
 
-    renderMarkdown();
+    // Use a short timeout to debounce frequent changes
+    const timerId = setTimeout(renderMarkdown, 50);
+    return () => clearTimeout(timerId);
   }, [content, isRawMode]);
 
   useEffect(() => {
@@ -83,22 +123,22 @@ const GithubMarkdownContent: React.FC<GithubMarkdownContentProps> = ({
       // Process block math elements
       document.querySelectorAll('.block-math').forEach((element) => {
         const math = decodeURIComponent(element.getAttribute('data-math') || '');
+        if (!math) return;
+        
         try {
-          // Create a React element for BlockMath
-          const reactElement = document.createElement('div');
-          element.replaceWith(reactElement);
-          
-          // Render BlockMath into the element
+          // Create a container for KaTeX
           const katexContainer = document.createElement('div');
           katexContainer.className = 'katex-block';
-          reactElement.appendChild(katexContainer);
           
-          import('katex').then((katex) => {
-            katex.default.render(math, katexContainer, {
-              displayMode: true,
-              throwOnError: false
-            });
+          // Render KaTeX
+          katex.render(math, katexContainer, {
+            displayMode: true,
+            throwOnError: false
           });
+          
+          // Replace the original element
+          element.innerHTML = '';
+          element.appendChild(katexContainer);
         } catch (error) {
           console.error('Error rendering block math:', error);
           element.textContent = `Error in KaTeX block: ${math}`;
@@ -109,22 +149,22 @@ const GithubMarkdownContent: React.FC<GithubMarkdownContentProps> = ({
       // Process inline math elements
       document.querySelectorAll('.inline-math').forEach((element) => {
         const math = decodeURIComponent(element.getAttribute('data-math') || '');
+        if (!math) return;
+        
         try {
-          // Create a React element for InlineMath
-          const reactElement = document.createElement('span');
-          element.replaceWith(reactElement);
-          
-          // Render InlineMath into the element
+          // Create a container for KaTeX
           const katexContainer = document.createElement('span');
           katexContainer.className = 'katex-inline';
-          reactElement.appendChild(katexContainer);
           
-          import('katex').then((katex) => {
-            katex.default.render(math, katexContainer, {
-              displayMode: false,
-              throwOnError: false
-            });
+          // Render KaTeX
+          katex.render(math, katexContainer, {
+            displayMode: false,
+            throwOnError: false
           });
+          
+          // Replace the original element
+          element.innerHTML = '';
+          element.appendChild(katexContainer);
         } catch (error) {
           console.error('Error rendering inline math:', error);
           element.textContent = `Error in KaTeX inline: ${math}`;
@@ -137,6 +177,7 @@ const GithubMarkdownContent: React.FC<GithubMarkdownContentProps> = ({
     requestAnimationFrame(processLatexElements);
   }, [renderedHtml]);
 
+  // Early return for empty content - but after all hooks have been called
   if (content === null || typeof content === 'undefined' || content.trim() === "") {
     return null;
   }

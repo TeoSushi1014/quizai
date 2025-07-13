@@ -9,6 +9,7 @@ import { UserAvatar } from './components/UserAvatar';
 import ErrorBoundary from './components/ErrorBoundary'; 
 import { getTranslator, translations } from './i18n';
 import useIntersectionObserver from './hooks/useIntersectionObserver';
+import useMarkdownPreloader from './hooks/useMarkdownPreloader';
 import { authService } from './services/authService'; 
 import { ThemeToggle, ThemeToggleSwitch } from './components/ThemeToggle'; 
 import { useNotification } from './hooks/useNotification';
@@ -22,6 +23,7 @@ import { MaintenancePage } from './components/MaintenancePage';
 import { adminService } from './services/adminService';
 import GithubApiLimitWarning from './components/GithubApiLimitWarning';
 import MarkdownPreviewTester from './components/MarkdownPreviewTester';
+import TestMarkdown from './components/TestMarkdown';
 import './styles/markdown.css';
 import 'github-markdown-css/github-markdown.css';
 import './styles/markdown-custom.css';
@@ -974,6 +976,9 @@ const AppLayout: React.FC = () => {
   const [isMobileProfileOpen, setIsMobileProfileOpen] = useState(false);
   const generalSettingsIconUrl = "https://img.icons8.com/?size=256&id=s5NUIabJrb4C&format=png"; 
   
+  // Preload markdown content for better performance - this will happen in the background
+  useMarkdownPreloader();
+  
   const apiKeyWarnings: string[] = [];
   
   const appInitialized = true; 
@@ -1217,6 +1222,7 @@ const AppLayout: React.FC = () => {
             <Route path="/admin/maintenance" element={currentUser ? <MaintenanceAdmin /> : <Navigate to="/signin" state={{ from: location }} replace />} />
             <Route path="/shared/:quizId" element={<SharedQuizPage />} /> 
             <Route path="/markdown-test" element={<MarkdownPreviewTester />} />
+            <Route path="/test-markdown" element={<TestMarkdown />} />
             <Route path="*" element={<HomePage />} /> 
           </Routes>
         </Suspense>
@@ -1270,20 +1276,18 @@ const AppLayout: React.FC = () => {
         </AnimatedApiKeyWarning>
       )}
       
-      {/* GitHub API rate limit warning */}
-      <div className="fixed bottom-4 right-4 z-50 max-w-md">
+      {/* GitHub API rate limit warning - positioned for better visibility */}
+      <div className="fixed bottom-20 md:bottom-4 right-4 z-50">
         <GithubApiLimitWarning />
       </div>
 
       {currentUser && isMobileProfileOpen && <MobileProfileSheet /> } 
 
-      {/* Toast Notification Display */}
-      {notification && (
-        <NotificationDisplay 
-          notification={notification} 
-          onClose={clearNotification} 
-        />
-      )}
+      {/* Toast Notification Display - Always render with conditional content inside */}
+      <NotificationDisplay 
+        notification={notification} 
+        onClose={clearNotification} 
+      />
     </div>
   );
 };

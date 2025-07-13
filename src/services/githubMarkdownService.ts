@@ -7,13 +7,17 @@ interface CacheEntry {
   timestamp: number;
 }
 
-const CACHE_TTL = 1000 * 60 * 60; // 1 hour cache TTL
+const CACHE_TTL = 1000 * 60 * 60 * 24; // 24 hour cache TTL (increased from 1 hour)
 const markdownCache = new Map<string, CacheEntry>();
 
 // Queue for API calls to avoid rate limit issues
 let apiQueue: Array<() => Promise<any>> = [];
 let isProcessingQueue = false;
 const RATE_LIMIT_DELAY = 1000; // 1 second between API calls
+
+// Track API limit
+let remainingApiCalls = 60; // Default GitHub API limit
+let apiResetTime: number | null = null;
 
 /**
  * Process the API queue with rate limiting
@@ -24,6 +28,21 @@ async function processQueue(): Promise<void> {
   isProcessingQueue = true;
   
   while (apiQueue.length > 0) {
+    // Check if we're near rate limit
+    if (remainingApiCalls < 5) {
+      const now = Date.now();
+      if (apiResetTime && apiResetTime > now) {
+        // Wait until reset time if it's within 5 minutes
+        const waitTime = apiResetTime - now;
+        if (waitTime < 5 * 60 * 1000) { // 5 minutes
+          console.warn(`Near GitHub API rate limit. Waiting ${Math.round(waitTime/1000)} seconds until reset.`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+        } else {
+          console.warn(`GitHub API rate limit nearly reached. Only ${remainingApiCalls} calls remaining.`);
+        }
+      }
+    }
+    
     const apiCall = apiQueue.shift();
     if (apiCall) {
       try {
@@ -57,6 +76,69 @@ function queueApiCall<T>(apiCallFn: () => Promise<T>): Promise<T> {
     });
     
     processQueue();
+  });
+}
+
+/**
+ * Batch multiple markdown strings together to reduce API calls
+ * @param markdownPieces - Array of markdown strings
+ * @param separator - HTML separator to use between pieces
+ * @returns - Promise with the rendered HTML
+ */
+async function batchRenderMarkdown(markdownPieces: string[], separator = '<hr class="markdown-separator" />'): Promise<string[]> {
+  // Check if all pieces are in cache
+  const allCached = markdownPieces.every(piece => {
+    const cacheKey = `markdown_${piece}`;
+    const cachedResult = markdownCache.get(cacheKey);
+    return cachedResult && (Date.now() - cachedResult.timestamp) < CACHE_TTL;
+  });
+  
+  // If all pieces are cached, return from cache
+  if (allCached) {
+    return markdownPieces.map(piece => {
+      const cacheKey = `markdown_${piece}`;
+      return markdownCache.get(cacheKey)?.html || '';
+    });
+  }
+  
+  // Filter out cached pieces
+  const uncachedPieces = markdownPieces.filter(piece => {
+    const cacheKey = `markdown_${piece}`;
+    const cachedResult = markdownCache.get(cacheKey);
+    return !cachedResult || (Date.now() - cachedResult.timestamp) >= CACHE_TTL;
+  });
+  
+  // If we have uncached pieces, batch them together
+  if (uncachedPieces.length > 0) {
+    // Create a separator that's unlikely to appear in content
+    const uniqueSeparator = `<!-- MARKDOWN_PIECE_SEPARATOR_${Date.now()} -->`;
+    
+    // Join all pieces with the unique separator
+    const batchedContent = uncachedPieces.join(`\n${uniqueSeparator}\n`);
+    
+    // Render the batched content
+    const batchedHtml = await githubMarkdownService.renderMarkdown(batchedContent, 'gfm');
+    
+    // Split the result back into pieces
+    const htmlPieces = batchedHtml.split(uniqueSeparator);
+    
+    // Cache each piece
+    uncachedPieces.forEach((piece, index) => {
+      if (index < htmlPieces.length) {
+        const cacheKey = `markdown_${piece}`;
+        markdownCache.set(cacheKey, {
+          html: htmlPieces[index],
+          timestamp: Date.now()
+        });
+      }
+    });
+  }
+  
+  // Return all pieces (some from cache, some newly rendered)
+  return markdownPieces.map(piece => {
+    const cacheKey = `markdown_${piece}`;
+    const cachedResult = markdownCache.get(cacheKey);
+    return cachedResult?.html || ''; // Should be cached now
   });
 }
 
@@ -104,6 +186,15 @@ export const githubMarkdownService = {
           body: JSON.stringify(payload)
         });
         
+        // Update rate limit tracking
+        if (response.headers.has('X-RateLimit-Remaining')) {
+          remainingApiCalls = parseInt(response.headers.get('X-RateLimit-Remaining') || '60');
+        }
+        
+        if (response.headers.has('X-RateLimit-Reset')) {
+          apiResetTime = parseInt(response.headers.get('X-RateLimit-Reset') || '0') * 1000;
+        }
+        
         // Handle rate limiting
         if (response.status === 403) {
           const resetTime = response.headers.get('X-RateLimit-Reset');
@@ -111,8 +202,8 @@ export const githubMarkdownService = {
             const waitTime = parseInt(resetTime) * 1000 - Date.now();
             console.warn(`GitHub API rate limit reached. Reset at ${new Date(parseInt(resetTime) * 1000).toLocaleString()}`);
             
-            // If the wait time is reasonable (less than 1 hour), we could wait
-            if (waitTime > 0 && waitTime < 3600000) {
+            // If the wait time is reasonable (less than 10 minutes), we could wait
+            if (waitTime > 0 && waitTime < 600000) {
               await new Promise(resolve => setTimeout(resolve, waitTime));
               // Try again after waiting
               return this.renderMarkdown(content, mode, context);
@@ -149,6 +240,28 @@ export const githubMarkdownService = {
   },
   
   /**
+   * Batch render multiple markdown pieces in a single API call when possible
+   * 
+   * @param contentPieces - Array of markdown content pieces to render
+   * @returns Promise with array of rendered HTML for each piece
+   */
+  batchRenderMarkdown: async (contentPieces: string[]): Promise<string[]> => {
+    // Filter out empty content
+    const validPieces = contentPieces.filter(piece => piece && piece.trim() !== '');
+    
+    if (validPieces.length === 0) {
+      return [];
+    }
+    
+    if (validPieces.length === 1) {
+      const html = await githubMarkdownService.renderMarkdown(validPieces[0], 'gfm');
+      return [html];
+    }
+    
+    return batchRenderMarkdown(validPieces);
+  },
+  
+  /**
    * Renders markdown content as raw HTML using GitHub's Markdown API
    * 
    * @param content - The Markdown content to render
@@ -179,6 +292,15 @@ export const githubMarkdownService = {
           body: content
         });
         
+        // Update rate limit tracking
+        if (response.headers.has('X-RateLimit-Remaining')) {
+          remainingApiCalls = parseInt(response.headers.get('X-RateLimit-Remaining') || '60');
+        }
+        
+        if (response.headers.has('X-RateLimit-Reset')) {
+          apiResetTime = parseInt(response.headers.get('X-RateLimit-Reset') || '0') * 1000;
+        }
+        
         // Handle rate limiting
         if (response.status === 403) {
           const resetTime = response.headers.get('X-RateLimit-Reset');
@@ -186,8 +308,8 @@ export const githubMarkdownService = {
             const waitTime = parseInt(resetTime) * 1000 - Date.now();
             console.warn(`GitHub API rate limit reached. Reset at ${new Date(parseInt(resetTime) * 1000).toLocaleString()}`);
             
-            // If the wait time is reasonable (less than 1 hour), we could wait
-            if (waitTime > 0 && waitTime < 3600000) {
+            // If the wait time is reasonable (less than 10 minutes), we could wait
+            if (waitTime > 0 && waitTime < 600000) {
               await new Promise(resolve => setTimeout(resolve, waitTime));
               // Try again after waiting
               return this.renderMarkdownRaw(content);
@@ -222,6 +344,15 @@ export const githubMarkdownService = {
       }
     });
   },
+  
+  /**
+   * Get current API status
+   */
+  getApiStatus: () => ({
+    remainingCalls: remainingApiCalls,
+    resetTime: apiResetTime ? new Date(apiResetTime) : null,
+    isNearLimit: remainingApiCalls < 10
+  }),
   
   /**
    * Clear the markdown cache

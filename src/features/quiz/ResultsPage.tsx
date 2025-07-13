@@ -5,6 +5,7 @@ import { useAppContext, useTranslation } from '../../App';
 import { Quiz, Question } from '../../types';
 import { Button, Card, Accordion, ProgressBar, LoadingSpinner } from '../../components/ui';
 import MathText from '../../components/MathText';
+import GithubMarkdownContent from '../../components/GithubMarkdownContent';
 import AccordionQuestionTitle from './components/AccordionQuestionTitle';
 import { XCircleIcon, ArrowUturnLeftIcon, PlusCircleIcon, HomeIcon } from '../../constants';
 import useShouldReduceMotion from '../../hooks/useShouldReduceMotion';
@@ -66,7 +67,7 @@ const QuestionResultItem: React.FC<QuestionResultItemProps> = ({
           <div>
             <p className="font-semibold text-[var(--color-text-secondary)] mb-1.5">{t('resultsYourAnswerLabel') || 'Your Answer:'}</p>
             <p className={`p-3 rounded-md ${isCorrect ? 'bg-green-500/10 text-green-700 dark:text-green-300' : 'bg-red-500/10 text-red-700 dark:text-red-300'}`}>
-              <MathText text={getAnswerDisplayText(question, userAnswerText)} />
+              <GithubMarkdownContent content={getAnswerDisplayText(question, userAnswerText)} />
             </p>
           </div>
 
@@ -74,7 +75,7 @@ const QuestionResultItem: React.FC<QuestionResultItemProps> = ({
           <div>
             <p className="font-semibold text-[var(--color-text-secondary)] mb-1.5">{t('resultsCorrectAnswerLabel') || 'Correct Answer:'}</p>
             <p className={`p-3 rounded-md ${isCorrect ? 'bg-green-500/10 text-green-700 dark:text-green-300' : 'bg-blue-500/10 text-blue-700 dark:text-blue-300'}`}>
-              <MathText text={getAnswerDisplayText(question, question.correctAnswer)} />
+              <GithubMarkdownContent content={getAnswerDisplayText(question, question.correctAnswer)} />
             </p>
           </div>
 
@@ -82,7 +83,7 @@ const QuestionResultItem: React.FC<QuestionResultItemProps> = ({
             <div>
               <p className="font-semibold text-[var(--color-text-secondary)] mb-1.5">{t('resultsExplanationLabel') || 'Explanation:'}</p>
               <div className="p-3 rounded-md bg-gray-500/10 text-[var(--color-text-primary)]">
-                <MathText text={question.explanation} markdownFormatting={true} />
+                <GithubMarkdownContent content={question.explanation} />
               </div>
             </div>
           )}
