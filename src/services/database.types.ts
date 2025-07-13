@@ -164,6 +164,41 @@ export interface Database {
           expires_at?: string | null
         }
       }
+      quiz_progress: {
+        Row: {
+          id: string
+          user_id: string
+          quiz_id: string
+          current_question_index: number
+          answers: any
+          completed: boolean
+          mode: 'practice' | 'take'
+          elapsed_time: number
+          last_updated: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          quiz_id: string
+          current_question_index?: number
+          answers?: any
+          completed?: boolean
+          mode: 'practice' | 'take'
+          elapsed_time?: number
+          last_updated?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          quiz_id?: string
+          current_question_index?: number
+          answers?: any
+          completed?: boolean
+          mode?: 'practice' | 'take'
+          elapsed_time?: number
+          last_updated?: string
+        }
+      }
     }
     Views: {
       [_ in never]: never

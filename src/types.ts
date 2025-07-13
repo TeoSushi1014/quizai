@@ -37,6 +37,18 @@ export interface UserAnswer {
   answer: string;
 }
 
+export interface QuizProgress {
+  id?: string;
+  quizId: string;
+  userId?: string;
+  currentQuestionIndex: number;
+  answers: Record<string, string>; // Map of questionId to answer
+  completed: boolean;
+  mode: 'practice' | 'take';
+  elapsedTime: number;
+  lastUpdated?: string;
+}
+
 export interface QuizResult {
   id?: string; 
   quizId: string;

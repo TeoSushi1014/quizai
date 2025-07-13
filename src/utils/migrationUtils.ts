@@ -1,64 +1,43 @@
-import { supabaseService } from '../services/supabaseService'
-import { quizStorage } from '../services/storageService'
-import { UserProfile } from '../types'
-import { logger } from '../services/logService'
+import { supabase } from '../services/supabaseClient';
+import { logger } from '../services/logService';
 
-export const migrateLocalDataToSupabase = async (currentUser: UserProfile): Promise<void> => {
+/**
+ * Run all pending migrations
+ */
+export async function runMigrations(): Promise<boolean> {
   try {
-    const localQuizzes = await quizStorage.getAllQuizzes()
+    // Try to read a record from quiz_progress table to check if it exists
+    const { error } = await supabase
+      .from('quiz_progress')
+      .select('id')
+      .limit(1);
     
-    if (localQuizzes.length === 0) {
-      return
+    // If there's no error, the table exists
+    if (!error) {
+      logger.info('Quiz progress table already exists', 'migrationUtils');
+      return true;
     }
 
-    let migratedCount = 0
-    let errorCount = 0
-    
-    for (const quiz of localQuizzes) {
-      try {
-        if (!quiz.userId || quiz.userId === currentUser.id) {
-          const migratedQuiz = await supabaseService.createQuiz({
-            ...quiz,
-            userId: currentUser.id
-          }, currentUser.id)
-          
-          if (migratedQuiz) {
-            migratedCount++
-          } else {
-            errorCount++
-            logger.warn('Failed to migrate quiz (null returned)', 'Migration', { quizId: quiz.id })
-          }
-        }
-      } catch (error) {
-        errorCount++
-        logger.error('Failed to migrate quiz', 'Migration', { quizId: quiz.id }, error as Error)
-      }
+    // If the error is not about missing table, log it and return
+    if (!error.message.includes('does not exist')) {
+      logger.error('Error checking migration status', 'migrationUtils', {}, error);
+      return false;
     }
     
+    logger.info('Creating quiz_progress table', 'migrationUtils');
+    
+    // Create the quiz_progress table
+    const { error: createError } = await supabase.rpc('create_quiz_progress_table');
+    
+    if (createError) {
+      logger.error('Failed to create quiz_progress table', 'migrationUtils', {}, createError);
+      return false;
+    }
+    
+    logger.info('Successfully created quiz_progress table', 'migrationUtils');
+    return true;
   } catch (error) {
-    logger.error('Migration failed', 'Migration', {}, error as Error)
-    throw error
-  }
-}
-
-export const checkMigrationNeeded = async (currentUser: UserProfile): Promise<boolean> => {
-  try {
-    const supabaseQuizzes = await supabaseService.getUserQuizzes(currentUser.id)
-    
-    const localQuizzes = await quizStorage.getAllQuizzes()
-    const userLocalQuizzes = localQuizzes.filter(q => !q.userId || q.userId === currentUser.id)
-    
-    const migrationNeeded = userLocalQuizzes.length > 0 && supabaseQuizzes.length === 0
-    
-    logger.info('Migration check completed', 'Migration', {
-      localQuizzes: userLocalQuizzes.length,
-      supabaseQuizzes: supabaseQuizzes.length,
-      migrationNeeded
-    })
-    
-    return migrationNeeded
-  } catch (error) {
-    logger.error('Migration check failed', 'Migration', {}, error as Error)
-    return false
+    logger.error('Exception running migrations', 'migrationUtils', {}, error as Error);
+    return false;
   }
 }

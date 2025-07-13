@@ -51,19 +51,33 @@ const QuizPracticePage: React.FC = () => {
     totalQuestions,
     shuffledQuestions,
     attemptSettings,
+    markQuizCompleted,
+    updateUserAnswer,
+    userAnswers
   } = useQuizFlow(quizId, handleTimeUp);
 
-  // const explanationIconUrl = "https://img.icons8.com/?size=256&id=eoxMN35Z6JKg&format=png"; // Moved to PracticeQuizExplanation
-
+  // Initialize practice attempts from questions
   useEffect(() => {
     if (shuffledQuestions.length > 0 && practiceAttempts.length === 0) {
-      setPracticeAttempts(shuffledQuestions.map(q => ({
-        questionId: q.id, selectedOption: null, isCorrect: null, firstTryCorrect: null, attempts: 0,
-      })));
+      // Initialize attempts from loaded userAnswers if available
+      const initialAttempts = shuffledQuestions.map(q => {
+        const savedAnswer = userAnswers[q.id];
+        const isCorrect = savedAnswer ? savedAnswer === q.correctAnswer : null;
+        
+        return {
+          questionId: q.id, 
+          selectedOption: savedAnswer || null, 
+          isCorrect: savedAnswer ? isCorrect : null, 
+          firstTryCorrect: savedAnswer ? isCorrect : null, 
+          attempts: savedAnswer ? 1 : 0,
+        };
+      });
+      
+      setPracticeAttempts(initialAttempts);
     }
-  }, [shuffledQuestions, practiceAttempts.length]);
+  }, [shuffledQuestions, practiceAttempts.length, userAnswers]);
 
-
+  // Sync current question state based on practice attempts
   useEffect(() => {
     if (isFinishingPracticeRef.current) return;
 
@@ -89,6 +103,16 @@ const QuizPracticePage: React.FC = () => {
 
   }, [currentQuestionIndex, currentQuestion, practiceAttempts]);
 
+  // Update user answer state when an attempt is confirmed
+  useEffect(() => {
+    if (!currentUser?.id) return;
+    
+    practiceAttempts.forEach(attempt => {
+      if (attempt.selectedOption && attempt.isCorrect !== null) {
+        updateUserAnswer(attempt.questionId, attempt.selectedOption);
+      }
+    });
+  }, [practiceAttempts, updateUserAnswer, currentUser?.id]);
 
   const triggerFinishPractice = useCallback(async () => {
     if (isFinishingPracticeRef.current || !localActiveQuiz) return;
@@ -100,8 +124,8 @@ const QuizPracticePage: React.FC = () => {
       currentTime: elapsedTime
     });
 
+    // Update practice attempts one more time for the current question
     let finalPracticeAttempts = [...practiceAttempts];
-
     if (currentQuestion && currentTentativeSelection && !isCurrentSelectionChecked) {
         finalPracticeAttempts = finalPracticeAttempts.map(pa =>
             pa.questionId === currentQuestion.id
@@ -113,14 +137,10 @@ const QuizPracticePage: React.FC = () => {
               }
             : pa
         );
-    } else if (currentQuestion && !currentTentativeSelection && !isCurrentSelectionChecked) {
-        finalPracticeAttempts = finalPracticeAttempts.map(pa =>
-            pa.questionId === currentQuestion.id
-            ? { ...pa, selectedOption: null, isCorrect: null }
-            : pa
-        );
     }
 
+    // Mark the quiz as completed in the progress tracking
+    await markQuizCompleted();
 
     const correctAnswersCount = finalPracticeAttempts.filter(pa => pa.isCorrect === true).length;
     const finalUserAnswersArray: UserAnswer[] = finalPracticeAttempts.map(pa => ({
@@ -175,15 +195,15 @@ const QuizPracticePage: React.FC = () => {
     practiceAttempts, 
     currentQuestion, 
     currentTentativeSelection, 
-    isCurrentSelectionChecked, 
+    isCurrentSelectionChecked,
     setGlobalQuizResult, 
     attemptSettings.timeLimit, 
     timeLeft,
     navigate,
     currentUser,
-    elapsedTime
+    elapsedTime,
+    markQuizCompleted
   ]);
-
 
   const handleSelectOption = (optionText: string) => {
     if (isCurrentSelectionChecked || isFinishingPracticeRef.current || isFinishingOrChecking) return;
@@ -211,7 +231,11 @@ const QuizPracticePage: React.FC = () => {
           : pa
       )
     );
-    // setIsFinishingOrChecking(false) will be handled by useEffect when question changes or if explicitly reset
+    
+    // Save the answer in our user progress tracking
+    if (currentUser?.id) {
+      updateUserAnswer(currentQuestion.id, currentTentativeSelection);
+    }
   };
 
   const handleNextQuestionLogic = useCallback(() => {

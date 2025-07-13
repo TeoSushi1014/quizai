@@ -15,7 +15,6 @@ const QuizTakingPage: React.FC = () => {
   const { quizId } = useParams<{ quizId: string }>();
   const navigate = useNavigate();
 
-  const [userAnswers, setUserAnswers] = useState<Record<string, string>>({}); 
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);
   const [showTimesUpModalState, setShowTimesUpModalState] = useState(false); 
@@ -31,11 +30,14 @@ const QuizTakingPage: React.FC = () => {
     loading,
     timeLeft,
     elapsedTime,
+    userAnswers,
     goToNextQuestion,
     goToPreviousQuestion,
+    updateUserAnswer,
     formatTime,
     totalQuestions,
     attemptSettings,
+    markQuizCompleted
   } = useQuizFlow(quizId, handleTimeUp);
 
 
@@ -54,31 +56,34 @@ const QuizTakingPage: React.FC = () => {
   
   const storeCurrentAnswer = useCallback(() => {
     if (currentQuestion && selectedOption) {
-      setUserAnswers(prev => ({ ...prev, [currentQuestion.id]: selectedOption }));
+      updateUserAnswer(currentQuestion.id, selectedOption);
     } else if (currentQuestion && !selectedOption && userAnswers[currentQuestion.id]) {
-      setUserAnswers(prev => {
-        const newAnswers = {...prev};
-        delete newAnswers[currentQuestion.id];
-        return newAnswers;
+      // Create a new object without the current question's answer
+      const newAnswers = {...userAnswers};
+      delete newAnswers[currentQuestion.id];
+      // Update each answer individually using updateUserAnswer
+      Object.entries(newAnswers).forEach(([qId, answer]) => {
+        updateUserAnswer(qId, answer);
       });
     }
-  }, [currentQuestion, selectedOption, userAnswers]);
+  }, [currentQuestion, selectedOption, userAnswers, updateUserAnswer]);
 
   const handleFinalSubmit = useCallback(async () => {
     if (!localActiveQuiz) return;
     
-    let finalUserAnswersMap = { ...userAnswers };
+    // Store the current answer if any
     if (currentQuestion && selectedOption) {
-      finalUserAnswersMap[currentQuestion.id] = selectedOption;
-    } else if (currentQuestion && !selectedOption && finalUserAnswersMap[currentQuestion.id]) {
-      delete finalUserAnswersMap[currentQuestion.id];
+      updateUserAnswer(currentQuestion.id, selectedOption);
     }
+    
+    // Mark the quiz as completed in the progress tracking
+    await markQuizCompleted();
     
     let correctCount = 0;
     const finalUserAnswersArray: UserAnswer[] = [];
 
     localActiveQuiz.questions.forEach(q => {
-      const userAnswerText = finalUserAnswersMap[q.id]; 
+      const userAnswerText = userAnswers[q.id]; 
       if (userAnswerText) {
         finalUserAnswersArray.push({ questionId: q.id, answer: userAnswerText });
         if (userAnswerText === q.correctAnswer) {
@@ -124,16 +129,17 @@ const QuizTakingPage: React.FC = () => {
     navigate(`/results/${localActiveQuiz.id}`);
   }, [
     localActiveQuiz, 
-    userAnswers, 
     currentQuestion, 
     selectedOption, 
-    timeLeft, 
+    updateUserAnswer,
     setQuizResult, 
     navigate, 
-    totalQuestions, 
+    totalQuestions,
     attemptSettings.timeLimit,
     currentUser,
-    elapsedTime
+    elapsedTime,
+    userAnswers,
+    markQuizCompleted
   ]);
 
 

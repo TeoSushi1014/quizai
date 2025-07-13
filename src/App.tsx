@@ -15,7 +15,7 @@ import { useNotification } from './hooks/useNotification';
 import { supabaseService } from './services/supabaseService';
 import { supabase } from './services/supabaseClient';
 import { logger } from './services/logService';
-import { migrateLocalDataToSupabase, checkMigrationNeeded } from './utils/migrationUtils';
+import { runMigrations } from './utils/migrationUtils';
 import { secureConfig } from './services/secureConfigService';
 import { maintenanceService } from './services/maintenanceService';
 import { MaintenancePage } from './components/MaintenancePage';
@@ -582,16 +582,16 @@ const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
           
           setCurrentUser(userWithTokenAndDefaults, tokenInfo); 
 
-          // Check if migration is needed and perform it
+          // Run database migrations if needed
           try {
-            const migrationNeeded = await checkMigrationNeeded(userWithTokenAndDefaults)
-            if (migrationNeeded) {
-              logger.info('Starting data migration from localStorage to Supabase', 'Migration')
-              await migrateLocalDataToSupabase(userWithTokenAndDefaults)
-              logger.info('Data migration completed successfully', 'Migration')
+            const migrationSuccess = await runMigrations();
+            if (migrationSuccess) {
+              logger.info('Database migrations completed successfully', 'App');
+            } else {
+              logger.warn('Database migrations failed or were not needed', 'App');
             }
           } catch (migrationError) {
-            logger.error('Migration failed, but login continues', 'Migration', {}, migrationError as Error)
+            logger.error('Migration failed, but login continues', 'App', {}, migrationError as Error)
           }
 
           logger.info('User logged in successfully with Supabase', 'AuthContext', { userId: userWithTokenAndDefaults.id })
