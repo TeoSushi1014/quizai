@@ -8,7 +8,6 @@ import { UserCircleIcon, ChevronRightIcon } from '../../constants';
 import { QuizCard } from './components/QuizCard'; 
 import useShouldReduceMotion from '../../hooks/useShouldReduceMotion';
 import { emailService } from '../../services/emailService';
-import TodoList from '../../components/TodoList';
 
 import MathText from '../../components/MathText';
 
@@ -253,17 +252,6 @@ const HomePage: React.FC = () => {
               <img src="https://stg-images.samsung.com/is/image/samsung/assets/in/unpacked/ai-icon.png" alt="AI Create Quiz Icon" className="w-5 h-5 mr-2" />
               <MathText text={t('heroCTA')} />
             </Button>
-          </motion.div>
-          
-          {/* Add TodoList component after the hero section */}
-          <motion.div 
-            variants={currentHeroItemVariants} 
-            className="mt-12 max-w-3xl mx-auto"
-          >
-            <Card className="shadow-lg">
-              <h2 className="text-2xl font-bold mb-4">{t('supportedQuestionTypes')}</h2>
-              <TodoList />
-            </Card>
           </motion.div>
         </motion.section>
       );
