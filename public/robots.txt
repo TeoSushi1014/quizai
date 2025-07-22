@@ -1,3 +1,9 @@
+# Allow all crawlers
 User-agent: *
 Allow: /
+
+# Optimize crawl rate
+Crawl-delay: 5
+
+# Sitemap location
 Sitemap: https://teosushi1014.github.io/quizai/sitemap.xml 
