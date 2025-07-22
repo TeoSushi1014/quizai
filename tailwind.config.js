@@ -8,7 +8,7 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        primary: ['Inter', 'Roboto', 'Noto Sans Vietnamese', 'system-ui', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Helvetica', 'Arial', 'sans-serif', '"Apple Color Emoji"', '"Segoe UI Emoji"'],
+        primary: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Helvetica', 'Arial', 'sans-serif', '"Apple Color Emoji"', '"Segoe UI Emoji"'],
       },
       colors: {
         primary: {
@@ -55,8 +55,24 @@ export default {
       },
     },
   },
+  // Optimize for production to reduce CSS size
   plugins: [
     require('@tailwindcss/forms'),
     require('@tailwindcss/typography'),
   ],
+  // In production, purge unused styles more aggressively
+  future: {
+    hoverOnlyWhenSupported: true,
+    respectDefaultRingColorOpacity: true,
+  },
+  // Disable variants we don't use to reduce CSS size
+  corePlugins: {
+    // Example of disabling unused plugins
+    // Remove any of these you actually use
+    // container: false,
+    // objectFit: false,
+    // objectPosition: false,
+  },
+  // Enable JIT mode for smaller CSS output
+  mode: 'jit',
 }
