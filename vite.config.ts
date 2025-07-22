@@ -38,7 +38,7 @@ export default defineConfig(({ mode }) => {
             manualChunks: {
               vendor: ['react', 'react-dom', 'react-router-dom'],
               ui: ['@headlessui/react', 'framer-motion'],
-              markdown: ['react-markdown', 'remark-gfm', 'rehype-katex'],
+              markdown: ['react-markdown', 'remark-gfm'],
               math: ['katex', 'react-katex', 'remark-math', 'rehype-katex'],
               i18n: ['i18next', 'react-i18next'],
               utils: ['localforage', 'mammoth', 'pdfjs-dist']
