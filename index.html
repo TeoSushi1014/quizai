@@ -1,638 +1,188 @@
 <!DOCTYPE html>
-<html lang="en" class="dark"> 
-<head>
-
-  
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-PPLMXLJNZT"></script>
-  <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-    gtag('config', 'G-PPLMXLJNZT');
-  </script>
-  
-  <script async src="https://www.google.com/recaptcha/enterprise.js?render=6LfjXkorAAAAAOk4X5LwVd-8RgwMGS0IWxZLtFGQ"></script>
-  <meta charset="UTF-8" />
-  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  
-  <meta name="format-detection" content="telephone=no">
-  <meta name="theme-color" content="#0f172a">
-  
-  <link rel="preconnect" href="https://www.google.com">
-  <link rel="preconnect" href="https://www.gstatic.com">
-  <link rel="preconnect" href="https://esm.sh">
-  
-  <title>QuizAI</title>
-  <link rel="icon" type="image/x-icon" href="/quizai/assets/logo/avt.ico">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Noto+Sans+Vietnamese:wght@400;500;600;700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
-  
-  <meta name="description" content="QuizAI giúp bạn tạo, chia sẻ và luyện tập quiz dễ dàng, ứng dụng AI hỗ trợ học tập hiệu quả.">
-<meta name="keywords" content="QuizAI, quiz, tạo quiz, luyện tập quiz, AI, học tập, education, test, exam">
-<meta property="og:title" content="QuizAI - Tạo và luyện tập quiz thông minh bằng AI">
-<meta property="og:description" content="QuizAI giúp bạn tạo, chia sẻ và luyện tập quiz dễ dàng, ứng dụng AI hỗ trợ học tập hiệu quả.">
-<meta property="og:url" content="https://teosushi1014.github.io/quizai/">
-<meta property="og:type" content="website">
-<meta property="og:image" content="https://teosushi1014.github.io/quizai/assets/logo/avt.ico">
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="QuizAI - Tạo và luyện tập quiz thông minh bằng AI">
-<meta name="twitter:description" content="QuizAI giúp bạn tạo, chia sẻ và luyện tập quiz dễ dàng, ứng dụng AI hỗ trợ học tập hiệu quả.">
-<meta name="twitter:image" content="https://teosushi1014.github.io/quizai/assets/logo/avt.ico">
-<link rel="canonical" href="https://teosushi1014.github.io/quizai/" />
-<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"QuizAI","url":"https://teosushi1014.github.io/quizai/","description":"QuizAI giúp bạn tạo, chia sẻ và luyện tập quiz dễ dàng, ứng dụng AI hỗ trợ học tập hiệu quả."}</script>
-  
-  <style>
-    :root {
-      --duration-fast: 150ms; 
-      --duration-normal: 250ms;
-      --duration-slow: 350ms;
-      --ease-ios: cubic-bezier(0.23, 1, 0.32, 1);
-      --ease-in-out-quad: cubic-bezier(0.455, 0.03, 0.515, 0.955); 
-
-      --font-primary: 'Inter', 'Roboto', 'Noto Sans Vietnamese', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
-
-      --color-bg-body: rgb(15, 23, 42);
-      --color-bg-primary: rgb(15, 23, 42);
-      --color-bg-surface-1: rgb(30, 41, 59);
-      --color-bg-surface-2: rgb(51, 65, 85);
-      --color-bg-surface-3: rgb(71, 85, 105);
-      
-      --color-text-primary: rgb(241, 245, 249);
-      --color-text-secondary: rgb(148, 163, 184);
-      --color-text-body: rgb(203, 213, 225);
-      --color-text-muted: rgb(100, 116, 139);
-      
-      --color-primary-accent: rgb(56, 189, 248);
-      --color-primary-accent-rgb: 56, 189, 248; 
-      --color-primary-accent-hover: rgb(125, 211, 252);
-      --color-primary-accent-text: #ffffff; 
-
-      --color-secondary-accent: #475569;
-      --color-secondary-accent-hover: #64748b;
-      --color-secondary-accent-text: #e2e8f0;
-
-      --color-danger-accent: rgb(248, 113, 113);
-      --color-danger-accent-rgb: 248, 113, 113;
-      --color-success-accent: #22c55e;
-      --color-success-accent-rgb: 34, 197, 94;
-      --color-warning-accent: #f59e0b;
-      
-      --color-border-default: rgba(100, 116, 139, 0.3); 
-      --color-border-interactive: rgba(100, 116, 139, 0.5); 
-      --color-border-strong: rgba(100, 116, 139, 0.5); 
-
-      --color-modal-backdrop-bg: rgba(15, 23, 42, 0.85); 
-      --color-modal-content-bg: rgb(30, 41, 59); 
-      --color-modal-content-bg-glass: rgba(30, 41, 59, 0.9); 
-      --color-modal-border: rgba(100, 116, 139, 0.3); 
-      
-      --color-mobile-nav-bg: rgba(15, 23, 42, 0.88); 
-      --color-mobile-nav-border: rgba(51, 65, 85, 0.5); 
-      --color-mobile-nav-item-active-bg: rgb(51, 65, 85); 
-
-      --color-tooltip-bg: var(--color-bg-surface-3); 
-      --color-tooltip-text: var(--color-text-primary); 
-      --color-tooltip-border: var(--color-border-strong); 
-
-      --color-scrollbar-thumb: #475569; 
-      --color-scrollbar-thumb-hover: #64748b; 
-
-      --color-focus-ring: var(--color-primary-accent);
-      --color-focus-shadow: rgba(56, 189, 248, 0.25);
-      --color-focus-ring-offset: var(--color-bg-body);
-
-      --color-glass-bg: rgba(15, 23, 42, 0.85);
-      --color-glass-border: rgba(51, 65, 85, 0.7);
-
-      --shadow-color-level-1: rgba(0,0,0,0.05);
-      --shadow-color-level-2: rgba(0,0,0,0.1);
-      --shadow-color-level-3: rgba(0,0,0,0.15);
-      --shadow-sm: 0 1px 2px 0 var(--shadow-color-level-2);
-      --shadow-md: 0 4px 6px -1px var(--shadow-color-level-2), 0 2px 4px -2px var(--shadow-color-level-2);
-      --shadow-lg: 0 10px 15px -3px var(--shadow-color-level-2), 0 4px 6px -4px var(--shadow-color-level-2);
-      --shadow-xl: 0 20px 25px -5px var(--shadow-color-level-3), 0 8px 10px -6px var(--shadow-color-level-3);
-      --shadow-2xl: 0 25px 50px -12px var(--shadow-color-level-3);
-      --shadow-inner: inset 0 2px 4px 0 var(--shadow-color-level-2);
-
-      --radius-sm: 0.25rem; 
-      --radius-md: 0.5rem;  
-      --radius-lg: 0.75rem; 
-      --radius-xl: 1rem;    
-      --radius-2xl: 1.5rem; 
-      --radius-full: 9999px;
-
-      --color-input-bg: rgb(30, 41, 59); 
-      --color-input-text: rgb(241, 245, 249); 
-      --color-input-placeholder: rgb(100, 116, 139); 
-      --color-input-border: rgba(100, 116, 139, 0.4); 
-      --color-input-focus-border: var(--color-primary-accent); 
-      --color-input-focus-ring: rgba(56, 189, 248, 0.25);
-    }
-
-    html.light {
-      --color-bg-body: rgb(248, 250, 252);
-      --color-bg-primary: rgb(248, 250, 252);
-      --color-bg-surface-1: rgb(255, 255, 255);
-      --color-bg-surface-2: rgb(241, 245, 249);
-      --color-bg-surface-3: rgb(226, 232, 240);
-      
-      --color-text-primary: rgb(15, 23, 42);
-      --color-text-secondary: rgb(71, 85, 105);
-      --color-text-body: rgb(51, 65, 85);
-      --color-text-muted: rgb(100, 116, 139);
-      
-      --color-primary-accent: rgb(14, 165, 233);
-      --color-primary-accent-rgb: 14, 165, 233;
-      --color-primary-accent-hover: rgb(2, 132, 199);
-      --color-primary-accent-text: #ffffff; 
-
-      --color-secondary-accent: #e2e8f0;
-      --color-secondary-accent-hover: #cbd5e1;
-      --color-secondary-accent-text: #1e293b;
-
-      --color-danger-accent: rgb(239, 68, 68);
-      --color-danger-accent-rgb: 239, 68, 68;
-      --color-success-accent: #16a34a;
-      --color-success-accent-rgb: 22, 163, 74;
-      --color-warning-accent: #d97706; 
-      
-      --color-border-default: rgba(203, 213, 225, 0.8); 
-      --color-border-interactive: rgba(148, 163, 184, 0.7); 
-      --color-border-strong: rgba(148, 163, 184, 0.7); 
-
-      --color-modal-backdrop-bg: rgba(241, 245, 249, 0.85); 
-      --color-modal-content-bg: rgb(255, 255, 255); 
-      --color-modal-content-bg-glass: rgba(255, 255, 255, 0.95); 
-      --color-modal-border: rgba(203, 213, 225, 0.5); 
-      
-      --color-mobile-nav-bg: rgba(255, 255, 255, 0.92); 
-      --color-mobile-nav-border: rgba(226, 232, 240, 0.7); 
-      --color-mobile-nav-item-active-bg: rgb(241, 245, 249); 
-
-      --color-tooltip-bg: var(--color-bg-surface-3); 
-      --color-tooltip-text: var(--color-text-primary); 
-      --color-tooltip-border: var(--color-border-strong);
-
-      --color-scrollbar-thumb: #cbd5e1; 
-      --color-scrollbar-thumb-hover: #94a3b8; 
-
-      --color-focus-shadow: rgba(14, 165, 233, 0.3); 
-      --color-focus-ring-offset: var(--color-bg-body);
-
-      --color-glass-bg: rgba(248, 250, 252, 0.85);
-      --color-glass-border: rgba(226, 232, 240, 0.7);
-
-      --shadow-color-level-1: rgba(0,0,0,0.03);
-      --shadow-color-level-2: rgba(0,0,0,0.06);
-      --shadow-color-level-3: rgba(0,0,0,0.1);
-
-      --color-input-bg: rgb(255, 255, 255); 
-      --color-input-text: rgb(15, 23, 42); 
-      --color-input-placeholder: rgb(100, 116, 139); 
-      --color-input-border: rgba(203, 213, 225, 0.9); 
-      --color-input-focus-border: var(--color-primary-accent);
-      --color-input-focus-ring: rgba(14, 165, 233, 0.25);
-    }
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     
-    html {
-      font-family: var(--font-primary);
-      background-color: var(--color-bg-body); 
-      color: var(--color-text-body); 
-    }
-    body {
-      -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
-      background-color: var(--color-bg-body);
-      color: var(--color-text-body);
-      cursor: default;
-      word-break: normal;
-      overflow-wrap: break-word;
-    }
+    <!-- Performance optimizations: DNS prefetch and preconnect -->
+    <link rel="dns-prefetch" href="//fonts.googleapis.com">
+    <link rel="dns-prefetch" href="//esm.sh">
+    <link rel="dns-prefetch" href="//jbuqonmeorldgiwvdror.supabase.co">
+    <link rel="dns-prefetch" href="//www.google.com">
+    <link rel="dns-prefetch" href="//accounts.google.com">
     
-    ::-webkit-scrollbar { width: 7px; height: 7px; cursor: default !important; }
-    ::-webkit-scrollbar-track { background: transparent; cursor: default !important; }
-    ::-webkit-scrollbar-thumb { background-color: var(--color-scrollbar-thumb);  border-radius: var(--radius-full); border: 2px solid transparent; cursor: default !important; -webkit-transition: background-color var(--duration-fast) var(--ease-ios); transition: background-color var(--duration-fast) var(--ease-ios); }
-    ::-webkit-scrollbar-thumb:hover { background-color: var(--color-scrollbar-thumb-hover);  }
-    ::-webkit-scrollbar-track-piece { cursor: default !important; }
-    ::-webkit-scrollbar-button { cursor: default !important; }
-    ::-webkit-scrollbar-corner { cursor: default !important; }
+    <!-- Critical preconnects with crossorigin -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://esm.sh" crossorigin>
+    <link rel="preconnect" href="https://jbuqonmeorldgiwvdror.supabase.co" crossorigin>
+    <link rel="preconnect" href="https://www.google.com" crossorigin>
+    <link rel="preconnect" href="https://accounts.google.com" crossorigin>
+    
+    <!-- Font optimization - don't use preload to avoid warnings -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+    
+    <link rel="icon" href="/quizai/assets/logo/avt.ico" type="image/x-icon" />
+    <meta name="theme-color" content="#ffffff">
+    
+    <!-- Modulepreload for critical JS -->
+    <link rel="modulepreload" href="data:application/octet-stream;base64,aW1wb3J0IFJlYWN0LCB7IFN1c3BlbnNlLCB1c2VFZmZlY3QgfSBmcm9tICdyZWFjdCc7CmltcG9ydCBSZWFjdERPTSBmcm9tICdyZWFjdC1kb20vY2xpZW50JzsKaW1wb3J0ICcuL2luZGV4LmNzcyc7CmltcG9ydCB7IGNoZWNrRGF0YWJhc2VTZXR1cCwgcHJpbnREYXRhYmFzZVN0YXR1cyB9IGZyb20gJy4vdXRpbHMvc2V0dXBEYXRhYmFzZSc7CmltcG9ydCB7IGxvZ2dlciB9IGZyb20gJy4vc2VydmljZXMvbG9nU2VydmljZSc7CmltcG9ydCBBcHAgZnJvbSAnLi9BcHAnOwppbXBvcnQgeyBIYXNoUm91dGVyIH0gZnJvbSAncmVhY3Qtcm91dGVyLWRvbSc7CmltcG9ydCB7IEdvb2dsZU9BdXRoUHJvdmlkZXIgfSBmcm9tICdAcmVhY3Qtb2F1dGgvZ29vZ2xlJzsKaW1wb3J0IHsgVGhlbWVQcm92aWRlciB9IGZyb20gJy4vY29udGV4dHMvVGhlbWVDb250ZXh0JzsKCmlmICgncGVyZm9ybWFuY2UnIGluIHdpbmRvdykgewogIHBlcmZvcm1hbmNlLm1hcmsoJ2FwcC1yZW5kZXItc3RhcnQnKTsKfQoKLy8gQ2hlY2sgZGF0YWJhc2Ugc2V0dXAgaW4gZGV2ZWxvcG1lbnQgbW9kZQppZiAocHJvY2Vzcy5lbnYuTk9ERV9FTlYgPT09ICdkZXZlbG9wbWVudCcpIHsKICAoYXN5bmMgKCkgPT4gewogICAgdHJ5IHsKICAgICAgY29uc3QgZGJTdGF0dXMgPSBhd2FpdCBjaGVja0RhdGFiYXNlU2V0dXAoKTsKICAgICAgaWYgKCFkYlN0YXR1cy5pc1NldHVwKSB7CiAgICAgICAgY29uc29sZS53YXJuKCfimqDvuI8gRGF0YWJhc2Ugc2V0dXAgaXMgaW5jb21wbGV0ZS4gU2VlIGRhdGFiYXNlLnNxbCBmb3Igc2V0dXAgaW5zdHJ1Y3Rpb25zLicpOwogICAgICAgIGNvbnNvbGUuaW5mbyhkYlN0YXR1cy5tZXNzYWdlKTsKICAgICAgfSBlbHNlIHsKICAgICAgICBjb25zb2xlLmluZm8oJ+KchSBEYXRhYmFzZSBpcyBwcm9wZXJseSBzZXQgdXAuJyk7CiAgICAgIH0KICAgIH0gY2F0Y2ggKGVycm9yKSB7CiAgICAgIGNvbnNvbGUuZXJyb3IoJ0ZhaWxlZCB0byBjaGVjayBkYXRhYmFzZSBzZXR1cDonLCBlcnJvcik7CiAgICB9CiAgfSkoKTsKfQoKY29uc3QgTWluaW1hbExvYWRlciA9ICgpID0+ICgKICA8ZGl2IHN0eWxlPXt7CiAgICBwb3NpdGlvbjogJ2ZpeGVkJywKICAgIGluc2V0OiAwLAogICAgZGlzcGxheTogJ2ZsZXgnLAogICAgYWxpZ25JdGVtczogJ2NlbnRlcicsCiAgICBqdXN0aWZ5Q29udGVudDogJ2NlbnRlcicsCiAgICBiYWNrZ3JvdW5kQ29sb3I6ICd2YXIoLS1jb2xvci1iZy1ib2R5LCAjZmZmKScsCiAgICBjb2xvcjogJ3ZhcigtLWNvbG9yLXRleHQtcHJpbWFyeSwgIzMzMyknLAogICAgZm9udEZhbWlseTogJ3N5c3RlbS11aSwgLWFwcGxlLXN5c3RlbSwgc2Fucy1zZXJpZicsCiAgfX0+CiAgICA8ZGl2IHN0eWxlPXt7IGRpc3BsYXk6ICdmbGV4JywgZmxleERpcmVjdGlvbjogJ2NvbHVtbicsIGFsaWduSXRlbXM6ICdjZW50ZXInIH19PgogICAgICA8ZGl2IHN0eWxlPXt7CiAgICAgICAgd2lkdGg6ICczNnB4JywKICAgICAgICBoZWlnaHQ6ICczNnB4JywKICAgICAgICBib3JkZXI6ICczcHggc29saWQgcmdiYSgwLDAsMCwwLjEpJywKICAgICAgICBib3JkZXJSYWRpdXM6ICc1MCUnLAogICAgICAgIGJvcmRlclRvcENvbG9yOiAnIzNiODJmNicsCiAgICAgICAgYW5pbWF0aW9uOiAnc3BpbiAwLjhzIGxpbmVhciBpbmZpbml0ZScsCiAgICAgIH19PjwvZGl2PgogICAgICA8c3R5bGU+e2AKICAgICAgICBAa2V5ZnJhbWVzIHNwaW4gewogICAgICAgICAgdG8geyB0cmFuc2Zvcm06IHJvdGF0ZSgzNjBkZWcpOyB9CiAgICAgICAgfQogICAgICBgfTwvc3R5bGU+CiAgICAgIDxkaXYgc3R5bGU9e3sgbWFyZ2luVG9wOiAnMTZweCcsIGZvbnRTaXplOiAnMTRweCcgfX0+TG9hZGluZy4uLjwvZGl2PgogICAgPC9kaXY+CiAgPC9kaXY+Cik7CgovLyBFeHBvc2UgZGF0YWJhc2UgY2hlY2sgZnVuY3Rpb24gdG8gd2luZG93IGZvciBkZWJ1Z2dpbmcgcHVycG9zZXMKaWYgKHByb2Nlc3MuZW52Lk5PREVfRU5WID09PSAnZGV2ZWxvcG1lbnQnKSB7CiAgKHdpbmRvdyBhcyBhbnkpLmNoZWNrRGF0YWJhc2VTZXR1cCA9IGNoZWNrRGF0YWJhc2VTZXR1cDsKICAod2luZG93IGFzIGFueSkucHJpbnREYXRhYmFzZVN0YXR1cyA9IHByaW50RGF0YWJhc2VTdGF0dXM7Cn0KCi8vIFJlbmRlciBhcHBsaWNhdGlvbiB3aXRoIGRpcmVjdCBpbXBvcnQgb2YgQXBwIGluc3RlYWQgb2YgbGF6eSBsb2FkaW5nCi8vIFRoaXMgZW5zdXJlcyBjb250ZXh0IGlzIHByb3Blcmx5IGluaXRpYWxpemVkIGJlZm9yZSBiZWluZyB1c2VkClJlYWN0RE9NLmNyZWF0ZVJvb3QoZG9jdW1lbnQuZ2V0RWxlbWVudEJ5SWQoJ3Jvb3QnKSBhcyBIVE1MRWxlbWVudCkucmVuZGVyKAogIDxSZWFjdC5TdHJpY3RNb2RlPgogICAgPFN1c3BlbnNlIGZhbGxiYWNrPXs8TWluaW1hbExvYWRlciAvPn0+CiAgICAgIDxUaGVtZVByb3ZpZGVyPgogICAgICAgIDxIYXNoUm91dGVyPgogICAgICAgICAgPEFwcCAvPgogICAgICAgIDwvSGFzaFJvdXRlcj4KICAgICAgPC9UaGVtZVByb3ZpZGVyPgogICAgPC9TdXNwZW5zZT4KICA8L1JlYWN0LlN0cmljdE1vZGU+Cik7CgppZiAoJ3BlcmZvcm1hbmNlJyBpbiB3aW5kb3cpIHsKICB3aW5kb3cuYWRkRXZlbnRMaXN0ZW5lcignbG9hZCcsICgpID0+IHsKICAgIHBlcmZvcm1hbmNlLm1hcmsoJ2FwcC1yZW5kZXItZW5kJyk7CiAgICBwZXJmb3JtYW5jZS5tZWFzdXJlKCdhcHAtcmVuZGVyJywgJ2FwcC1yZW5kZXItc3RhcnQnLCAnYXBwLXJlbmRlci1lbmQnKTsKICB9KTsKfQo=" fetchpriority="high">
+    
+    <!-- Import map for external dependencies -->
 
-    *:focus-visible {
-      outline: 2px solid var(--color-focus-ring); 
-      outline-offset: 2px;
-      box-shadow: 0 0 0 4px var(--color-focus-shadow); 
-      transition: outline var(--duration-fast) var(--ease-ios), box-shadow var(--duration-fast) var(--ease-ios);
-    }
     
-    .modal-content-scrollable { max-height: 75vh; overflow-y: auto; }
-        
-    .glass-effect { 
-      background-color: var(--color-glass-bg); 
-      backdrop-filter: blur(12px); 
-      -webkit-backdrop-filter: blur(12px); 
-      border-bottom: 1px solid var(--color-glass-border); 
-      box-shadow: var(--shadow-sm); 
-    }
+    <title>QuizAI</title>
     
-    .card-glass {
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-      box-shadow: 0 4px 12px var(--shadow-color-level-1), 0 1px 3px var(--shadow-color-level-2);
-    }
-    html.dark .card-glass {
-      background-color: rgba(30, 41, 59, 0.6) !important; 
-      border: 1px solid rgba(51, 65, 85, 0.6) !important; 
-    }
-    html.light .card-glass {
-      background-color: rgba(255, 255, 255, 0.7) !important;
-      border: 1px solid rgba(226, 232, 240, 0.8) !important; 
-    }
-
-    .sticky-review-actions {
-      position: sticky;
-      top: 4rem; 
-      z-index: 40; 
-      background-color: var(--color-bg-surface-1); 
-      border-bottom: 1px solid var(--color-border-default); 
-    }
-    @media (min-width: 768px) { 
-      .sticky-review-actions { top: 4rem; } 
-    }
-    
-    .modal-backdrop-enhanced { 
-      backdrop-filter: blur(8px);  
-      -webkit-backdrop-filter: blur(8px); 
-      background-color: var(--color-modal-backdrop-bg); 
-      opacity: 0; 
-      transition: opacity var(--duration-fast) var(--ease-ios);
-    }
-    .modal-backdrop-enhanced.open {
-      opacity: 1; 
-    }
-        
-    .card-float-hover { 
-      transition: transform var(--duration-normal) var(--ease-ios), box-shadow var(--duration-normal) var(--ease-ios);
-      will-change: transform; 
-      contain: layout style paint; 
-    }
-    .card-float-hover:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 8px 20px var(--shadow-color-level-3), 0 0 0 1px var(--color-border-interactive); 
-    }
-    
-    .mobile-nav-item:active { 
-      background-color: var(--color-mobile-nav-item-active-bg); 
-    }
-    
-    .thin-scrollbar-horizontal::-webkit-scrollbar { height: 4px; cursor: default !important; }
-    .thin-scrollbar-horizontal::-webkit-scrollbar-track { background: transparent; border-radius: 4px; cursor: default !important; }
-    .thin-scrollbar-horizontal::-webkit-scrollbar-thumb { background-color: var(--color-scrollbar-thumb); border-radius: 4px; cursor: default !important; -webkit-transition: background-color var(--duration-fast) var(--ease-ios); transition: background-color var(--duration-fast) var(--ease-ios); }
-    .thin-scrollbar-horizontal::-webkit-scrollbar-thumb:hover { background-color: var(--color-scrollbar-thumb-hover); }
-        
-    @keyframes fadeInUp {
-      from { opacity: 0; transform: translateY(20px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    .animate-fadeInUp {
-      animation: fadeInUp var(--duration-normal) var(--ease-ios) forwards;
-      will-change: transform, opacity;
-    }
-
-    @keyframes slideInRightPage { 
-      from { opacity: 0; transform: translateX(20px); } 
-      to { opacity: 1; transform: translateX(0); }
-    }
-    .animate-slideInRightPage {
-      animation: slideInRightPage var(--duration-slow) var(--ease-ios) forwards;
-      will-change: transform, opacity;
-    }
-
-    @keyframes scaleIn {
-      from { opacity: 0; transform: scale(0.95); }
-      to { opacity: 1; transform: scale(1); }
-    }
-    .animate-scaleIn {
-      animation: scaleIn var(--duration-normal) var(--ease-ios) forwards;
-      will-change: transform, opacity;
-    }
-    
-    @keyframes fadeIn {
-      from { opacity: 0; }
-      to { opacity: 1; }
-    }
-    .animate-fadeIn { 
-      animation: fadeIn var(--duration-normal) var(--ease-ios) forwards;
-      will-change: opacity;
-    }
-
-    @keyframes slideInUp {
-      from {
-        transform: translateY(100%);
-        opacity: 0.8;
+    <!-- Inline loader styles to prevent FOUC -->
+    <style>
+      :root{
+        color-scheme:light dark;
       }
-      to {
-        transform: translateY(0);
-        opacity: 1;
+      #initial-loader{
+        align-items:center;
+        background-color:var(--color-bg-default, #fff);
+        display:flex;
+        flex-direction:column;
+        height:100%;
+        justify-content:center;
+        left:0;
+        position:fixed;
+        top:0;
+        transition:opacity .2s ease-out;
+        width:100%;
+        z-index:9999;
+      }
+      .loader-spinner{
+        animation:loader-spin 1s linear infinite;
+        border:3px solid rgba(0,0,0,.1);
+        border-radius:50%;
+        border-top:3px solid var(--color-primary-accent, #0969da);
+        height:40px;
+        width:40px;
+      }
+      .loader-text{
+        color:var(--color-text-secondary, #57606a);
+        font-family:system-ui,-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica Neue,sans-serif;
+        font-size:14px;
+        margin-top:16px;
+      }
+      @keyframes loader-spin{
+        to{ transform:rotate(1turn); }
+      }
+      @media (prefers-color-scheme:dark){
+        #initial-loader{
+          background-color:#0d1117;
+        }
+        .loader-text{
+          color:#8b949e;
+        }
+      }
+      @media (forced-colors:active){
+        .loader-spinner{
+          border-color:Highlight CanvasText CanvasText;
+        }
+        .loader-text{
+          color:CanvasText;
+        }
+      }
+    </style>
+    <script type="importmap">
+    {
+      "imports": {
+        "react": "https://esm.sh/react@^19.1.0",
+        "react-dom": "https://esm.sh/react-dom@^19.1.0",
+        "react/": "https://esm.sh/react@^19.1.0/",
+        "react-dom/": "https://esm.sh/react-dom@^19.1.0/",
+        "react-router-dom": "https://esm.sh/react-router-dom@^7.6.2",
+        "@headlessui/react": "https://esm.sh/@headlessui/react@^2.1.2",
+        "framer-motion": "https://esm.sh/framer-motion@^12.16.0"
       }
     }
-    .animate-slideInUp {
-      animation: slideInUp var(--duration-normal) var(--ease-ios) forwards;
-      will-change: transform, opacity;
-    }
+    </script>
+    <script type="module" crossorigin src="/quizai/assets/index-QP2H5jJ9.js"></script>
+    <link rel="modulepreload" crossorigin href="/quizai/assets/katex-core-BbYO2yyT.js">
+    <link rel="modulepreload" crossorigin href="/quizai/assets/katex-extras-AZS8NW-4.js">
+    <link rel="modulepreload" crossorigin href="/quizai/assets/feature-quiz-2SquOiTn.js">
+    <link rel="modulepreload" crossorigin href="/quizai/assets/router-Dk7yDelZ.js">
+    <link rel="modulepreload" crossorigin href="/quizai/assets/ui-framework-CdNWeEQR.js">
+    <link rel="modulepreload" crossorigin href="/quizai/assets/feature-quiz-components-CChsAlA6.js">
+    <link rel="modulepreload" crossorigin href="/quizai/assets/feature-quiz-sharedquiz-Clu9xfzS.js">
+    <link rel="modulepreload" crossorigin href="/quizai/assets/util-document-Dv5rbOR1.js">
+    <link rel="modulepreload" crossorigin href="/quizai/assets/util-storage-UFVse9kk.js">
+    <link rel="modulepreload" crossorigin href="/quizai/assets/util-pdf-CkIVnOzu.js">
+    <link rel="modulepreload" crossorigin href="/quizai/assets/google-services-Bc_loC93.js">
+    <link rel="modulepreload" crossorigin href="/quizai/assets/services-BHj8px4z.js">
+    <link rel="modulepreload" crossorigin href="/quizai/assets/service-supabase-wASzC9XA.js">
+    <link rel="modulepreload" crossorigin href="/quizai/assets/feature-quiz-home-Ch5jepSG.js">
+    <link rel="modulepreload" crossorigin href="/quizai/assets/feature-quiz-dashboard-C8yrEGC7.js">
+    <link rel="modulepreload" crossorigin href="/quizai/assets/markdown-processors-D3jN8hOQ.js">
+    <link rel="modulepreload" crossorigin href="/quizai/assets/react-markdown-Cej2CoYR.js">
+    <link rel="modulepreload" crossorigin href="/quizai/assets/app-components-CFPFxe5x.js">
+    <link rel="modulepreload" crossorigin href="/quizai/assets/core-react-DcE6uGcR.js">
+    <link rel="stylesheet" crossorigin href="/quizai/assets/katex-extras-Z53fddTf.css">
+    <link rel="stylesheet" crossorigin href="/quizai/assets/app-components-CL2IDdOq.css">
+    <link rel="stylesheet" crossorigin href="/quizai/assets/markdown-styles-T-m_OsNd.css">
+    <link rel="stylesheet" crossorigin href="/quizai/assets/index-CR_Nab7_.css">
+  </head>
+  <body>
+    <!-- Initial loader -->
+    <div id="initial-loader">
+      <div class="loader-spinner"></div>
+      <div class="loader-text">Loading QuizAI...</div>
+    </div>
     
-    .mobile-sheet-enter {
-      transform: translateY(100%);
-    }
-    .mobile-sheet-enter-active {
-      transform: translateY(0);
-      transition: transform 300ms var(--ease-ios);
-    }
-    .mobile-sheet-exit {
-      transform: translateY(0);
-    }
-    .mobile-sheet-exit-active {
-      transform: translateY(100%);
-      transition: transform 250ms var(--ease-ios);
-    }
+    <!-- Root element for React -->
+    <div id="root"></div>
     
-    .animate-page-slide-fade-in { 
-      animation: fadeInUp var(--duration-slow) var(--ease-ios) forwards; 
-      will-change: transform, opacity;
-    }
-    .animate-element-fade-scale-in { 
-      animation: scaleIn var(--duration-fast) var(--ease-ios) forwards; 
-      will-change: transform, opacity;
-    }
-        
-    .opacity-0 { opacity: 0; } 
-
-    @keyframes modalPopIn {
-      from { opacity: 0; transform: scale(0.9) translateY(15px); }
-      to { opacity: 1; transform: scale(1) translateY(0); }
-    }
-    @keyframes modalPopOut {
-      from { opacity: 1; transform: scale(1) translateY(0); }
-      to { opacity: 0; transform: scale(0.9) translateY(15px); }
-    }
-
-    .modal-container-base { 
-      contain: layout style paint; 
-      background-color: var(--color-modal-content-bg-glass); 
-      border: 1px solid var(--color-modal-border);
-    }
-    .modal-container-base.solid-modal { 
-        background-color: var(--color-modal-content-bg);
-    }
-
-    .modal-container-animate-enter { 
-      opacity: 0;
-      transform: scale(0.9) translateY(15px);
-    }
-    .modal-container-animate-enter-active { 
-      animation: modalPopIn var(--duration-fast) var(--ease-ios) forwards;
-      will-change: transform, opacity;
-    }
-    .modal-container-animate-exit { 
-      opacity: 1;
-      transform: scale(1) translateY(0);
-    }
-    .modal-container-animate-exit-active { 
-      animation: modalPopOut var(--duration-fast) var(--ease-ios) forwards;
-      will-change: transform, opacity;
-    }
+    <!-- Core JS -->
+    <script defer src="/quizai/env-config.js"></script>
     
-    @keyframes shimmer {
-      0% { background-position: -300px 0; } 
-      100% { background-position: calc(100% + 300px) 0; } 
-    }
-    .progress-bar-shimmer {
-      position: relative; 
-      overflow: hidden; 
-    }
-    html.dark .progress-bar-shimmer::after {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background-image: linear-gradient(
-        to right,
-        transparent 0%,
-        rgba(255, 255, 255, 0.12) 30%,
-        rgba(255, 255, 255, 0.25) 50%,
-        rgba(255, 255, 255, 0.12) 70%,
-        transparent 100%
-      );
-      background-size: 250px 100%; 
-      background-repeat: no-repeat;
-      animation: shimmer 1.8s linear infinite; 
-      will-change: background-position;
-    }
-    html.light .progress-bar-shimmer::after {
-       content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-       background-image: linear-gradient(
-        to right,
-        transparent 0%,
-        rgba(0, 0, 0, 0.03) 30%, 
-        rgba(0, 0, 0, 0.06) 50%,
-        rgba(0, 0, 0, 0.03) 70%,
-        transparent 100%
-      );
-      background-size: 250px 100%; 
-      background-repeat: no-repeat;
-      animation: shimmer 1.8s linear infinite; 
-      will-change: background-position;
-    }
-
-    .accordion-item-container {
-      contain: layout style paint;
-      background-color: var(--color-bg-surface-1);
-      border: 1px solid var(--color-border-default);
-    }
-    html.light .accordion-item-container {
-      box-shadow: var(--shadow-md); 
-    }
-
-    .question-item-motion-wrapper { 
-      contain: layout style paint;
-    }
-    .quiz-list-container {
-      contain: layout style paint;
-      min-height: 300px; 
-    }
-    
-    .sync-indicator-base {
-      transition: opacity var(--duration-fast) var(--ease-ios), transform var(--duration-fast) var(--ease-ios);
-      will-change: opacity, transform;
-    }
-    .sync-indicator-visible {
-      opacity: 1;
-      transform: translateY(0);
-    }
-    .sync-indicator-hidden {
-      opacity: 0;
-      transform: translateY(5px); 
-      pointer-events: none;
-    }
-
-    .btn-ripple {
-      position: relative;
-      overflow: hidden;
-    }
-    .btn-ripple:after {
-      content: '';
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      width: 5px;
-      height: 5px;
-      opacity: 0;
-      border-radius: 100%;
-      transform: scale(1) translate(-50%, -50%);
-      transform-origin: 50% 50%;
-      background: rgba(var(--color-primary-accent-rgb), 0.4);
-    }
-    .btn-ripple:active:after {
-      animation: ripple-effect 0.5s var(--ease-ios);
-    }
-
-    @keyframes ripple-effect {
-      0% {
-        transform: scale(1) translate(-50%, -50%);
-        opacity: 1;
+    <!-- More efficient loader handling -->
+    <script>
+      // Performance marks for measuring load time
+      if ('performance' in window) {
+        performance.mark('app-init-start');
       }
-      100% {
-        transform: scale(50) translate(-50%, -50%);
-        opacity: 0;
-      }
-    }
-
-    html.text-size-sm { font-size: 14px; }
-    html.text-size-md { font-size: 16px; }
-    html.text-size-lg { font-size: 18px; }
-    html.text-size-xl { font-size: 20px; }
-
-    html[lang="vi"] {
-      line-height: 1.7;
-    }
-    html[lang="vi"] body {
-      line-height: 1.7;
-    }
-    
-  </style>
-  <script type="importmap">
-{
-  "imports": {
-    "katex/": "https://esm.sh/katex@^0.16.22/",
-    "react-katex": "https://esm.sh/react-katex@^3.1.0",
-    "react-markdown": "https://esm.sh/react-markdown@^10.1.0",
-    "remark-gfm": "https://esm.sh/remark-gfm@^4.0.1",
-    "remark-math": "https://esm.sh/remark-math@^6.0.0",
-    "rehype-katex": "https://esm.sh/rehype-katex@^7.0.1",
-    "rehype-raw": "https://esm.sh/rehype-raw@^7.0.0",
-    "react/": "https://esm.sh/react@^19.1.0/",
-    "react": "https://esm.sh/react@^19.1.0",
-    "react-dom": "https://esm.sh/react-dom@^19.1.0",
-    "react-dom/": "https://esm.sh/react-dom@^19.1.0/",
-    "@google/genai": "https://esm.sh/@google/genai@^1.4.0",
-    "react-router-dom": "https://esm.sh/react-router-dom@^7.6.2",
-    "vite": "https://esm.sh/vite@^6.3.5",
-    "path": "https://esm.sh/path@^0.12.7",
-    "url": "https://esm.sh/url@^0.11.4",
-    "localforage": "https://esm.sh/localforage@^1.10.0",
-    "process": "https://esm.sh/process@^0.11.10",
-    "@testing-library/jest-dom": "https://esm.sh/@testing-library/jest-dom@^6.6.3",
-    "lucide-react": "https://esm.sh/lucide-react@^0.513.0",
-    "framer-motion": "https://esm.sh/framer-motion@^12.16.0",
-    "pdfjs-dist/": "https://esm.sh/pdfjs-dist@^5.3.31/",
-    "react-window": "https://esm.sh/react-window@^1.8.11",
-    "dotenv": "https://esm.sh/dotenv@^16.5.0",
-    "react-swipeable": "https://esm.sh/react-swipeable@^7.0.2",
-    "@react-oauth/google": "https://esm.sh/@react-oauth/google@^0.12.2",
-    "mammoth": "https://esm.sh/mammoth@^1.9.1",
-    "@jest/globals": "https://esm.sh/@jest/globals@^30.0.0-beta.3",
-    "github-markdown-css/github-markdown.css": "https://esm.sh/github-markdown-css@5.5.1/github-markdown.css",
-    "@headlessui/react": "https://esm.sh/@headlessui/react@^2.1.2",
-    "github-markdown-css/": "https://esm.sh/github-markdown-css@^5.8.1/",
-    "react-markdown/": "https://esm.sh/react-markdown@^10.1.0/",
-    "hast": "https://esm.sh/hast@^1.0.0",
-    "react-i18next": "https://esm.sh/react-i18next@^15.5.2",
-    "styled-components": "https://esm.sh/styled-components@^6.1.11"
-  }
-}
-</script>
-  <script type="module" crossorigin src="/quizai/assets/index-RewXCStj.js"></script>
-  <link rel="modulepreload" crossorigin href="/quizai/assets/vendor-DoC2WAmd.js">
-  <link rel="modulepreload" crossorigin href="/quizai/assets/router-BxjC687J.js">
-  <link rel="modulepreload" crossorigin href="/quizai/assets/ui-BGuvgkTr.js">
-  <link rel="modulepreload" crossorigin href="/quizai/assets/utils-rUpm7H1u.js">
-  <link rel="modulepreload" crossorigin href="/quizai/assets/markdown-s3HPJSPm.js">
-  <link rel="stylesheet" crossorigin href="/quizai/assets/index-Ct3bDO6s.css">
-</head>
-<body>
-  <noscript>You need to enable JavaScript to run this app.</noscript>
-  
-  <div id="initial-loader" style="
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background-color: var(--color-bg-body, #0f172a);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    z-index: 9999;
-    color: var(--color-text-primary, #f1f5f9);
-    font-family: var(--font-primary, system-ui);
-  ">
-    <div style="
-      width: 40px;
-      height: 40px;
-      border: 3px solid transparent;
-      border-top: 3px solid var(--color-primary-accent, #38bdf8);
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-      margin-bottom: 16px;
-    "></div>
-    <p style="margin: 0; font-size: 14px; opacity: 0.8;">Đang tải QuizAI...</p>
-  </div>
-  
-  <style>
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-    #initial-loader {
-      transition: opacity 0.3s ease-out;
-    }
-  </style>
-
-  <div id="root"></div>
-  
-  <script src="/quizai/env-config.js"></script>
-  
-  <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      setTimeout(function() {
+      
+      // Hide loader efficiently when app is ready
+      document.addEventListener('DOMContentLoaded', function() {
         const loader = document.getElementById('initial-loader');
         if (loader) {
-          loader.style.opacity = '0';
-          setTimeout(function() {
-            loader.remove();
-          }, 300);
+          const hideLoader = () => {
+            loader.style.opacity = '0';
+            setTimeout(() => loader.remove(), 200);
+          };
+          
+          // Use requestIdleCallback with shorter timeout
+          if ('requestIdleCallback' in window) {
+            window.requestIdleCallback(hideLoader, { timeout: 500 });
+          } else {
+            window.requestAnimationFrame(hideLoader);
+          }
         }
-      }, 500);
-    });
-  </script>
-</body>
+      });
+      
+      // Performance observer with limited output
+      if ('PerformanceObserver' in window) {
+        try {
+          let lastLogTime = 0;
+          const LOG_THROTTLE_MS = 2000; // Only log every 2 seconds
+          
+          const observer = new PerformanceObserver((list) => {
+            const now = performance.now();
+            for (const entry of list.getEntries()) {
+              // Only log significant long tasks (> 150ms) and throttle logging
+              if (entry.duration > 150 && now - lastLogTime > LOG_THROTTLE_MS) {
+                console.debug('Long task detected:', entry.duration.toFixed(2) + 'ms', entry);
+                lastLogTime = now;
+              }
+            }
+          });
+          observer.observe({ entryTypes: ['longtask'] });
+        } catch (e) {
+          console.debug('Performance observer not supported');
+        }
+      }
+    </script>
+  </body>
 </html>
